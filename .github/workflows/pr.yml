@@ -21,6 +21,9 @@ jobs:
   images:
     name: Images
     needs: services
+    permissions:
+      contents: read
+      packages: write
     uses: project-graphite/actions/.github/workflows/reusable-docker-build-push.yml@v1
     with:
       services: ${{ needs.services.outputs.services }}
@@ -30,7 +33,10 @@ jobs:
     name: Secrets
     uses: project-graphite/actions/.github/workflows/reusable-gitleaks.yml@v1
 
-  pr:
+  conventions:
     name: Conventions
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     uses: project-graphite/actions/.github/workflows/reusable-pr-checks.yml@v1
-    secrets: inherit

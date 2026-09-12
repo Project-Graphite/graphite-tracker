@@ -16,6 +16,9 @@ jobs:
   build:
     name: Build
     needs: services
+    permissions:
+      contents: read
+      packages: write
     uses: project-graphite/actions/.github/workflows/reusable-docker-build-push.yml@v1
     with:
       services: ${{ needs.services.outputs.services }}
