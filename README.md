@@ -30,19 +30,20 @@ Delete this section once the checklist is done.
    `lint`, `test`, and `build` scripts. A folder with a `Makefile` must provide `install`, `lint`, and
    `test` targets.
 3. Update `compose.yaml` for local development. Put bind mounts, hot reload, and development ports
-   in `compose.override.yaml`. Neither file is used in production; the platform registry generates
-   the Kubernetes resources.
+   in `compose.override.yaml`. Update `compose.production.yaml` to pull the prebuilt GHCR images,
+   define health checks and persistent volumes, avoid published host ports, and cap CPU and memory.
 4. Add a screenshot or short GIF, the eventual live link, the stack, and clear local instructions
    to this README.
 5. Register the project by opening a pull request on
    [platform](https://github.com/project-graphite/platform) with `projects/<slug>.yml`.
 
 Use named service folders even for a single-service project. Images are published as
-`ghcr.io/project-graphite/<repo>/<service>`, and each service name must match its key in the platform
-entry.
+`ghcr.io/project-graphite/<repo>/<service>`, and each image name must match its service in the
+production Compose file.
 
 Until the platform entry is merged, the `Deploy` job on `main` fails with a clear message. Builds
-and checks continue; only the deploy record is blocked.
+and checks continue; only the release record is blocked. Coolify deployment remains a separate,
+reviewed action.
 
 ## Conventions
 
