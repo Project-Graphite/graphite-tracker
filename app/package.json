@@ -1,0 +1,23 @@
+{
+  "name": "graphite-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "dev": "npm run dev --workspace backend",
+    "start": "npm run start --workspace backend",
+    "frontend:dev": "npm run dev --workspace frontend",
+    "lint": "oxlint backend/src backend/test frontend/src",
+    "test": "npm run test --workspace backend",
+    "prisma:generate": "npm run prisma:generate --workspace backend",
+    "prisma:migrate:dev": "npm run prisma:migrate:dev --workspace backend",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace backend"
+  },
+  "devDependencies": {
+    "oxlint": "1.83.0"
+  }
+}

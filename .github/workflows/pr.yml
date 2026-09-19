@@ -6,6 +6,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   services:
     name: Detect
@@ -23,7 +26,7 @@ jobs:
     needs: services
     permissions:
       contents: read
-      packages: write
+      packages: read
     uses: project-graphite/actions/.github/workflows/reusable-docker-build-push.yml@main
     with:
       services: ${{ needs.services.outputs.services }}

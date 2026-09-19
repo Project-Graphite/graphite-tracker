@@ -1,5 +1,7 @@
 node_modules/
 dist/
-.env
-.env.local
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
 __pycache__/

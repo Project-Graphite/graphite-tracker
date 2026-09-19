@@ -1,0 +1,92 @@
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Request, Response } from 'express';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+
+const refreshCookie = 'graphite_refresh';
+
+@Controller('auth')
+export class AuthController {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Post('register')
+  register(@Body() input: RegisterDto) {
+    return this.auth.register(input);
+  }
+
+  @Post('verify-email')
+  verifyEmail(@Body() input: VerifyEmailDto) {
+    return this.auth.verifyEmail(input.token);
+  }
+
+  @Post('login')
+  async login(
+    @Body() input: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const session = await this.auth.login(input);
+    this.setRefreshCookie(response, session.refreshToken);
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.assertTrustedOrigin(request);
+    const token = request.cookies?.[refreshCookie] as string | undefined;
+    if (!token) {
+      throw new UnauthorizedException();
+    }
+    const session = await this.auth.refresh(token);
+    this.setRefreshCookie(response, session.refreshToken);
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.assertTrustedOrigin(request);
+    await this.auth.logout(request.cookies?.[refreshCookie] as string | undefined);
+    response.clearCookie(refreshCookie, { path: '/api/v1/auth' });
+    return { loggedOut: true };
+  }
+
+  private setRefreshCookie(response: Response, token: string) {
+    response.cookie(refreshCookie, token, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/api/v1/auth',
+      sameSite: 'strict',
+      secure: this.config.get('NODE_ENV') === 'production',
+    });
+  }
+
+  private assertTrustedOrigin(request: Request) {
+    const trusted = new Set(
+      this.config.get<string>('AUTH_TRUSTED_ORIGINS')?.split(',') ?? [],
+    );
+    if (!request.headers.origin || !trusted.has(request.headers.origin)) {
+      throw new UnauthorizedException('Request origin is not trusted');
+    }
+  }
+}

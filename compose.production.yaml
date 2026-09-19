@@ -1,15 +1,29 @@
-name: project-template
+name: graphite-tracker
 
 services:
   web:
-    image: ghcr.io/project-graphite/project-template/web:${IMAGE_TAG:-latest}
+    image: ghcr.io/project-graphite/graphite-tracker/app:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://graphite:${POSTGRES_PASSWORD}@postgres:5432/graphite_tracker
+      REDIS_URL: redis://redis:6379
+      AUTH_ACCESS_TOKEN_SECRET: ${AUTH_ACCESS_TOKEN_SECRET}
+      AUTH_REFRESH_TOKEN_SECRET: ${AUTH_REFRESH_TOKEN_SECRET}
+      AUTH_TRUSTED_ORIGINS: https://graphite-tracker.project-graphite.com
+      TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     expose:
-      - "80"
+      - '3000'
     healthcheck:
-      test: [CMD, wget, --quiet, --tries=1, --spider, http://localhost/]
+      test: [CMD, wget, --quiet, --tries=1, --spider, http://localhost:3000/api/v1/health]
       interval: 30s
       timeout: 5s
-      start_period: 10s
+      start_period: 20s
       retries: 3
     init: true
     restart: unless-stopped
@@ -18,5 +32,46 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 128M
+          cpus: '0.75'
+          memory: 512M
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: graphite_tracker
+      POSTGRES_USER: graphite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U graphite -d graphite_tracker]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 384M
+
+  redis:
+    image: redis:8.2-alpine
+    command: [redis-server, --appendonly, 'yes']
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 96M
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MediaCategory {
+  MOVIE  @map("movie")
+  TV     @map("tv")
+  ANIME  @map("anime")
+  MANGA  @map("manga")
+  MANHWA @map("manhwa")
+  GAME   @map("game")
+}
+
+enum LibraryState {
+  PLANNED     @map("planned")
+  IN_PROGRESS @map("in_progress")
+  COMPLETED   @map("completed")
+  DROPPED     @map("dropped")
+}
+
+model User {
+  id                 String              @id @default(uuid()) @db.Uuid
+  email              String              @unique
+  handle             String              @unique
+  displayName        String              @map("display_name")
+  passwordHash       String              @map("password_hash")
+  bio                 String?
+  verifiedAt         DateTime?           @map("verified_at")
+  timeZone            String              @default("Etc/UTC") @map("time_zone")
+  isActive            Boolean             @default(true) @map("is_active")
+  isAdmin             Boolean             @default(false) @map("is_admin")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  privacy             ProfilePrivacy?
+  verificationTokens VerificationToken[]
+  refreshSessions    RefreshSession[]
+  libraryEntries     LibraryEntry[]
+
+  @@map("users")
+}
+
+model ProfilePrivacy {
+  id             String  @id @default(uuid()) @db.Uuid
+  userId         String  @unique @map("user_id") @db.Uuid
+  isPublic       Boolean @default(false) @map("is_public")
+  showLibrary    Boolean @default(false) @map("show_library")
+  showActivity   Boolean @default(false) @map("show_activity")
+  showRatings    Boolean @default(false) @map("show_ratings")
+  showReviews    Boolean @default(false) @map("show_reviews")
+  showStatistics Boolean @default(false) @map("show_statistics")
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profile_privacy")
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_sessions")
+}
+
+model CatalogItem {
+  id              String         @id @default(uuid()) @db.Uuid
+  category        MediaCategory
+  canonicalTitle  String         @map("canonical_title")
+  alternateTitles String[]       @default([]) @map("alternate_titles")
+  synopsis        String?
+  posterPath      String?        @map("poster_path")
+  backdropPath    String?        @map("backdrop_path")
+  releaseDate     DateTime?      @map("release_date") @db.Date
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  sourceEntries   SourceEntry[]
+  libraryEntries  LibraryEntry[]
+
+  @@index([category, canonicalTitle])
+  @@map("catalog_items")
+}
+
+model SourceRecord {
+  id            String          @id @default(uuid()) @db.Uuid
+  key           String          @unique
+  displayName   String          @map("display_name")
+  categories    MediaCategory[]
+  languages     String[]
+  capabilities  String[]
+  attribution   String
+  enabled       Boolean         @default(true)
+  sourceEntries SourceEntry[]
+
+  @@map("source_records")
+}
+
+model SourceEntry {
+  id              String       @id @default(uuid()) @db.Uuid
+  catalogItemId   String       @map("catalog_item_id") @db.Uuid
+  sourceId        String       @map("source_id") @db.Uuid
+  externalId      String       @map("external_id")
+  canonicalUrl    String?      @map("canonical_url")
+  language        String?
+  sourceTitle     String       @map("source_title")
+  lastRefreshedAt DateTime?    @map("last_refreshed_at")
+  catalogItem     CatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  source          SourceRecord @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, externalId])
+  @@index([catalogItemId])
+  @@map("source_entries")
+}
+
+model LibraryEntry {
+  id                   String               @id @default(uuid()) @db.Uuid
+  userId               String               @map("user_id") @db.Uuid
+  catalogItemId        String               @map("catalog_item_id") @db.Uuid
+  state                LibraryState         @default(PLANNED)
+  startedAt            DateTime?            @map("started_at")
+  completedAt          DateTime?            @map("completed_at")
+  notificationsEnabled Boolean              @default(false) @map("notifications_enabled")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogItem          CatalogItem          @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+  statusEvents         LibraryStatusEvent[]
+
+  @@unique([userId, catalogItemId])
+  @@index([userId, state])
+  @@map("library_entries")
+}
+
+model LibraryStatusEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  libraryEntryId String        @map("library_entry_id") @db.Uuid
+  oldState       LibraryState? @map("old_state")
+  newState       LibraryState  @map("new_state")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  libraryEntry   LibraryEntry  @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+
+  @@index([libraryEntryId, createdAt])
+  @@map("library_status_events")
+}

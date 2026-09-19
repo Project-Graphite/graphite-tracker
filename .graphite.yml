@@ -1,14 +1,13 @@
 projects:
-  - slug: project-template
+  - slug: graphite-tracker
     kind: project
-    name: Project template
+    name: Graphite Tracker
     summary: >
-      The starting point every project is created from: shared CI wiring, the compose setup and the
-      service convention.
-    tags: [github-actions, docker]
+      A universal entertainment tracker for movies, television, anime, manga, manhwa and games.
+    tags: [react, nestjs, prisma, postgresql]
     owner: amr
     authors: [AmrMsCLL]
-    status: source-only
+    status: active
     listed: false
     deploy:
       kind: none

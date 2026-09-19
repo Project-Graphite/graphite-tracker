@@ -1,52 +1,86 @@
-# Project name
+# Graphite Tracker
 
-One sentence on what this is and who it is for.
+Graphite Tracker is a self-hosted entertainment tracker for discovering and organizing movies in a
+private library. It is the foundation of a broader tracker for television, anime, manga, manhwa and
+games.
+
+The project is under active development. Phase 1 currently includes account registration, local
+email verification, sign-in, TMDB movie discovery, recent and popular movie views, and persistent
+library states.
 
 ## Stack
 
-What it is built with, and anything unusual about how it fits together.
+- React 19, Vite and Tailwind CSS 4
+- NestJS 12 and TypeScript
+- Prisma with PostgreSQL
+- Redis
+- Docker Compose
 
-## Running it
+The production build serves the React application and REST API from one Node image. PostgreSQL and
+Redis remain separate services.
+
+## Local development
+
+Requirements:
+
+- Docker Desktop or Docker Engine with Compose
+- A TMDB API Read Access Token
+
+Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
 
 ```sh
-docker compose up
+cp .env.example .env
 ```
 
-Then open http://localhost:8080.
+Start the stack and apply the committed database migration:
 
-## Layout
+```sh
+docker compose up -d --build
+docker compose exec web npm run prisma:migrate:deploy
+```
 
-| Folder | What it is |
+Open:
+
+- Application: http://localhost:4004
+- API: http://localhost:4002/api/v1
+- Health: http://localhost:4002/api/v1/health
+- Readiness: http://localhost:4002/api/v1/ready
+
+The local verification-token response is enabled only by the development Compose override. Replace
+the default local authentication secrets before using the application outside a local machine.
+
+## Checks
+
+Run checks from the application workspace:
+
+```sh
+cd app
+npm ci
+npm run lint
+npm test
+npm run build
+```
+
+GitHub Actions run lint, tests, application builds, Docker image validation and secret scanning.
+They do not publish an image or deploy the application.
+
+## Repository layout
+
+| Path | Purpose |
 | :--- | :--- |
-| `web/` | Replace with the real services |
+| `app/frontend/` | React browser application |
+| `app/backend/` | NestJS API, Prisma schema and migrations |
+| `app/Dockerfile` | Development and production image targets |
+| `compose.yaml` | Shared local service definitions |
+| `compose.override.yaml` | Local hot-reload services and ports |
+| `compose.production.yaml` | Future Coolify production topology |
 
-## Setting up
+## Data source
 
-Delete this section once the checklist is done.
+Movie metadata and artwork are provided by
+[The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses the TMDB API but is not
+endorsed or certified by TMDB. Graphite Tracker does not stream or redistribute media.
 
-1. Rename the placeholder service. Every top-level folder containing a `Dockerfile` is a deployable
-   service and is built and pushed automatically.
-2. Give each service its checks. A folder with a `package.json` gets `npm ci` followed by available
-   `lint`, `test`, and `build` scripts. A folder with a `Makefile` must provide `install`, `lint`, and
-   `test` targets.
-3. Update `compose.yaml` for local development. Put bind mounts, hot reload, and development ports
-   in `compose.override.yaml`. Update `compose.production.yaml` to pull the prebuilt GHCR images,
-   define health checks and persistent volumes, avoid published host ports, and cap CPU and memory.
-4. Add a screenshot or short GIF, the eventual live link, the stack, and clear local instructions
-   to this README.
-5. Register the project by opening a pull request on
-   [platform](https://github.com/project-graphite/platform) with `projects/<slug>.yml`.
+## License
 
-Use named service folders even for a single-service project. Images are published as
-`ghcr.io/project-graphite/<repo>/<service>`, and each image name must match its service in the
-production Compose file.
-
-Until the platform entry is merged, the `Deploy` job on `main` fails with a clear message. Builds
-and checks continue; only the release record is blocked. Coolify deployment remains a separate,
-reviewed action.
-
-## Conventions
-
-Pull request titles follow `type(scope): summary` using one of `feat fix chore refactor docs test ci
-perf revert style build`. Squash merges put the title into the history of `main`, so the title is
-checked instead of the branch name.
+[MIT](LICENSE)

@@ -1,4 +1,28 @@
 services:
   web:
+    build:
+      target: development
+    command: npm run dev
     volumes:
-      - ./web/index.html:/usr/share/nginx/html/index.html:ro
+      - ./app:/app
+      - app-node-modules:/app/node_modules
+    environment:
+      AUTH_EXPOSE_VERIFICATION_TOKEN: 'true'
+
+  frontend:
+    build:
+      context: ./app
+      target: development
+    command: npm run dev --workspace frontend -- --host 0.0.0.0
+    environment:
+      VITE_API_ORIGIN: http://web:3000
+    ports:
+      - '4004:5173'
+    volumes:
+      - ./app:/app
+      - app-node-modules:/app/node_modules
+    depends_on:
+      - web
+
+volumes:
+  app-node-modules:
