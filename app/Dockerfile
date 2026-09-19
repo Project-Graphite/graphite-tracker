@@ -6,7 +6,6 @@ COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 RUN npm ci
 COPY . .
-RUN npm run prisma:generate
 
 FROM development AS build
 RUN npm run build
