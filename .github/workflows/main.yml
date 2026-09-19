@@ -15,6 +15,8 @@ jobs:
   services:
     name: Detect
     uses: project-graphite/actions/.github/workflows/reusable-detect-services.yml@main
+    with:
+      all: true
 
   checks:
     name: Checks
