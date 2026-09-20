@@ -1,4 +1,4 @@
-import { IsEnum, IsString, Matches } from 'class-validator';
+import { IsEnum, IsIn, IsString, Length } from 'class-validator';
 
 export enum LibraryStateInput {
   Planned = 'planned',
@@ -9,8 +9,15 @@ export enum LibraryStateInput {
 
 export class CreateLibraryEntryDto {
   @IsString()
-  @Matches(/^\d+$/)
+  @Length(1, 100)
   externalId!: string;
+
+  @IsIn(['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'])
+  category: 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game' = 'movie';
+
+  @IsString()
+  @Length(2, 30)
+  source = 'tmdb';
 
   @IsEnum(LibraryStateInput)
   state: LibraryStateInput = LibraryStateInput.Planned;

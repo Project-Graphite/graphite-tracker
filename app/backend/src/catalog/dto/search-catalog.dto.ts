@@ -1,15 +1,10 @@
-import { Transform, Type } from 'class-transformer';
-import { IsInt, IsString, Length, Max, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString, Length } from 'class-validator';
+import { BrowseCatalogDto } from './browse-catalog.dto';
 
-export class SearchCatalogDto {
+export class SearchCatalogDto extends BrowseCatalogDto {
   @IsString()
   @Length(2, 100)
   @Transform(({ value }) => String(value).trim())
   query!: string;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(500)
-  page = 1;
 }

@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { apiRequest } from './api';
+import { ApiError, apiRequest } from './api';
 
 interface User {
   id: string;
@@ -42,14 +42,34 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+let sessionRestoration: Promise<Session | undefined> | undefined;
+
+async function requestSession(attempt = 0): Promise<Session | undefined> {
+  try {
+    return await apiRequest<Session>('/auth/refresh', { method: 'POST' });
+  } catch (reason) {
+    if ((reason instanceof ApiError && reason.status === 401) || attempt === 12) {
+      return undefined;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    return requestSession(attempt + 1);
+  }
+}
+
+function restoreSession() {
+  sessionRestoration ??= requestSession().finally(() => {
+    sessionRestoration = undefined;
+  });
+  return sessionRestoration;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    apiRequest<Session>('/auth/refresh', { method: 'POST' })
+    restoreSession()
       .then(setSession)
-      .catch(() => undefined)
       .finally(() => setReady(true));
   }, []);
 

@@ -5,14 +5,17 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateLibraryEntryDto } from './dto/create-library-entry.dto';
+import { ListLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
 import { LibraryService } from './library.service';
 
@@ -22,8 +25,28 @@ export class LibraryController {
   constructor(private readonly library: LibraryService) {}
 
   @Get()
-  list(@CurrentUser() user: AuthenticatedUser) {
-    return this.library.list(user.id);
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListLibraryDto,
+  ) {
+    return this.library.list(user.id, query);
+  }
+
+  @Get('tmdb/:externalId')
+  findByTmdbId(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('externalId', ParseIntPipe) externalId: number,
+  ) {
+    return this.library.findByTmdbId(user.id, String(externalId));
+  }
+
+  @Get('source/:source/:externalId')
+  findBySourceId(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('source') source: string,
+    @Param('externalId') externalId: string,
+  ) {
+    return this.library.findBySourceId(user.id, source, externalId);
   }
 
   @Post()
@@ -40,7 +63,7 @@ export class LibraryController {
     @Param('id') id: string,
     @Body() input: UpdateLibraryEntryDto,
   ) {
-    return this.library.update(user.id, id, input.state);
+    return this.library.update(user.id, id, input);
   }
 
   @Delete(':id')

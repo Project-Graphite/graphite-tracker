@@ -140,6 +140,13 @@ input::placeholder {
   opacity: 0.55;
 }
 
+.compact-button,
+.compact-control {
+  width: auto;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
 .text-button {
   border: 0;
   background: transparent;

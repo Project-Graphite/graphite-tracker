@@ -15,7 +15,7 @@ export function LoginPage() {
     const form = new FormData(event.currentTarget);
     try {
       await auth.login(String(form.get('email')), String(form.get('password')));
-      navigate('/discover/movies/recent');
+      navigate('/discover/movie/recent');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Sign in failed');
     } finally {

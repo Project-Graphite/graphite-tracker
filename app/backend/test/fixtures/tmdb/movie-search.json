@@ -11,7 +11,8 @@
       "poster_path": "/poster.jpg",
       "backdrop_path": "/backdrop.jpg",
       "release_date": "1999-10-15",
-      "original_language": "en"
+      "original_language": "en",
+      "genre_ids": [18, 53]
     }
   ]
 }

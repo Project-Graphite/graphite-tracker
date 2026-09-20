@@ -1,9 +1,19 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 import { useAuth } from './auth';
+import { catalogCategories, type CatalogSection } from './catalog';
 import { Shell } from './components/Shell';
 import { HomePage } from './pages/HomePage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { SourcesPage } from './pages/SourcesPage';
+import { TitleDetailsPage } from './pages/TitleDetailsPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DiscoverPage } from './pages/DiscoverPage';
 import { VerifyPage } from './pages/VerifyPage';
@@ -16,21 +26,65 @@ function ProtectedLibrary() {
   return auth.user ? <LibraryPage /> : <Navigate replace to="/login" />;
 }
 
+function Protected({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  if (!auth.ready) {
+    return <p className="text-muted">Loading your session…</p>;
+  }
+  return auth.user ? children : <Navigate replace to="/login" />;
+}
+
+function DiscoverRoute() {
+  const { category, section } = useParams();
+  const validCategory = catalogCategories.find((item) => item === category);
+  const validSection = ['search', 'recent', 'popular'].find(
+    (item) => item === section,
+  ) as CatalogSection | undefined;
+  return validCategory && validSection ? (
+    <DiscoverPage category={validCategory} section={validSection} />
+  ) : (
+    <Navigate replace to="/discover/movie/recent" />
+  );
+}
+
+function LegacyDiscoverRoute() {
+  const location = useLocation();
+  const { section } = useParams();
+  const destination = ['search', 'recent', 'popular'].includes(section ?? '')
+    ? section
+    : 'recent';
+  return (
+    <Navigate
+      replace
+      to={`/discover/movie/${destination}${location.search}`}
+    />
+  );
+}
+
+function SignedOutLogin() {
+  const auth = useAuth();
+  if (!auth.ready) {
+    return <p className="text-muted">Loading your session…</p>;
+  }
+  return auth.user ? <Navigate replace to="/" /> : <LoginPage />;
+}
+
 export function App() {
   return (
     <Routes>
       <Route element={<Shell />}>
         <Route index element={<HomePage />} />
-        <Route path="discover/movies/search" element={<DiscoverPage section="search" />} />
-        <Route path="discover/movies/recent" element={<DiscoverPage section="recent" />} />
-        <Route path="discover/movies/popular" element={<DiscoverPage section="popular" />} />
-        <Route path="discover" element={<Navigate replace to="/discover/movies/recent" />} />
-        <Route path="discover/movies" element={<Navigate replace to="/discover/movies/recent" />} />
-        <Route path="search" element={<Navigate replace to="/discover/movies/search" />} />
+        <Route path="discover/:category/:section" element={<DiscoverRoute />} />
+        <Route path="discover/movies/:section" element={<LegacyDiscoverRoute />} />
+        <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
+        <Route path="discover/movies" element={<Navigate replace to="/discover/movie/recent" />} />
+        <Route path="search" element={<Navigate replace to="/discover/movie/search" />} />
+        <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
         <Route path="library" element={<ProtectedLibrary />} />
+        <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify" element={<VerifyPage />} />
-        <Route path="login" element={<LoginPage />} />
+        <Route path="login" element={<SignedOutLogin />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Route>
     </Routes>

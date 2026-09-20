@@ -17,13 +17,16 @@ export function Shell() {
             Graphite Tracker
           </Link>
           <nav aria-label="Primary" className="mono-sm flex items-center gap-5">
-            <NavLink className={navClass} to="/discover/movies/recent">
+            <NavLink className={navClass} to="/discover/movie/recent">
               discover
             </NavLink>
             {auth.user ? (
               <>
                 <NavLink className={navClass} to="/library">
                   library
+                </NavLink>
+                <NavLink className={navClass} to="/sources">
+                  sources
                 </NavLink>
                 <button className="text-button" onClick={() => void auth.logout()} type="button">
                   sign out

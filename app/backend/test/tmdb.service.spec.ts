@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
+import { NotFoundException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TmdbService } from '../src/sources/tmdb/tmdb.service';
 import { TmdbSearchResponse } from '../src/sources/tmdb/tmdb.types';
@@ -29,6 +30,12 @@ describe('TmdbService', () => {
       backdropUrl: 'https://image.tmdb.org/t/p/w1280/backdrop.jpg',
       releaseDate: '1999-10-15',
       language: 'en',
+      genres: ['Drama', 'Thriller'],
+      runtimeMinutes: null,
+      status: null,
+      tagline: null,
+      rating: null,
+      ratingCount: 0,
       capabilities: {
         progressUnits: [],
         hasEpisodes: false,
@@ -78,5 +85,50 @@ describe('TmdbService', () => {
 
     expect(result.results[0]?.title).toBe('Fight Club');
     expect((fetchMock.mock.calls[0] as [URL])[0].pathname).toBe(`/3${path}`);
+  });
+
+  it('loads a normalized movie detail by external ID', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...fixture.results[0],
+          genres: [{ id: 18, name: 'Drama' }],
+          runtime: 139,
+          status: 'Released',
+          tagline: 'Mischief. Mayhem. Soap.',
+          vote_average: 8.4,
+          vote_count: 31_000,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+    );
+
+    const result = await service.movieDetails('550');
+
+    expect(result).toMatchObject({
+      externalId: '550',
+      genres: ['Drama'],
+      runtimeMinutes: 139,
+      status: 'Released',
+      rating: 8.4,
+      ratingCount: 31_000,
+      attribution: 'The Movie Database (TMDB)',
+    });
+    expect((fetchMock.mock.calls[0] as [URL])[0].pathname).toBe('/3/movie/550');
+  });
+
+  it('maps a missing TMDB movie to a not-found response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+    );
+
+    await expect(service.movieDetails('999999999')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

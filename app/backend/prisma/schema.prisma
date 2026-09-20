@@ -39,6 +39,9 @@ model User {
   verificationTokens VerificationToken[]
   refreshSessions    RefreshSession[]
   libraryEntries     LibraryEntry[]
+  globalSourcePreference GlobalSourcePreference?
+  categorySourcePreferences CategorySourcePreference[]
+  sourceSettings UserSourceSetting[]
 
   @@map("users")
 }
@@ -91,6 +94,7 @@ model CatalogItem {
   posterPath      String?        @map("poster_path")
   backdropPath    String?        @map("backdrop_path")
   releaseDate     DateTime?      @map("release_date") @db.Date
+  metadata        Json           @default("{}")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   sourceEntries   SourceEntry[]
@@ -110,6 +114,10 @@ model SourceRecord {
   attribution   String
   enabled       Boolean         @default(true)
   sourceEntries SourceEntry[]
+  preferredByEntries LibraryEntry[] @relation("PreferredSource")
+  globalPreferences GlobalSourcePreference[]
+  categoryPreferences CategorySourcePreference[]
+  userSettings UserSourceSetting[]
 
   @@map("source_records")
 }
@@ -123,6 +131,9 @@ model SourceEntry {
   language        String?
   sourceTitle     String       @map("source_title")
   lastRefreshedAt DateTime?    @map("last_refreshed_at")
+  availableChapter Decimal?    @map("available_chapter") @db.Decimal(10, 2)
+  availableEpisode Int?        @map("available_episode")
+  lastSeenUpdate   String?     @map("last_seen_update")
   catalogItem     CatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
   source          SourceRecord @relation(fields: [sourceId], references: [id], onDelete: Restrict)
 
@@ -139,15 +150,61 @@ model LibraryEntry {
   startedAt            DateTime?            @map("started_at")
   completedAt          DateTime?            @map("completed_at")
   notificationsEnabled Boolean              @default(false) @map("notifications_enabled")
+  progressSeason      Int?                  @map("progress_season")
+  progressEpisode     Int?                  @map("progress_episode")
+  progressChapter     Decimal?              @map("progress_chapter") @db.Decimal(10, 2)
+  progressVolume      Decimal?              @map("progress_volume") @db.Decimal(10, 2)
+  hoursPlayed         Decimal?              @map("hours_played") @db.Decimal(10, 2)
+  completionPercentage Int?                 @map("completion_percentage")
+  platforms           String[]              @default([])
+  preferredSourceId   String?               @map("preferred_source_id") @db.Uuid
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   catalogItem          CatalogItem          @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+  preferredSource      SourceRecord?        @relation("PreferredSource", fields: [preferredSourceId], references: [id], onDelete: SetNull)
   statusEvents         LibraryStatusEvent[]
 
   @@unique([userId, catalogItemId])
   @@index([userId, state])
   @@map("library_entries")
+}
+
+model GlobalSourcePreference {
+  userId    String       @id @map("user_id") @db.Uuid
+  sourceId  String       @map("source_id") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source    SourceRecord @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@map("global_source_preferences")
+}
+
+model CategorySourcePreference {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  category  MediaCategory
+  sourceId  String        @map("source_id") @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source    SourceRecord  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, category])
+  @@map("category_source_preferences")
+}
+
+model UserSourceSetting {
+  id       String       @id @default(uuid()) @db.Uuid
+  userId   String       @map("user_id") @db.Uuid
+  sourceId String       @map("source_id") @db.Uuid
+  enabled  Boolean      @default(true)
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source   SourceRecord @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceId])
+  @@map("user_source_settings")
 }
 
 model LibraryStatusEvent {
