@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -60,7 +61,7 @@ export class LibraryController {
   @Patch(':id')
   update(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() input: UpdateLibraryEntryDto,
   ) {
     return this.library.update(user.id, id, input);
@@ -70,7 +71,7 @@ export class LibraryController {
   @HttpCode(204)
   async remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.library.remove(user.id, id);
   }

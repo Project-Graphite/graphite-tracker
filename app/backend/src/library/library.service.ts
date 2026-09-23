@@ -66,7 +66,7 @@ export class LibraryService {
         query.sort === 'title'
           ? { catalogItem: { canonicalTitle: 'asc' } }
           : query.sort === 'release'
-            ? { catalogItem: { releaseDate: 'desc' } }
+            ? { catalogItem: { releaseDate: { sort: 'desc', nulls: 'last' } } }
             : { updatedAt: 'desc' },
     });
     return entries.map((entry) => this.present(entry));
