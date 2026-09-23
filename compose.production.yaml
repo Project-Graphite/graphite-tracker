@@ -6,14 +6,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://graphite:${POSTGRES_PASSWORD}@postgres:5432/graphite_tracker
+      DATABASE_URL: postgresql://graphite:${POSTGRES_PASSWORD:?}@postgres:5432/graphite_tracker
       REDIS_URL: redis://redis:6379
-      AUTH_ACCESS_TOKEN_SECRET: ${AUTH_ACCESS_TOKEN_SECRET}
+      AUTH_ACCESS_TOKEN_SECRET: ${AUTH_ACCESS_TOKEN_SECRET:?}
       AUTH_REFRESH_TOKEN_SECRET: ${AUTH_REFRESH_TOKEN_SECRET}
       AUTH_TRUSTED_ORIGINS: https://graphite-tracker.project-graphite.com
-      TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN}
-      IGDB_CLIENT_ID: ${IGDB_CLIENT_ID}
-      IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET}
+      TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN:-}
+      GAME_SOURCE: ${GAME_SOURCE:-igdb}
+      IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
+      IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
+      RAWG_API_KEY: ${RAWG_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,7 +44,7 @@ services:
     environment:
       POSTGRES_DB: graphite_tracker
       POSTGRES_USER: graphite
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
     healthcheck:
       test: [CMD-SHELL, pg_isready -U graphite -d graphite_tracker]
       interval: 10s
