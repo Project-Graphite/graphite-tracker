@@ -5,7 +5,6 @@ import {
   Req,
   Res,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
@@ -13,7 +12,6 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
 
 const refreshCookie = 'graphite_refresh';
 
@@ -60,7 +58,6 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   async logout(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
