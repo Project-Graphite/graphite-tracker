@@ -3,13 +3,14 @@ import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import {
-  catalogCategories,
   categoryLabels,
+  discoverCategories,
   titleHref,
   type CatalogCategory,
   type CatalogResponse,
   type CatalogSection,
   type ConnectorDescriptor,
+  type DiscoverCategory,
 } from '../catalog';
 import { CatalogCard } from '../components/CatalogCard';
 import { Pagination } from '../components/Pagination';
@@ -44,7 +45,7 @@ function statusOptions(category: CatalogCategory) {
   return [];
 }
 
-function sortOptions(category: CatalogCategory) {
+function sortOptions(category: DiscoverCategory) {
   if (category === 'movie') {
     return [
       ['popularity.desc', 'Popularity'],
@@ -59,14 +60,11 @@ function sortOptions(category: CatalogCategory) {
       ['first_air_date.desc', 'Newest'],
     ] as const;
   }
-  if (category === 'manga' || category === 'manhwa') {
-    return [
-      ['followedCount', 'Most followed'],
-      ['latestUploadedChapter', 'Latest update'],
-      ['relevance', 'Relevance'],
-    ] as const;
-  }
-  return [];
+  return [
+    ['followedCount', 'Most followed'],
+    ['latestUploadedChapter', 'Latest update'],
+    ['relevance', 'Relevance'],
+  ] as const;
 }
 
 function pageFrom(value: string | null) {
@@ -78,7 +76,7 @@ export function DiscoverPage({
   category,
   section,
 }: {
-  category: CatalogCategory;
+  category: DiscoverCategory;
   section: CatalogSection;
 }) {
   const auth = useAuth();
@@ -97,7 +95,6 @@ export function DiscoverPage({
     : preferredSource;
   const isRecentPreview = section === 'search' && query.length < 2;
   const availableStatuses = statusOptions(category);
-  const availableSorts = sortOptions(category);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -214,7 +211,7 @@ export function DiscoverPage({
       <p className="eyebrow">Unified catalogue</p>
       <h1 className="page-title">Discover {categoryLabels[category].toLowerCase()}.</h1>
       <nav aria-label="Media categories" className="mt-7 flex gap-2 overflow-x-auto pb-2">
-        {catalogCategories.map((item) => (
+        {discoverCategories.map((item) => (
           <NavLink
             className={({ isActive }) =>
               `secondary-button whitespace-nowrap ${isActive ? 'border-ink text-ink' : ''}`
@@ -282,17 +279,15 @@ export function DiscoverPage({
                 ))}
               </select>
             </label>
-            {availableSorts.length > 0 && (
-              <label className="field-label">
-                Sort
-                <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
-                  <option value="">Default</option>
-                  {availableSorts.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="field-label">
+              Sort
+              <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
+                <option value="">Default</option>
+                {sortOptions(category).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
             <button className="primary-button self-end" disabled={busy} type="submit">
               {busy ? 'Loading…' : 'Apply'}
             </button>

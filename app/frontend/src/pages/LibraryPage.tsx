@@ -2,12 +2,9 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
+import { catalogCategories, categoryLabels } from '../catalog';
 import {
-  catalogCategories,
-  categoryLabels,
-  titleHref,
-} from '../catalog';
-import {
+  entryHref,
   libraryStateLabels,
   stateLabel,
   type LibraryEntry,
@@ -181,18 +178,8 @@ function LibraryCard({
   onUpdate: (input: Record<string, unknown>) => void;
   view: 'grid' | 'list';
 }) {
-  const source =
-    entry.item.sources.find(
-      (item) => item.active && item.key === entry.preferredSource,
-    ) ?? entry.item.sources.find((item) => item.active);
   const rawgSource = entry.item.sources.find((item) => item.key === 'rawg');
-  const href = source
-    ? titleHref({
-        category: entry.item.category,
-        externalId: source.externalId,
-        source: source.key,
-      })
-    : undefined;
+  const href = entryHref(entry);
   return (
     <article className={`grid gap-4 rounded-xl border border-line bg-surface p-4 ${view === 'list' ? 'sm:grid-cols-[6rem_1fr]' : 'grid-cols-[5rem_1fr]'}`}>
       <div className="aspect-[2/3] overflow-hidden rounded-md bg-line-soft">

@@ -4,7 +4,7 @@ import { useAuth } from '../auth';
 export function Shell() {
   const auth = useAuth();
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `no-underline transition-colors ${isActive ? 'text-ink' : 'text-muted hover:text-ink'}`;
+    `whitespace-nowrap no-underline transition-colors ${isActive ? 'text-ink' : 'text-muted hover:text-ink'}`;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -16,19 +16,22 @@ export function Shell() {
           <Link className="text-lg font-semibold tracking-tight text-ink no-underline" to="/">
             Graphite Tracker
           </Link>
-          <nav aria-label="Primary" className="mono-sm flex items-center gap-5">
+          <nav aria-label="Primary" className="mono-sm flex flex-wrap items-center gap-x-5 gap-y-2">
             <NavLink className={navClass} to="/discover/movie/recent">
               discover
             </NavLink>
             {auth.user ? (
               <>
+                <NavLink className={navClass} to="/games">
+                  track games
+                </NavLink>
                 <NavLink className={navClass} to="/library">
                   library
                 </NavLink>
                 <NavLink className={navClass} to="/sources">
                   sources
                 </NavLink>
-                <button className="text-button" onClick={() => void auth.logout()} type="button">
+                <button className="text-button whitespace-nowrap" onClick={() => void auth.logout()} type="button">
                   sign out
                 </button>
               </>

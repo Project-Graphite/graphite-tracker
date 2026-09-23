@@ -1,4 +1,8 @@
-import type { CatalogCapabilities, CatalogCategory } from './catalog';
+import {
+  titleHref,
+  type CatalogCapabilities,
+  type CatalogCategory,
+} from './catalog';
 
 export type LibraryState = 'planned' | 'in_progress' | 'completed' | 'dropped';
 
@@ -66,6 +70,21 @@ export const libraryStateLabels: Record<LibraryState, string> = {
   completed: 'Completed',
   dropped: 'Dropped',
 };
+
+export function entryHref(entry: LibraryEntry) {
+  const source =
+    entry.item.sources.find(
+      (item) => item.active && item.key === entry.preferredSource,
+    ) ?? entry.item.sources.find((item) => item.active);
+  return (
+    source &&
+    titleHref({
+      category: entry.item.category,
+      externalId: source.externalId,
+      source: source.key,
+    })
+  );
+}
 
 export function stateLabel(category: CatalogCategory, state: LibraryState) {
   const verbs = {

@@ -73,6 +73,9 @@ export function TitleDetailsPage() {
   if (!category) {
     return <Navigate replace to="/discover/movie/recent" />;
   }
+  const backHref = category === 'game'
+    ? '/games'
+    : `/discover/${category}/recent`;
 
   async function update(state: LibraryState) {
     if (!auth.accessToken || !libraryEntry) return;
@@ -95,7 +98,7 @@ export function TitleDetailsPage() {
   if (error && !item) {
     return (
       <div className="page-enter">
-        <Link className="rule-link mono-sm" to={`/discover/${category}/recent`}>Back to {categoryLabels[category]}</Link>
+        <Link className="rule-link mono-sm" to={backHref}>Back to {categoryLabels[category]}</Link>
         <p className="error-message mt-6 max-w-2xl">{error}</p>
       </div>
     );
@@ -105,7 +108,7 @@ export function TitleDetailsPage() {
 
   return (
     <article className="page-enter">
-      <Link className="rule-link mono-sm" to={`/discover/${category}/recent`}>Back to {categoryLabels[category]}</Link>
+      <Link className="rule-link mono-sm" to={backHref}>Back to {categoryLabels[category]}</Link>
       {item.stale && (
         <p className="mt-5 rounded-lg border border-line bg-surface p-3 text-sm text-muted">
           This source is unavailable. Showing cached details.

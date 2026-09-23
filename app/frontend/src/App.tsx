@@ -7,7 +7,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import { useAuth } from './auth';
-import { catalogCategories, type CatalogSection } from './catalog';
+import { discoverCategories, type CatalogSection } from './catalog';
 import { Shell } from './components/Shell';
 import { HomePage } from './pages/HomePage';
 import { LibraryPage } from './pages/LibraryPage';
@@ -16,6 +16,7 @@ import { SourcesPage } from './pages/SourcesPage';
 import { TitleDetailsPage } from './pages/TitleDetailsPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DiscoverPage } from './pages/DiscoverPage';
+import { TrackGamesPage } from './pages/TrackGamesPage';
 import { VerifyPage } from './pages/VerifyPage';
 
 function ProtectedLibrary() {
@@ -36,7 +37,10 @@ function Protected({ children }: { children: ReactNode }) {
 
 function DiscoverRoute() {
   const { category, section } = useParams();
-  const validCategory = catalogCategories.find((item) => item === category);
+  if (category === 'game') {
+    return <Navigate replace to="/games" />;
+  }
+  const validCategory = discoverCategories.find((item) => item === category);
   const validSection = ['search', 'recent', 'popular'].find(
     (item) => item === section,
   ) as CatalogSection | undefined;
@@ -80,6 +84,7 @@ export function App() {
         <Route path="discover/movies" element={<Navigate replace to="/discover/movie/recent" />} />
         <Route path="search" element={<Navigate replace to="/discover/movie/search" />} />
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
+        <Route path="games" element={<Protected><TrackGamesPage /></Protected>} />
         <Route path="library" element={<ProtectedLibrary />} />
         <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
         <Route path="register" element={<RegisterPage />} />

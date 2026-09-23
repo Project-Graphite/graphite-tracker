@@ -1,13 +1,15 @@
-export const catalogCategories = [
+export const discoverCategories = [
   'movie',
   'tv',
   'anime',
   'manga',
   'manhwa',
-  'game',
 ] as const;
 
+export const catalogCategories = [...discoverCategories, 'game'] as const;
+
 export type CatalogCategory = (typeof catalogCategories)[number];
+export type DiscoverCategory = (typeof discoverCategories)[number];
 export type CatalogSection = 'search' | 'recent' | 'popular';
 
 export const categoryLabels: Record<CatalogCategory, string> = {
@@ -87,6 +89,10 @@ export interface ConnectorDescriptor {
   capabilities: string[];
   outboundDomains: string[];
   enabled: boolean;
+}
+
+export function countLabel(count: number, noun: string) {
+  return `${count.toLocaleString()} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 export function titleHref(item: Pick<CatalogCandidate, 'category' | 'externalId' | 'source'>) {
