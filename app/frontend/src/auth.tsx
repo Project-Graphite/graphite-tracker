@@ -73,6 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
+  useEffect(() => {
+    if (!session) return;
+    const timer = window.setTimeout(
+      () => void restoreSession().then(setSession),
+      13 * 60 * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [session]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       accessToken: session?.accessToken,
