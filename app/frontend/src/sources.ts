@@ -8,6 +8,8 @@ export interface SourceSettings {
     languages: string[];
     capabilities: string[];
     attribution: string;
+    attributionUrl?: string;
+    available: boolean;
     enabled: boolean;
   }>;
   global: string | null;

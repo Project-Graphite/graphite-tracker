@@ -59,11 +59,23 @@ export function SourcesPage() {
               <input
                 aria-label={`Enable ${source.displayName}`}
                 checked={source.enabled}
+                disabled={!source.available}
                 onChange={(event) => void request(`/sources/${source.key}`, 'PATCH', { enabled: event.target.checked })}
                 type="checkbox"
               />
             </div>
-            <p className="mt-4 text-sm text-muted">{source.attribution}</p>
+            <p className="mt-4 text-sm text-muted">
+              {source.attributionUrl ? (
+                <a className="rule-link" href={source.attributionUrl} rel="noreferrer" target="_blank">
+                  {source.attribution}
+                </a>
+              ) : (
+                source.attribution
+              )}
+            </p>
+            {!source.available && (
+              <p className="mt-3 text-sm text-faint">Not configured on this server.</p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               {source.categories.map((category) => <span className="rounded-full border border-line px-2 py-1 text-xs text-faint" key={category}>{categoryLabels[category]}</span>)}
             </div>

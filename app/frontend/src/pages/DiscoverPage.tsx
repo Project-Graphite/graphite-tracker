@@ -357,7 +357,7 @@ export function DiscoverPage({
           <form className="mt-4 grid max-w-3xl gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_auto]" onSubmit={openFromUrl}>
             <label className="field-label">
               Title URL
-              <input name="url" placeholder="Paste a TMDB, MangaDex, or IGDB URL" required type="url" />
+              <input name="url" placeholder="Paste a TMDB, MangaDex, IGDB, or RAWG URL" required type="url" />
             </label>
             <button className="secondary-button self-end" type="submit">Open from URL</button>
           </form>
@@ -380,7 +380,16 @@ export function DiscoverPage({
                   ? 'Recently released'
                   : 'Popular now'}
             </h2>
-            <span className="mono-sm text-faint">Data: {result.attribution}</span>
+            <span className="mono-sm text-faint">
+              Data:{' '}
+              {result.attributionUrl ? (
+                <a className="rule-link" href={result.attributionUrl} rel="noreferrer" target="_blank">
+                  {result.attribution}
+                </a>
+              ) : (
+                result.attribution
+              )}
+            </span>
           </div>
           {result.results.length === 0 && (
             <div className="rounded-xl border border-dashed border-line p-8 text-center">

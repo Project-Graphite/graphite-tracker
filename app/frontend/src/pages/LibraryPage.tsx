@@ -182,8 +182,10 @@ function LibraryCard({
   view: 'grid' | 'list';
 }) {
   const source =
-    entry.item.sources.find((item) => item.key === entry.preferredSource) ??
-    entry.item.sources[0];
+    entry.item.sources.find(
+      (item) => item.active && item.key === entry.preferredSource,
+    ) ?? entry.item.sources.find((item) => item.active);
+  const rawgSource = entry.item.sources.find((item) => item.key === 'rawg');
   const href = source
     ? titleHref({
         category: entry.item.category,
@@ -201,6 +203,16 @@ function LibraryCard({
         <h2 className="mt-1 mb-0 text-lg font-medium">
           {href ? <Link className="text-ink no-underline hover:underline" to={href}>{entry.item.title}</Link> : entry.item.title}
         </h2>
+        {rawgSource && (
+          <a
+            className="mono-sm rule-link mt-2 inline-block"
+            href={rawgSource.url ?? 'https://rawg.io/'}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Data provided by RAWG
+          </a>
+        )}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="field-label">
             List

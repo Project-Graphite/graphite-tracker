@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import {
   catalogCategories,
   categoryLabels,
+  titleHref,
   type CatalogDetails,
 } from '../catalog';
 import {
@@ -218,7 +219,19 @@ export function TitleDetailsPage() {
               <h2 className="m-0 text-xl font-medium">Related games</h2>
               <ul className="mt-3 grid gap-2 text-sm text-muted">
                 {item.relationships.map((relationship) => (
-                  <li key={`${relationship.type}:${relationship.externalId}`}>{relationship.type}: {relationship.title}</li>
+                  <li key={`${relationship.type}:${relationship.externalId}`}>
+                    {relationship.type}:{' '}
+                    {relationship.type === 'franchise' ? (
+                      relationship.title
+                    ) : (
+                      <Link
+                        className="rule-link"
+                        to={titleHref({ category: 'game', externalId: relationship.externalId, source: item.source })}
+                      >
+                        {relationship.title}
+                      </Link>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -231,7 +244,16 @@ export function TitleDetailsPage() {
             </div>
           )}
           {error && <p className="error-message mt-5 max-w-2xl">{error}</p>}
-          <p className="mono-sm mt-8 text-faint">Data: {item.attribution}</p>
+          <p className="mono-sm mt-8 text-faint">
+            Data:{' '}
+            {item.attributionUrl ? (
+              <a className="rule-link" href={item.attributionUrl} rel="noreferrer" target="_blank">
+                {item.attribution}
+              </a>
+            ) : (
+              item.attribution
+            )}
+          </p>
         </div>
       </div>
     </article>
