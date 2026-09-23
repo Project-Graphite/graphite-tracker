@@ -190,6 +190,39 @@ input::placeholder {
   font-size: 0.875rem;
 }
 
+.catalog-carousel {
+  display: grid;
+  grid-auto-columns: 100%;
+  grid-auto-flow: column;
+  gap: 1.25rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.catalog-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .catalog-carousel {
+    grid-auto-columns: calc((100% - 1.25rem) / 2);
+  }
+}
+
+@media (min-width: 64rem) {
+  .catalog-carousel {
+    grid-auto-columns: calc((100% - 2.5rem) / 3);
+  }
+}
+
+@media (min-width: 80rem) {
+  .catalog-carousel {
+    grid-auto-columns: calc((100% - 5rem) / 5);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .page-enter {
     animation: page-enter 240ms ease-out both;
