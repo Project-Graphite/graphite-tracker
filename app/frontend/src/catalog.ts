@@ -83,11 +83,6 @@ export interface CatalogResponse {
 export interface ConnectorDescriptor {
   key: string;
   displayName: string;
-  categories: CatalogCategory[];
-  languages: string[];
-  attribution: string;
-  capabilities: string[];
-  outboundDomains: string[];
   enabled: boolean;
 }
 

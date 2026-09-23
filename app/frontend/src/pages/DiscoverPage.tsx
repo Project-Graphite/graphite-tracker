@@ -85,11 +85,20 @@ export function DiscoverPage({
   const query = searchParams.get('q')?.trim() ?? '';
   const page = pageFrom(searchParams.get('page'));
   const [result, setResult] = useState<CatalogResponse>();
-  const [sources, setSources] = useState<ConnectorDescriptor[]>([]);
-  const [preferredSource, setPreferredSource] = useState('');
+  const [settings, setSettings] = useState<SourceSettings>();
+  const [catalogSources, setCatalogSources] = useState<ConnectorDescriptor[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const library = useLibraryEntries();
+  const sources: ConnectorDescriptor[] = settings
+    ? settings.sources.filter((item) => item.categories.includes(category))
+    : catalogSources;
+  const configured = settings?.categories[category] ?? settings?.global;
+  const preferredSource =
+    configured && sources.some((item) => item.key === configured && item.enabled)
+      ? configured
+      : '';
+  const sourcesReady = auth.ready && (!auth.accessToken || settings !== undefined);
   const source = section === 'search'
     ? searchParams.get('source') || preferredSource
     : preferredSource;
@@ -97,46 +106,39 @@ export function DiscoverPage({
   const availableStatuses = statusOptions(category);
 
   useEffect(() => {
+    if (!auth.accessToken) {
+      setSettings(undefined);
+      return;
+    }
     const controller = new AbortController();
-    const request = auth.accessToken
-      ? apiRequest<SourceSettings>('/sources', { signal: controller.signal }, auth.accessToken)
-          .then((settings) => {
-            setSources(
-              settings.sources
-                .filter((item) => item.categories.includes(category))
-                .map((item) => ({
-                  ...item,
-                  languages: [],
-                  attribution: '',
-                  capabilities: [],
-                  outboundDomains: [],
-                })),
-            );
-            const preferred = settings.categories[category] ?? settings.global ?? '';
-            setPreferredSource(
-              settings.sources.some(
-                (item) =>
-                  item.key === preferred &&
-                  item.enabled &&
-                  item.categories.includes(category),
-              )
-                ? preferred
-                : '',
-            );
-          })
-      : apiRequest<ConnectorDescriptor[]>(
-          `/catalog/sources?category=${category}`,
-          { signal: controller.signal },
-        ).then(setSources);
-    void request.catch((reason: unknown) => {
-      if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
-        setError(reason instanceof Error ? reason.message : 'Could not load sources');
-      }
-    });
+    void apiRequest<SourceSettings>('/sources', { signal: controller.signal }, auth.accessToken)
+      .then(setSettings)
+      .catch((reason: unknown) => {
+        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+          setError(reason instanceof Error ? reason.message : 'Could not load sources');
+        }
+      });
+    return () => controller.abort();
+  }, [auth.user?.id]);
+
+  useEffect(() => {
+    if (auth.accessToken) return;
+    const controller = new AbortController();
+    void apiRequest<ConnectorDescriptor[]>(
+      `/catalog/sources?category=${category}`,
+      { signal: controller.signal },
+    )
+      .then(setCatalogSources)
+      .catch((reason: unknown) => {
+        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+          setError(reason instanceof Error ? reason.message : 'Could not load sources');
+        }
+      });
     return () => controller.abort();
   }, [auth.accessToken, category]);
 
   useEffect(() => {
+    if (!sourcesReady) return;
     const controller = new AbortController();
     const parameters = new URLSearchParams({
       page: String(isRecentPreview ? 1 : page),
@@ -166,7 +168,7 @@ export function DiscoverPage({
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [category, isRecentPreview, page, query, searchParams, section, source]);
+  }, [category, isRecentPreview, page, query, searchParams, section, source, sourcesReady]);
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,7 +246,7 @@ export function DiscoverPage({
         <>
           <form
             className="mt-7 grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-6"
-            key={`${category}:${searchParams.toString()}:${preferredSource}`}
+            key={`${category}:${searchParams.toString()}`}
             onSubmit={apply}
           >
             <label className="field-label sm:col-span-2">
