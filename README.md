@@ -35,7 +35,7 @@ cp .env.example .env
 Start the stack and apply the committed database migration:
 
 ```sh
-docker compose up -d --build
+docker compose up -d --build --renew-anon-volumes
 docker compose exec web npm run prisma:migrate:deploy
 ```
 
