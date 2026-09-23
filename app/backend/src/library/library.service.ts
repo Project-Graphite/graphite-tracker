@@ -189,23 +189,30 @@ export class LibraryService {
     if (!current) {
       throw new NotFoundException('Library entry not found');
     }
-    this.validateProgress(current.catalogItem.category, input);
-    const progressChanged = [
+    this.validateProgress(
+      current.catalogItem.category,
+      current.catalogItem.metadata,
+      input,
+    );
+    const progressRecorded = [
       input.progressSeason,
       input.progressEpisode,
       input.progressChapter,
       input.progressVolume,
       input.hoursPlayed,
       input.completionPercentage,
-    ].some((value) => value !== undefined);
+    ].some((value) => typeof value === 'number' && value > 0);
     const nextState = input.state
       ? states[input.state]
-      : progressChanged && current.state === LibraryState.PLANNED
+      : progressRecorded && current.state === LibraryState.PLANNED
         ? LibraryState.IN_PROGRESS
         : current.state;
-    const preferredSourceId = input.preferredSource
-      ? await this.preferredSourceId(current.catalogItemId, input.preferredSource)
-      : undefined;
+    const preferredSourceId =
+      input.preferredSource === null
+        ? null
+        : input.preferredSource
+          ? await this.preferredSourceId(current.catalogItemId, input.preferredSource)
+          : undefined;
     if (
       input.notificationsEnabled &&
       nextState !== LibraryState.PLANNED &&
@@ -213,6 +220,15 @@ export class LibraryService {
     ) {
       throw new BadRequestException(
         'Notifications require a planned or in-progress state',
+      );
+    }
+    if (
+      input.notificationsEnabled &&
+      current.catalogItem.category === MediaCategory.GAME &&
+      (input.platforms ?? current.platforms).length === 0
+    ) {
+      throw new BadRequestException(
+        'Select at least one game platform before enabling notifications',
       );
     }
     const entry = await this.prisma.libraryEntry.update({
@@ -324,20 +340,50 @@ export class LibraryService {
     return source.id;
   }
 
-  private validateProgress(category: MediaCategory, input: UpdateLibraryEntryDto) {
+  private validateProgress(
+    category: MediaCategory,
+    metadata: Prisma.JsonValue,
+    input: UpdateLibraryEntryDto,
+  ) {
+    const itemMetadata =
+      metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+        ? metadata
+        : {};
+    const capabilities =
+      itemMetadata.capabilities &&
+      typeof itemMetadata.capabilities === 'object' &&
+      !Array.isArray(itemMetadata.capabilities)
+        ? itemMetadata.capabilities
+        : {};
+    const progressUnits = Array.isArray(capabilities.progressUnits)
+      ? capabilities.progressUnits
+      : [];
     const invalid =
-      (category !== MediaCategory.TV &&
-        category !== MediaCategory.ANIME &&
+      ((!progressUnits.includes('season') || !progressUnits.includes('episode')) &&
         (input.progressSeason !== undefined || input.progressEpisode !== undefined)) ||
-      (category !== MediaCategory.MANGA &&
-        category !== MediaCategory.MANHWA &&
+      ((!progressUnits.includes('chapter') || !progressUnits.includes('volume')) &&
         (input.progressChapter !== undefined || input.progressVolume !== undefined)) ||
-      (category !== MediaCategory.GAME &&
+      ((!progressUnits.includes('hours') || !progressUnits.includes('percentage')) &&
         (input.hoursPlayed !== undefined ||
           input.completionPercentage !== undefined ||
           input.platforms !== undefined));
     if (invalid) {
       throw new BadRequestException('Progress does not match this media category');
+    }
+    if (category === MediaCategory.GAME && input.platforms) {
+      const availablePlatforms = Array.isArray(itemMetadata.platforms)
+        ? itemMetadata.platforms.filter(
+            (platform): platform is string => typeof platform === 'string',
+          )
+        : [];
+      if (
+        new Set(input.platforms).size !== input.platforms.length ||
+        input.platforms.some((platform) => !availablePlatforms.includes(platform))
+      ) {
+        throw new BadRequestException(
+          'Selected platform is not available for this game',
+        );
+      }
     }
   }
 
