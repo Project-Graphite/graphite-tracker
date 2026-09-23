@@ -152,6 +152,9 @@ export function TitleDetailsPage() {
           <p className="eyebrow">{categoryLabels[item.category]} · {item.releaseDate?.slice(0, 4) ?? 'Date unknown'}</p>
           <h1 className="page-title">{item.title}</h1>
           {item.originalTitle !== item.title && <p className="mt-3 text-muted">{item.originalTitle}</p>}
+          {item.alternateTitles && item.alternateTitles.length > 0 && (
+            <p className="mono-sm mt-2 text-faint">Also known as {item.alternateTitles.join(' · ')}</p>
+          )}
           {item.tagline && <p className="mt-6 text-lg text-muted">{item.tagline}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-4 border-y border-line py-4">
             <div aria-label={item.rating ? `${item.rating.toFixed(1)} out of 10` : 'Not rated'} className="flex items-baseline gap-2">

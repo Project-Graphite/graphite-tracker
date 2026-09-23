@@ -35,6 +35,7 @@ export interface CatalogCandidate {
   category: CatalogCategory;
   title: string;
   originalTitle: string;
+  alternateTitles?: string[];
   synopsis: string;
   posterUrl: string | null;
   backdropUrl: string | null;

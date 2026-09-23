@@ -22,6 +22,53 @@ const sections: Array<{ id: CatalogSection; label: string }> = [
   { id: 'search', label: 'Search' },
 ];
 
+const televisionStatuses = [
+  ['returning', 'Returning'],
+  ['planned', 'Planned'],
+  ['production', 'In production'],
+  ['ended', 'Ended'],
+  ['canceled', 'Canceled'],
+  ['pilot', 'Pilot'],
+] as const;
+
+const comicStatuses = [
+  ['ongoing', 'Ongoing'],
+  ['completed', 'Completed'],
+  ['hiatus', 'Hiatus'],
+  ['cancelled', 'Cancelled'],
+] as const;
+
+function statusOptions(category: CatalogCategory) {
+  if (category === 'tv' || category === 'anime') return televisionStatuses;
+  if (category === 'manga' || category === 'manhwa') return comicStatuses;
+  return [];
+}
+
+function sortOptions(category: CatalogCategory) {
+  if (category === 'movie') {
+    return [
+      ['popularity.desc', 'Popularity'],
+      ['vote_average.desc', 'Rating'],
+      ['primary_release_date.desc', 'Newest'],
+    ] as const;
+  }
+  if (category === 'tv' || category === 'anime') {
+    return [
+      ['popularity.desc', 'Popularity'],
+      ['vote_average.desc', 'Rating'],
+      ['first_air_date.desc', 'Newest'],
+    ] as const;
+  }
+  if (category === 'manga' || category === 'manhwa') {
+    return [
+      ['followedCount', 'Most followed'],
+      ['latestUploadedChapter', 'Latest update'],
+      ['relevance', 'Relevance'],
+    ] as const;
+  }
+  return [];
+}
+
 function pageFrom(value: string | null) {
   const page = Number(value);
   return Number.isInteger(page) && page >= 1 && page <= 500 ? page : 1;
@@ -46,7 +93,12 @@ export function DiscoverPage({
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [libraryReady, setLibraryReady] = useState(false);
-  const source = searchParams.get('source') || preferredSource;
+  const source = section === 'search'
+    ? searchParams.get('source') || preferredSource
+    : preferredSource;
+  const isRecentPreview = section === 'search' && query.length < 2;
+  const availableStatuses = statusOptions(category);
+  const availableSorts = sortOptions(category);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,27 +141,23 @@ export function DiscoverPage({
   }, [auth.accessToken, category]);
 
   useEffect(() => {
-    if (section === 'search' && query.length < 2) {
-      setResult(undefined);
-      setError('');
-      setBusy(false);
-      return;
-    }
     const controller = new AbortController();
-    const parameters = new URLSearchParams({ page: String(page) });
-    if (section === 'search') {
+    const parameters = new URLSearchParams({
+      page: String(isRecentPreview ? 1 : page),
+    });
+    if (section === 'search' && !isRecentPreview) {
       parameters.set('query', query);
-    }
-    for (const key of ['genre', 'year', 'status', 'sort'] as const) {
-      const value = searchParams.get(key);
-      if (value) parameters.set(key, value);
+      for (const key of ['genre', 'year', 'status', 'sort'] as const) {
+        const value = searchParams.get(key);
+        if (value) parameters.set(key, value);
+      }
     }
     if (source) parameters.set('source', source);
     setResult(undefined);
     setBusy(true);
     setError('');
     void apiRequest<CatalogResponse>(
-      `/catalog/${category}/${section}?${parameters.toString()}`,
+      `/catalog/${category}/${isRecentPreview ? 'recent' : section}?${parameters.toString()}`,
       { signal: controller.signal },
     )
       .then(setResult)
@@ -122,7 +170,7 @@ export function DiscoverPage({
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [category, page, query, searchParams, section, source]);
+  }, [category, isRecentPreview, page, query, searchParams, section, source]);
 
   useEffect(() => {
     if (!auth.accessToken) {
@@ -197,7 +245,7 @@ export function DiscoverPage({
     }
   }
 
-  async function addFromSource(event: FormEvent<HTMLFormElement>) {
+  async function openFromUrl(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const url = String(new FormData(event.currentTarget).get('url') ?? '').trim();
     try {
@@ -252,56 +300,69 @@ export function DiscoverPage({
           </NavLink>
         ))}
       </nav>
-      <form
-        className="mt-7 grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-6"
-        key={`${category}:${section}:${searchParams.toString()}:${preferredSource}`}
-        onSubmit={apply}
-      >
-        {section === 'search' && (
-          <label className="field-label sm:col-span-2">
-            Title
-            <input defaultValue={query} minLength={2} name="q" required />
-          </label>
-        )}
-        <label className="field-label">
-          Genre
-          <input defaultValue={searchParams.get('genre') ?? ''} name="genre" placeholder="Any genre" />
-        </label>
-        <label className="field-label">
-          Year
-          <input defaultValue={searchParams.get('year') ?? ''} max="2200" min="1800" name="year" type="number" />
-        </label>
-        <label className="field-label">
-          Status
-          <input defaultValue={searchParams.get('status') ?? ''} name="status" placeholder="Any status" />
-        </label>
-        <label className="field-label">
-          Source
-          <select defaultValue={searchParams.get('source') ?? preferredSource} name="source">
-            <option value="">Default</option>
-            {sources.filter((item) => item.enabled).map((item) => (
-              <option key={item.key} value={item.key}>{item.displayName}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field-label">
-          Sort
-          <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
-            <option value="">Default</option>
-            <option value="popularity.desc">Popularity</option>
-            <option value="vote_average.desc">Rating</option>
-            <option value="primary_release_date.desc">Newest</option>
-          </select>
-        </label>
-        <button className="primary-button self-end" disabled={busy} type="submit">
-          {busy ? 'Loading…' : 'Apply'}
-        </button>
-      </form>
-      <form className="mt-4 flex max-w-3xl gap-3" onSubmit={addFromSource}>
-        <label className="sr-only" htmlFor="source-url">Add from source URL</label>
-        <input className="min-w-0 flex-1" id="source-url" name="url" placeholder="Paste a TMDB, MangaDex, or IGDB URL" required type="url" />
-        <button className="secondary-button" type="submit">Add from source</button>
-      </form>
+      {section === 'search' && (
+        <>
+          <form
+            className="mt-7 grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-6"
+            key={`${category}:${searchParams.toString()}:${preferredSource}`}
+            onSubmit={apply}
+          >
+            <label className="field-label sm:col-span-2">
+              Title
+              <input defaultValue={query} minLength={2} name="q" required />
+            </label>
+            <label className="field-label">
+              Genre
+              <input defaultValue={searchParams.get('genre') ?? ''} name="genre" placeholder="Any genre" />
+            </label>
+            <label className="field-label">
+              Year
+              <input defaultValue={searchParams.get('year') ?? ''} max="2200" min="1800" name="year" type="number" />
+            </label>
+            {availableStatuses.length > 0 && (
+              <label className="field-label">
+                Status
+                <select defaultValue={searchParams.get('status') ?? ''} name="status">
+                  <option value="">Any status</option>
+                  {availableStatuses.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="field-label">
+              Source
+              <select defaultValue={searchParams.get('source') ?? preferredSource} name="source">
+                <option value="">Default</option>
+                {sources.filter((item) => item.enabled).map((item) => (
+                  <option key={item.key} value={item.key}>{item.displayName}</option>
+                ))}
+              </select>
+            </label>
+            {availableSorts.length > 0 && (
+              <label className="field-label">
+                Sort
+                <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
+                  <option value="">Default</option>
+                  {availableSorts.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button className="primary-button self-end" disabled={busy} type="submit">
+              {busy ? 'Loading…' : 'Apply'}
+            </button>
+          </form>
+          <form className="mt-4 grid max-w-3xl gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_auto]" onSubmit={openFromUrl}>
+            <label className="field-label">
+              Title URL
+              <input name="url" placeholder="Paste a TMDB, MangaDex, or IGDB URL" required type="url" />
+            </label>
+            <button className="secondary-button self-end" type="submit">Open from URL</button>
+          </form>
+        </>
+      )}
       {busy && !result && <p className="mt-8 text-muted">Loading titles…</p>}
       {error && <p className="error-message mt-5 max-w-3xl">{error}</p>}
       {result?.stale && (
@@ -313,14 +374,24 @@ export function DiscoverPage({
         <section className="mt-10">
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
             <h2 className="m-0 text-xl font-medium">
-              {section === 'search'
+              {section === 'search' && !isRecentPreview
                 ? `${result.totalResults.toLocaleString()} results`
-                : section === 'recent'
+                : section === 'recent' || isRecentPreview
                   ? 'Recently released'
                   : 'Popular now'}
             </h2>
             <span className="mono-sm text-faint">Data: {result.attribution}</span>
           </div>
+          {result.results.length === 0 && (
+            <div className="rounded-xl border border-dashed border-line p-8 text-center">
+              <h3 className="m-0 text-xl font-medium">No titles found.</h3>
+              <p className="mt-2 text-muted">
+                {section === 'search' && !isRecentPreview
+                  ? 'Try broader filters or another search.'
+                  : 'No titles are available in this section yet.'}
+              </p>
+            </div>
+          )}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {result.results.map((item) => {
               const itemKey = `${item.source}:${item.externalId}`;
@@ -367,7 +438,9 @@ export function DiscoverPage({
               );
             })}
           </div>
-          <Pagination page={result.page} pageHref={pageHref} totalPages={result.totalPages} />
+          {!isRecentPreview && (
+            <Pagination page={result.page} pageHref={pageHref} totalPages={result.totalPages} />
+          )}
         </section>
       )}
     </div>
