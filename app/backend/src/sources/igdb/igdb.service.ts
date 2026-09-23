@@ -88,8 +88,7 @@ export class IgdbService {
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
     this.assertCategory(category);
-    const search = `search "${this.escape(query)}";`;
-    return this.list(search, page, filters);
+    return this.list(`search "${this.escape(query)}";`, page, filters);
   }
 
   async browse(
@@ -192,6 +191,13 @@ export class IgdbService {
       category: 'game',
       title: game.name,
       originalTitle: game.name,
+      alternateTitles:
+        game.alternative_names
+          ?.map((alternate) => alternate.name)
+          .filter(
+            (alternate, index, alternates) =>
+              alternate !== game.name && alternates.indexOf(alternate) === index,
+          ) ?? [],
       synopsis: game.summary ?? game.storyline ?? '',
       posterUrl: game.cover
         ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   BadGatewayException,
   Injectable,
   NotFoundException,
@@ -82,9 +83,11 @@ export class MangaDexService {
     return this.list(
       category,
       page,
-      filters,
+      section === 'recent' && !filters.year
+        ? { ...filters, year: new Date().getUTCFullYear() }
+        : filters,
       undefined,
-      section === 'recent' ? 'latestUploadedChapter' : 'followedCount',
+      section === 'recent' ? 'year' : 'followedCount',
     );
   }
 
@@ -96,28 +99,49 @@ export class MangaDexService {
       this.request<MangaDexAggregate>(
         `/manga/${encodeURIComponent(externalId)}/aggregate`,
         { 'translatedLanguage[]': ['en'] },
-      ).catch(() => ({ volumes: {} })),
+      ).catch(() => null),
     ]);
     const item = this.normalize(response.data);
+    if (item.category !== category) {
+      throw new NotFoundException('MangaDex title does not match this category');
+    }
     return {
       ...item,
-      chapterCount: Object.values(aggregate.volumes).reduce(
-        (total, volume) => total + Object.keys(volume.chapters).length,
-        0,
-      ),
-      volumeCount: Object.keys(aggregate.volumes).filter((volume) => volume !== 'none').length,
+      chapterCount: aggregate
+        ? this.latestMarker(
+            Object.values(aggregate.volumes).flatMap((volume) =>
+              Object.keys(volume.chapters),
+            ),
+            item.chapterCount,
+          )
+        : item.chapterCount,
+      volumeCount: aggregate
+        ? this.latestMarker(Object.keys(aggregate.volumes), item.volumeCount)
+        : item.volumeCount,
       attribution: this.descriptor.attribution,
     };
   }
 
-  recognize(url: URL): { category: CatalogCategory; externalId: string } | null {
+  async recognize(
+    url: URL,
+  ): Promise<{ category: CatalogCategory; externalId: string } | null> {
     if (!/(^|\.)mangadex\.org$/.test(url.hostname)) {
       return null;
     }
     const match = url.pathname.match(/^\/title\/([0-9a-f-]{36})/i);
-    return match?.[1]
-      ? { category: 'manga', externalId: match[1].toLowerCase() }
-      : null;
+    if (!match?.[1]) {
+      return null;
+    }
+    const externalId = match[1].toLowerCase();
+    const response = await this.request<MangaDexSingle>(
+      `/manga/${encodeURIComponent(externalId)}`,
+      {},
+    );
+    return {
+      category:
+        response.data.attributes.originalLanguage === 'ko' ? 'manhwa' : 'manga',
+      externalId,
+    };
   }
 
   private async list(
@@ -130,6 +154,14 @@ export class MangaDexService {
     if (category !== 'manga' && category !== 'manhwa') {
       throw new NotFoundException('MangaDex does not support this category');
     }
+    const selectedOrder = filters.sort ?? order;
+    if (
+      !['relevance', 'followedCount', 'latestUploadedChapter', 'year'].includes(
+        selectedOrder,
+      )
+    ) {
+      throw new BadRequestException('Sort does not match this media category');
+    }
     const response = await this.request<MangaDexList>('/manga', {
       limit: '20',
       offset: String((page - 1) * 20),
@@ -139,7 +171,7 @@ export class MangaDexService {
       ...(category === 'manhwa' ? { 'originalLanguage[]': ['ko'] } : {}),
       'includes[]': ['cover_art'],
       'contentRating[]': ['safe', 'suggestive'],
-      [`order[${filters.sort ?? order}]`]: 'desc',
+      [`order[${selectedOrder}]`]: 'desc',
     });
     const results = response.data
       .map((manga) => this.normalize(manga))
@@ -172,6 +204,11 @@ export class MangaDexService {
       category,
       title,
       originalTitle: title,
+      alternateTitles: manga.attributes.altTitles
+        .flatMap((alternate) => Object.values(alternate))
+        .filter((alternate, index, alternates) =>
+          Boolean(alternate && alternate !== title && alternates.indexOf(alternate) === index),
+        ),
       synopsis: this.localized(manga.attributes.description),
       posterUrl: cover
         ? `https://uploads.mangadex.org/covers/${manga.id}/${cover}.256.jpg`
@@ -208,6 +245,13 @@ export class MangaDexService {
 
   private localized(values: Record<string, string>) {
     return values.en ?? values.ja ?? values.ko ?? Object.values(values)[0] ?? '';
+  }
+
+  private latestMarker(values: string[], fallback: number | null | undefined) {
+    const markers = values
+      .map(Number)
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    return markers.length > 0 ? Math.max(...markers) : fallback ?? null;
   }
 
   private async request<T>(

@@ -68,6 +68,7 @@ export interface MovieCandidate {
   tagline: string | null;
   rating: number | null;
   ratingCount: number;
+  deepLinks: Array<{ label: string; url: string }>;
   capabilities: {
     progressUnits: [];
     hasEpisodes: false;

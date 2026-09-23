@@ -36,6 +36,12 @@ describe('TmdbService', () => {
       tagline: null,
       rating: null,
       ratingCount: 0,
+      deepLinks: [
+        {
+          label: 'View on TMDB',
+          url: 'https://www.themoviedb.org/movie/550',
+        },
+      ],
       capabilities: {
         progressUnits: [],
         hasEpisodes: false,
@@ -87,6 +93,74 @@ describe('TmdbService', () => {
     expect((fetchMock.mock.calls[0] as [URL])[0].pathname).toBe(`/3${path}`);
   });
 
+  it('orders recent TV and anime by their release fields', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: URL) => {
+      const isMovie = input.pathname.endsWith('/discover/movie');
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            page: 1,
+            total_pages: 1,
+            total_results: 1,
+            results: isMovie
+              ? [
+                  {
+                    id: 1,
+                    title: 'New anime movie',
+                    original_title: 'New anime movie',
+                    overview: '',
+                    original_language: 'ja',
+                    genre_ids: [16],
+                    release_date: '2026-09-01',
+                    vote_average: 5,
+                    vote_count: 1,
+                  },
+                ]
+              : [
+                  {
+                    id: 2,
+                    name: 'New anime show',
+                    original_name: 'New anime show',
+                    overview: '',
+                    original_language: 'ja',
+                    origin_country: ['JP'],
+                    genre_ids: [16],
+                    first_air_date: '2026-08-01',
+                    vote_average: 9,
+                    vote_count: 1,
+                  },
+                ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+    );
+
+    const tv = await service.browse('tv', 'recent', 1, {});
+    const anime = await service.browse('anime', 'recent', 1, {});
+
+    expect(tv.results[0]?.releaseDate).toBe('2026-08-01');
+    expect(anime.results.map(({ releaseDate }) => releaseDate)).toEqual([
+      '2026-09-01',
+      '2026-08-01',
+    ]);
+    const urls = fetchMock.mock.calls.map(([url]) => url as URL);
+    const tvUrl = urls[0]!;
+    const movieUrl = urls[1]!;
+    const animeTvUrl = urls[2]!;
+    expect(tvUrl.pathname).toBe('/3/discover/tv');
+    expect(tvUrl.searchParams.get('sort_by')).toBe('first_air_date.desc');
+    expect(tvUrl.searchParams.get('first_air_date.lte')).toBeTruthy();
+    expect(movieUrl.searchParams.get('sort_by')).toBe('primary_release_date.desc');
+    expect(movieUrl.searchParams.get('primary_release_date.lte')).toBeTruthy();
+    expect(animeTvUrl.searchParams.get('sort_by')).toBe('first_air_date.desc');
+    expect(animeTvUrl.searchParams.get('first_air_date.lte')).toBeTruthy();
+  });
+
   it('loads a normalized movie detail by external ID', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -128,6 +202,29 @@ describe('TmdbService', () => {
     );
 
     await expect(service.movieDetails('999999999')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('rejects a TMDB title that does not satisfy the anime policy', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...fixture.results[0],
+            original_language: 'en',
+            genres: [{ id: 18, name: 'Drama' }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+    );
+
+    await expect(service.details('anime', 'movie:550')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });

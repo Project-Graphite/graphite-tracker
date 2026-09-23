@@ -79,7 +79,7 @@ export class ConnectorRegistryService {
     return { ...result.value, stale: result.stale };
   }
 
-  recognize(value: string) {
+  async recognize(value: string) {
     let url: URL;
     try {
       url = new URL(value);
@@ -87,7 +87,10 @@ export class ConnectorRegistryService {
       throw new NotFoundException('Source URL is invalid');
     }
     for (const connector of this.connectors) {
-      const match = connector.recognize(url);
+      if (!connector.descriptor.enabled) {
+        continue;
+      }
+      const match = await connector.recognize(url);
       if (match) {
         return { ...match, source: connector.descriptor.key };
       }

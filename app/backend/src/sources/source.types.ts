@@ -23,6 +23,7 @@ export interface CatalogCandidate {
   category: CatalogCategory;
   title: string;
   originalTitle: string;
+  alternateTitles?: string[];
   synopsis: string;
   posterUrl: string | null;
   backdropUrl: string | null;
@@ -91,5 +92,10 @@ export interface SourceConnector {
     filters: CatalogFilters,
   ): Promise<CatalogPage>;
   details(category: CatalogCategory, externalId: string): Promise<CatalogDetails>;
-  recognize(url: URL): { category: CatalogCategory; externalId: string } | null;
+  recognize(
+    url: URL,
+  ):
+    | { category: CatalogCategory; externalId: string }
+    | null
+    | Promise<{ category: CatalogCategory; externalId: string } | null>;
 }

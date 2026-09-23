@@ -138,19 +138,6 @@ export class LibraryService {
           },
         },
       });
-      const canonical =
-        existingSource ??
-        (await transaction.catalogItem.findFirst({
-          where: {
-            category: categories[category],
-            canonicalTitle: {
-              equals: itemDetails.title,
-              mode: Prisma.QueryMode.insensitive,
-            },
-            releaseDate,
-          },
-          select: { id: true },
-        }));
       const item = existingSource
         ? await transaction.catalogItem.update({
             where: { id: existingSource.catalogItemId },
@@ -163,31 +150,18 @@ export class LibraryService {
               },
             }),
           })
-        : canonical
-          ? await transaction.catalogItem.update({
-              where: { id: canonical.id },
-              data: this.catalogData(itemDetails, releaseDate, {
-                sourceEntries: {
-                  create: {
-                    sourceId: source.id,
-                    externalId: itemDetails.externalId,
-                    ...this.sourceData(itemDetails),
-                  },
+        : await transaction.catalogItem.create({
+            data: this.catalogData(itemDetails, releaseDate, {
+              category: categories[category],
+              sourceEntries: {
+                create: {
+                  sourceId: source.id,
+                  externalId: itemDetails.externalId,
+                  ...this.sourceData(itemDetails),
                 },
-              }),
-            })
-          : await transaction.catalogItem.create({
-              data: this.catalogData(itemDetails, releaseDate, {
-                category: categories[category],
-                sourceEntries: {
-                  create: {
-                    sourceId: source.id,
-                    externalId: itemDetails.externalId,
-                    ...this.sourceData(itemDetails),
-                  },
-                },
-              }),
-            });
+              },
+            }),
+          });
       return transaction.libraryEntry.upsert({
         where: { userId_catalogItemId: { userId, catalogItemId: item.id } },
         update: {},
@@ -292,8 +266,10 @@ export class LibraryService {
   ) {
     return {
       canonicalTitle: item.title,
-      alternateTitles:
-        item.originalTitle === item.title ? [] : [item.originalTitle],
+      alternateTitles: [item.originalTitle, ...(item.alternateTitles ?? [])].filter(
+        (title, index, titles) =>
+          title !== item.title && titles.indexOf(title) === index,
+      ),
       synopsis: item.synopsis,
       posterPath: item.posterUrl,
       backdropPath: item.backdropUrl,
