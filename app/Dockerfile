@@ -1,21 +1,18 @@
-FROM node:22-alpine AS development
+FROM node:22-alpine AS manifests
 
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
+
+FROM manifests AS development
 RUN npm ci
 COPY . .
 
 FROM development AS build
 RUN npm run build
 
-FROM node:22-alpine AS production-dependencies
-
-WORKDIR /app
-COPY package.json package-lock.json ./
-COPY backend/package.json ./backend/
-COPY frontend/package.json ./frontend/
+FROM manifests AS production-dependencies
 RUN npm ci --omit=dev
 
 FROM node:22-alpine AS web
