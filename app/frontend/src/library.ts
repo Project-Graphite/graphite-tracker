@@ -7,32 +7,17 @@ import {
 export type LibraryState = 'planned' | 'in_progress' | 'completed' | 'dropped';
 
 export interface CatalogMetadata {
-  language?: string;
-  genres?: string[];
-  runtimeMinutes?: number | null;
-  status?: string | null;
-  tagline?: string | null;
-  rating?: number | null;
-  ratingCount?: number;
   capabilities?: CatalogCapabilities;
   episodeCount?: number | null;
   seasonCount?: number | null;
   chapterCount?: number | null;
   volumeCount?: number | null;
   platforms?: string[];
-  releaseDates?: Array<{ date: string; platform: string | null }>;
-  relationships?: Array<{
-    type: 'franchise' | 'dlc' | 'expansion';
-    externalId: string;
-    title: string;
-  }>;
 }
 
 export interface LibraryEntry {
   id: string;
   state: LibraryState;
-  startedAt: string | null;
-  completedAt: string | null;
   notificationsEnabled: boolean;
   progress: {
     season: number | null;
@@ -45,12 +30,9 @@ export interface LibraryEntry {
   };
   preferredSource: string | null;
   item: {
-    id: string;
     category: CatalogCategory;
     title: string;
-    synopsis: string | null;
     posterUrl: string | null;
-    backdropUrl: string | null;
     releaseDate: string | null;
     metadata: CatalogMetadata;
     sources: Array<{
@@ -59,7 +41,6 @@ export interface LibraryEntry {
       externalId: string;
       url: string | null;
       active: boolean;
-      capabilities: string[];
     }>;
   };
 }

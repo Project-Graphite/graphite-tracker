@@ -28,10 +28,6 @@ export interface CatalogCapabilities {
   progressUnits: Array<
     'season' | 'episode' | 'chapter' | 'volume' | 'hours' | 'percentage'
   >;
-  hasEpisodes: boolean;
-  hasSeasons: boolean;
-  hasPlatforms: boolean;
-  supportsReleaseNotifications: boolean;
 }
 
 export interface CatalogCandidate {

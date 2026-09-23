@@ -5,7 +5,6 @@ export interface SourceSettings {
     key: string;
     displayName: string;
     categories: CatalogCategory[];
-    languages: string[];
     capabilities: string[];
     attribution: string;
     attributionUrl?: string;
