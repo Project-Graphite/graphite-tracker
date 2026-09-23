@@ -49,7 +49,7 @@ export class ConnectorCacheService implements OnModuleDestroy {
 
   async onModuleDestroy() {
     if (this.client?.isOpen) {
-      await this.client.quit();
+      await this.client.close();
     }
   }
 

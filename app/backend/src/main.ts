@@ -11,6 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api/v1');
   app.use(cookieParser());
+  app.enableShutdownHooks();
   app.useGlobalPipes(
     new ValidationPipe({
       forbidNonWhitelisted: true,
