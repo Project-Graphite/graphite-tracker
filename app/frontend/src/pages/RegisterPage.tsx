@@ -35,16 +35,17 @@ export function RegisterPage() {
       <section className="form-panel page-enter">
         <p className="eyebrow">Account created</p>
         <h1 className="page-title">Verify your email</h1>
-        <p className="mt-5 text-muted">
-          Email delivery is not connected in this phase. Local development exposes a one-time token
-          so the verification flow can be completed.
-        </p>
         {token ? (
-          <Link className="primary-button mt-6 inline-flex" to={`/verify?token=${token}`}>
-            Verify local account
-          </Link>
+          <>
+            <p className="mt-5 text-muted">
+              Email delivery is not configured on this server. Use this one-time link to verify the account.
+            </p>
+            <Link className="primary-button mt-6 inline-flex" to={`/verify?token=${token}`}>
+              Verify account
+            </Link>
+          </>
         ) : (
-          <p className="mt-6 text-muted">Use the verification link sent by the configured service.</p>
+          <p className="mt-6 text-muted">Email delivery is not configured on this server, so no verification link was sent.</p>
         )}
       </section>
     );
