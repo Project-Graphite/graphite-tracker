@@ -22,6 +22,6 @@ import { TmdbService } from './tmdb/tmdb.service';
     TmdbService,
   ],
   controllers: [SourceSettingsController],
-  exports: [ConnectorRegistryService, TmdbService],
+  exports: [ConnectorRegistryService],
 })
 export class SourcesModule {}

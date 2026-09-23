@@ -3,42 +3,17 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Query,
 } from '@nestjs/common';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory } from '../sources/source.types';
-import { TmdbService } from '../sources/tmdb/tmdb.service';
 import { BrowseCatalogDto } from './dto/browse-catalog.dto';
 import { RecognizeSourceDto } from './dto/recognize-source.dto';
 import { SearchCatalogDto } from './dto/search-catalog.dto';
 
 @Controller('catalog')
 export class CatalogController {
-  constructor(
-    private readonly tmdb: TmdbService,
-    private readonly connectors: ConnectorRegistryService,
-  ) {}
-
-  @Get('search')
-  search(@Query() query: SearchCatalogDto) {
-    return this.tmdb.searchMovies(query.query, query.page);
-  }
-
-  @Get('movies/recent')
-  recentMovies(@Query() query: BrowseCatalogDto) {
-    return this.tmdb.recentMovies(query.page);
-  }
-
-  @Get('movies/popular')
-  popularMovies(@Query() query: BrowseCatalogDto) {
-    return this.tmdb.popularMovies(query.page);
-  }
-
-  @Get('movies/:externalId')
-  movieDetails(@Param('externalId', ParseIntPipe) externalId: number) {
-    return this.tmdb.movieDetails(String(externalId));
-  }
+  constructor(private readonly connectors: ConnectorRegistryService) {}
 
   @Get('sources')
   sources(@Query('category') category?: string) {

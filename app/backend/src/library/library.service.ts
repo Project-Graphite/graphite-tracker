@@ -44,7 +44,7 @@ export class LibraryService {
     private readonly connectors: ConnectorRegistryService,
   ) {}
 
-  async list(userId: string, query: ListLibraryDto = new ListLibraryDto()) {
+  async list(userId: string, query: ListLibraryDto) {
     const entries = await this.prisma.libraryEntry.findMany({
       where: {
         userId,
@@ -70,10 +70,6 @@ export class LibraryService {
             : { updatedAt: 'desc' },
     });
     return entries.map((entry) => this.present(entry));
-  }
-
-  findByTmdbId(userId: string, externalId: string) {
-    return this.findBySourceId(userId, 'tmdb', externalId);
   }
 
   async findBySourceId(userId: string, source: string, externalId: string) {

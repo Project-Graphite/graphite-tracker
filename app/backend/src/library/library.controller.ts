@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -31,14 +30,6 @@ export class LibraryController {
     @Query() query: ListLibraryDto,
   ) {
     return this.library.list(user.id, query);
-  }
-
-  @Get('tmdb/:externalId')
-  findByTmdbId(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('externalId', ParseIntPipe) externalId: number,
-  ) {
-    return this.library.findByTmdbId(user.id, String(externalId));
   }
 
   @Get('source/:source/:externalId')

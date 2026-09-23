@@ -11,7 +11,7 @@ describe('LibraryService', () => {
       {} as never,
     );
 
-    await expect(service.findByTmdbId('user-id', '550')).resolves.toBeNull();
+    await expect(service.findBySourceId('user-id', 'tmdb', '550')).resolves.toBeNull();
     expect(findFirst).toHaveBeenCalledWith({
       where: {
         userId: 'user-id',

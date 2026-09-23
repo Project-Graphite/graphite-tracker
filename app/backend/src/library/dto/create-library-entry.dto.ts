@@ -13,11 +13,11 @@ export class CreateLibraryEntryDto {
   externalId!: string;
 
   @IsIn(['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'])
-  category: 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game' = 'movie';
+  category!: 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game';
 
   @IsString()
   @Length(2, 30)
-  source = 'tmdb';
+  source!: string;
 
   @IsEnum(LibraryStateInput)
   state: LibraryStateInput = LibraryStateInput.Planned;
