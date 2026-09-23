@@ -53,7 +53,6 @@ interface MangaDexAggregate {
 
 @Injectable()
 export class MangaDexService {
-  private readonly baseUrl = 'https://api.mangadex.org';
   readonly descriptor: ConnectorDescriptor = {
     key: 'mangadex',
     displayName: 'MangaDex',
@@ -148,12 +147,9 @@ export class MangaDexService {
     category: CatalogCategory,
     page: number,
     filters: CatalogFilters,
-    query?: string,
-    order = 'relevance',
+    query: string | undefined,
+    order: string,
   ): Promise<CatalogPage> {
-    if (category !== 'manga' && category !== 'manhwa') {
-      throw new NotFoundException('MangaDex does not support this category');
-    }
     const selectedOrder = filters.sort ?? order;
     if (
       !['relevance', 'followedCount', 'latestUploadedChapter', 'year'].includes(
@@ -259,7 +255,7 @@ export class MangaDexService {
     path: string,
     parameters: Record<string, string | string[]>,
   ) {
-    const url = new URL(`${this.baseUrl}${path}`);
+    const url = new URL(`https://api.mangadex.org${path}`);
     Object.entries(parameters).forEach(([key, value]) => {
       (Array.isArray(value) ? value : [value]).forEach((entry) =>
         url.searchParams.append(key, entry),

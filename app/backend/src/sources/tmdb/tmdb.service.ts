@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  MovieCandidate,
   TmdbMovieResult,
   TmdbSearchResponse,
   TmdbTvResult,
@@ -66,7 +65,6 @@ const tvGenres: Record<number, string> = {
 
 @Injectable()
 export class TmdbService {
-  private readonly baseUrl = 'https://api.themoviedb.org/3';
   readonly descriptor: ConnectorDescriptor = {
     key: 'tmdb',
     displayName: 'The Movie Database',
@@ -108,7 +106,7 @@ export class TmdbService {
     );
     return {
       ...this.normalizeMovie(movie),
-      attribution: 'The Movie Database (TMDB)',
+      attribution: this.descriptor.attribution,
     };
   }
 
@@ -223,7 +221,6 @@ export class TmdbService {
         ...this.normalizeTv(
           await this.request<TmdbTvResult>(`/tv/${encodeURIComponent(externalId)}`, {}),
           'tv',
-          false,
         ),
         attribution: this.descriptor.attribution,
       };
@@ -255,7 +252,7 @@ export class TmdbService {
       const item =
         mediaType === 'movie'
           ? this.normalizeAnimeMovie(record as TmdbMovieResult)
-          : this.normalizeTv(record as TmdbTvResult, 'anime', true);
+          : this.normalizeTv(record as TmdbTvResult, 'anime');
       return { ...item, attribution: this.descriptor.attribution };
     }
     throw new NotFoundException('TMDB does not support this category');
@@ -286,7 +283,7 @@ export class TmdbService {
       : { category: mediaType, externalId: match[2] };
   }
 
-  normalizeMovie(movie: TmdbMovieResult): MovieCandidate {
+  normalizeMovie(movie: TmdbMovieResult): CatalogCandidate {
     return {
       source: 'tmdb',
       externalId: String(movie.id),
@@ -332,14 +329,10 @@ export class TmdbService {
     };
   }
 
-  normalizeTv(
-    show: TmdbTvResult,
-    category: 'tv' | 'anime' = 'tv',
-    prefixExternalId = false,
-  ): CatalogCandidate {
+  normalizeTv(show: TmdbTvResult, category: 'tv' | 'anime' = 'tv'): CatalogCandidate {
     return {
       source: 'tmdb',
-      externalId: prefixExternalId ? `tv:${show.id}` : String(show.id),
+      externalId: category === 'anime' ? `tv:${show.id}` : String(show.id),
       category,
       title: show.name,
       originalTitle: show.original_name,
@@ -390,7 +383,7 @@ export class TmdbService {
       totalPages: response.total_pages,
       totalResults: response.total_results,
       results: response.results.map((movie) => this.normalizeMovie(movie)),
-      attribution: 'The Movie Database (TMDB)',
+      attribution: this.descriptor.attribution,
     };
   }
 
@@ -416,7 +409,7 @@ export class TmdbService {
       .filter((show) =>
         this.isAnime(show.original_language, show.genre_ids, show.origin_country),
       )
-      .map((show) => this.normalizeTv(show, 'anime', true));
+      .map((show) => this.normalizeTv(show, 'anime'));
     const results = [...movieResults, ...showResults]
       .sort((left, right) =>
         newestFirst
@@ -448,7 +441,7 @@ export class TmdbService {
   }
 
   private hasFilters(filters: CatalogFilters) {
-    return Object.values(filters).some((value) => value !== undefined && value !== '');
+    return Object.values(filters).some((value) => value !== undefined);
   }
 
   private discoverFilters(
@@ -552,7 +545,7 @@ export class TmdbService {
     if (!token) {
       throw new ServiceUnavailableException('TMDB is not configured');
     }
-    const url = new URL(`${this.baseUrl}${path}`);
+    const url = new URL(`https://api.themoviedb.org/3${path}`);
     Object.entries(parameters).forEach(([key, value]) =>
       url.searchParams.set(key, value),
     );

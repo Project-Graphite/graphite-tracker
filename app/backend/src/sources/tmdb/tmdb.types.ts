@@ -50,30 +50,3 @@ export interface TmdbSearchResponse {
   total_results: number;
   results: TmdbMovieResult[];
 }
-
-export interface MovieCandidate {
-  source: 'tmdb';
-  externalId: string;
-  category: 'movie';
-  title: string;
-  originalTitle: string;
-  synopsis: string;
-  posterUrl: string | null;
-  backdropUrl: string | null;
-  releaseDate: string | null;
-  language: string;
-  genres: string[];
-  runtimeMinutes: number | null;
-  status: string | null;
-  tagline: string | null;
-  rating: number | null;
-  ratingCount: number;
-  deepLinks: Array<{ label: string; url: string }>;
-  capabilities: {
-    progressUnits: [];
-    hasEpisodes: false;
-    hasSeasons: false;
-    hasPlatforms: false;
-    supportsReleaseNotifications: true;
-  };
-}

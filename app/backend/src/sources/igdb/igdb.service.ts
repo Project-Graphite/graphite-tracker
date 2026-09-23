@@ -59,7 +59,6 @@ interface TwitchToken {
 
 @Injectable()
 export class IgdbService {
-  private readonly baseUrl = 'https://api.igdb.com/v4';
   readonly descriptor: ConnectorDescriptor;
 
   constructor(
@@ -87,7 +86,6 @@ export class IgdbService {
     page: number,
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
-    this.assertCategory(category);
     return this.list(`search "${this.escape(query)}";`, [], page, filters);
   }
 
@@ -97,7 +95,6 @@ export class IgdbService {
     page: number,
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
-    this.assertCategory(category);
     const now = Math.floor(Date.now() / 1000);
     return this.list(
       section === 'recent' ? 'sort first_release_date desc;' : 'sort total_rating_count desc;',
@@ -108,7 +105,6 @@ export class IgdbService {
   }
 
   async details(category: CatalogCategory, externalId: string): Promise<CatalogDetails> {
-    this.assertCategory(category);
     const selector = /^\d+$/.test(externalId)
       ? `id = ${externalId}`
       : `slug = "${this.escape(externalId.replace(/^slug:/, ''))}"`;
@@ -244,12 +240,6 @@ export class IgdbService {
     return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,url;';
   }
 
-  private assertCategory(category: CatalogCategory) {
-    if (category !== 'game') {
-      throw new NotFoundException('IGDB does not support this category');
-    }
-  }
-
   private escape(value: string) {
     return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
   }
@@ -268,7 +258,7 @@ export class IgdbService {
     );
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}/${endpoint}`, {
+      response = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
