@@ -30,8 +30,6 @@ export async function apiRequest<T>(
       : body?.message;
     throw new ApiError(message ?? `Request failed with ${response.status}`, response.status);
   }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
