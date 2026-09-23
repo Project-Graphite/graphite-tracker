@@ -4,10 +4,10 @@ projects:
     name: Graphite Tracker
     summary: >
       A universal entertainment tracker for movies, television, anime, manga, manhwa and games.
-    tags: [react, nestjs, prisma, postgresql]
-    owner: amr
+    tags: [react, nestjs, prisma, postgresql, tmdb, rawg]
+    owner: amrmscll
     authors: [AmrMsCLL]
-    status: active
+    status: wip
     listed: false
     deploy:
       kind: none
