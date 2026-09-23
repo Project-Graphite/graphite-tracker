@@ -10,7 +10,10 @@ export const catalogCategories = [...discoverCategories, 'game'] as const;
 
 export type CatalogCategory = (typeof catalogCategories)[number];
 export type DiscoverCategory = (typeof discoverCategories)[number];
-export type CatalogSection = 'search' | 'recent' | 'popular';
+
+export const catalogSections = ['search', 'recent', 'popular'] as const;
+
+export type CatalogSection = (typeof catalogSections)[number];
 
 export const categoryLabels: Record<CatalogCategory, string> = {
   movie: 'Movies',

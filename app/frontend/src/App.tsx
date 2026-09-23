@@ -1,13 +1,7 @@
 import type { ReactNode } from 'react';
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useParams,
-} from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { useAuth } from './auth';
-import { discoverCategories, type CatalogSection } from './catalog';
+import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
 import { HomePage } from './pages/HomePage';
 import { LibraryPage } from './pages/LibraryPage';
@@ -18,14 +12,6 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DiscoverPage } from './pages/DiscoverPage';
 import { TrackGamesPage } from './pages/TrackGamesPage';
 import { VerifyPage } from './pages/VerifyPage';
-
-function ProtectedLibrary() {
-  const auth = useAuth();
-  if (!auth.ready) {
-    return <p className="text-muted">Loading your session…</p>;
-  }
-  return auth.user ? <LibraryPage /> : <Navigate replace to="/login" />;
-}
 
 function Protected({ children }: { children: ReactNode }) {
   const auth = useAuth();
@@ -41,27 +27,11 @@ function DiscoverRoute() {
     return <Navigate replace to="/games" />;
   }
   const validCategory = discoverCategories.find((item) => item === category);
-  const validSection = ['search', 'recent', 'popular'].find(
-    (item) => item === section,
-  ) as CatalogSection | undefined;
+  const validSection = catalogSections.find((item) => item === section);
   return validCategory && validSection ? (
     <DiscoverPage category={validCategory} section={validSection} />
   ) : (
     <Navigate replace to="/discover/movie/recent" />
-  );
-}
-
-function LegacyDiscoverRoute() {
-  const location = useLocation();
-  const { section } = useParams();
-  const destination = ['search', 'recent', 'popular'].includes(section ?? '')
-    ? section
-    : 'recent';
-  return (
-    <Navigate
-      replace
-      to={`/discover/movie/${destination}${location.search}`}
-    />
   );
 }
 
@@ -79,13 +49,10 @@ export function App() {
       <Route element={<Shell />}>
         <Route index element={<HomePage />} />
         <Route path="discover/:category/:section" element={<DiscoverRoute />} />
-        <Route path="discover/movies/:section" element={<LegacyDiscoverRoute />} />
         <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
-        <Route path="discover/movies" element={<Navigate replace to="/discover/movie/recent" />} />
-        <Route path="search" element={<Navigate replace to="/discover/movie/search" />} />
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
         <Route path="games" element={<Protected><TrackGamesPage /></Protected>} />
-        <Route path="library" element={<ProtectedLibrary />} />
+        <Route path="library" element={<Protected><LibraryPage /></Protected>} />
         <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify" element={<VerifyPage />} />
