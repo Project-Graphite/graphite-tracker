@@ -7,13 +7,11 @@ describe('AppModule', () => {
     process.env.DATABASE_URL =
       'postgresql://graphite:graphite@localhost:5432/graphite_tracker';
     process.env.AUTH_ACCESS_TOKEN_SECRET = 'test-access-secret';
-    process.env.AUTH_REFRESH_TOKEN_SECRET = 'test-refresh-secret';
   });
 
   afterEach(() => {
     delete process.env.DATABASE_URL;
     delete process.env.AUTH_ACCESS_TOKEN_SECRET;
-    delete process.env.AUTH_REFRESH_TOKEN_SECRET;
   });
 
   it('resolves the complete dependency graph', async () => {

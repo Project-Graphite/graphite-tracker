@@ -6,8 +6,6 @@ import { PrismaService } from '../prisma/prisma.service';
 
 interface AccessTokenPayload {
   sub: string;
-  email: string;
-  handle: string;
 }
 
 @Injectable()
@@ -18,7 +16,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('AUTH_ACCESS_TOKEN_SECRET'),
     });
   }
@@ -26,11 +23,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: AccessTokenPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, handle: true, isActive: true },
+      select: { id: true, isActive: true },
     });
     if (!user?.isActive) {
       throw new UnauthorizedException();
     }
-    return { id: user.id, email: user.email, handle: user.handle };
+    return { id: user.id };
   }
 }

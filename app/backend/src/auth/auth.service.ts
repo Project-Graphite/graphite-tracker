@@ -13,7 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 const scryptAsync = promisify(scrypt);
-const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+export const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -140,7 +140,7 @@ export class AuthService {
       },
     });
     const accessToken = await this.jwt.signAsync(
-      { sub: user.id, email: user.email, handle: user.handle },
+      { sub: user.id },
       {
         secret: this.config.getOrThrow<string>('AUTH_ACCESS_TOKEN_SECRET'),
         expiresIn: 15 * 60,
@@ -175,7 +175,7 @@ export class AuthService {
       Buffer.from(saltHex, 'hex'),
       expected.length,
     )) as Buffer;
-    return expected.length === actual.length && timingSafeEqual(expected, actual);
+    return timingSafeEqual(expected, actual);
   }
 
   private digest(token: string) {

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, refreshLifetimeMs } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -48,7 +48,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     this.assertTrustedOrigin(request);
-    const token = request.cookies?.[refreshCookie] as string | undefined;
+    const token = request.cookies[refreshCookie] as string | undefined;
     if (!token) {
       throw new UnauthorizedException();
     }
@@ -63,7 +63,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     this.assertTrustedOrigin(request);
-    await this.auth.logout(request.cookies?.[refreshCookie] as string | undefined);
+    await this.auth.logout(request.cookies[refreshCookie] as string | undefined);
     response.clearCookie(refreshCookie, { path: '/api/v1/auth' });
     return { loggedOut: true };
   }
@@ -71,7 +71,7 @@ export class AuthController {
   private setRefreshCookie(response: Response, token: string) {
     response.cookie(refreshCookie, token, {
       httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: refreshLifetimeMs,
       path: '/api/v1/auth',
       sameSite: 'strict',
       secure: this.config.get('NODE_ENV') === 'production',
