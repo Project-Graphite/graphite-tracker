@@ -106,6 +106,7 @@ export class ConnectorCacheService implements OnModuleDestroy {
     try {
       const client = createClient({
         url: this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379',
+        socket: { reconnectStrategy: false },
       });
       client.on('error', () => undefined);
       await client.connect();
