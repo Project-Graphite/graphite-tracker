@@ -47,7 +47,7 @@ Open:
 - Readiness: http://localhost:4002/api/v1/ready
 
 The local verification-token response is enabled only by the development Compose override. Replace
-the default local authentication secrets before using the application outside a local machine.
+the default local authentication secret before using the application outside a local machine.
 
 ## Checks
 

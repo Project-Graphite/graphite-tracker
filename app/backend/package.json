@@ -7,7 +7,6 @@
     "build": "nest build",
     "predev": "prisma generate",
     "dev": "nest start --watch",
-    "start": "node dist/main.js",
     "pretest": "prisma generate",
     "test": "vitest run",
     "prisma:generate": "prisma generate",

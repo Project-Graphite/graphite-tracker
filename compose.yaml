@@ -9,7 +9,6 @@ services:
       DATABASE_URL: postgresql://graphite:graphite@postgres:5432/graphite_tracker
       REDIS_URL: redis://redis:6379
       AUTH_ACCESS_TOKEN_SECRET: ${AUTH_ACCESS_TOKEN_SECRET:-local-access-token-secret-change-me}
-      AUTH_REFRESH_TOKEN_SECRET: ${AUTH_REFRESH_TOKEN_SECRET:-local-refresh-token-secret-change-me}
       AUTH_TRUSTED_ORIGINS: http://localhost:4004,http://localhost:4002
       TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN:-}
       GAME_SOURCE: ${GAME_SOURCE:-igdb}

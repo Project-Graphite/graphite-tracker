@@ -4,12 +4,9 @@ services:
   web:
     image: ghcr.io/project-graphite/graphite-tracker/app:${IMAGE_TAG:-latest}
     environment:
-      NODE_ENV: production
-      PORT: '3000'
       DATABASE_URL: postgresql://graphite:${POSTGRES_PASSWORD:?}@postgres:5432/graphite_tracker
       REDIS_URL: redis://redis:6379
       AUTH_ACCESS_TOKEN_SECRET: ${AUTH_ACCESS_TOKEN_SECRET:?}
-      AUTH_REFRESH_TOKEN_SECRET: ${AUTH_REFRESH_TOKEN_SECRET}
       AUTH_TRUSTED_ORIGINS: https://graphite-tracker.project-graphite.com
       TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN:-}
       GAME_SOURCE: ${GAME_SOURCE:-igdb}
