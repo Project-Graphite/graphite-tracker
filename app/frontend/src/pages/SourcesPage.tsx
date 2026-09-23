@@ -38,7 +38,7 @@ export function SourcesPage() {
     }
   }
 
-  if (!settings) return <p className="text-muted">Loading sources…</p>;
+  if (!settings) return error ? <p className="error-message">{error}</p> : <p className="text-muted">Loading sources…</p>;
 
   return (
     <div className="page-enter">
