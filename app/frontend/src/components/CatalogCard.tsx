@@ -4,7 +4,7 @@ import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import { titleHref, type CatalogCandidate } from '../catalog';
 import {
-  libraryStateLabels,
+  libraryStates,
   stateLabel,
   type LibraryEntry,
   type LibraryState,
@@ -114,7 +114,7 @@ export function AddToListButton({
               onChange={(event) => setState(event.target.value as LibraryState)}
               value={state}
             >
-              {(Object.keys(libraryStateLabels) as LibraryState[]).map((value) => (
+              {libraryStates.map((value) => (
                 <option key={value} value={value}>
                   {stateLabel(item.category, value)}
                 </option>

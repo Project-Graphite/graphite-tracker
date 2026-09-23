@@ -11,7 +11,7 @@ import {
 } from '../catalog';
 import { AddToListButton } from '../components/CatalogCard';
 import {
-  libraryStateLabels,
+  libraryStates,
   stateLabel,
   type LibraryEntry,
   type LibraryState,
@@ -150,7 +150,7 @@ export function TitleDetailsPage() {
                 onChange={(event) => void update(event.target.value as LibraryState)}
                 value={libraryEntry.state}
               >
-                {(Object.keys(libraryStateLabels) as LibraryState[]).map((state) => (
+                {libraryStates.map((state) => (
                   <option key={state} value={state}>{stateLabel(item.category, state)}</option>
                 ))}
               </select>

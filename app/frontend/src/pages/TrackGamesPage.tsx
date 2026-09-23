@@ -6,7 +6,7 @@ import { countLabel, type CatalogResponse } from '../catalog';
 import { CatalogCard } from '../components/CatalogCard';
 import {
   entryHref,
-  libraryStateLabels,
+  libraryStates,
   stateLabel,
   type LibraryEntry,
   type LibraryState,
@@ -191,7 +191,7 @@ export function TrackGamesPage() {
                         }
                         value={entry.state}
                       >
-                        {(Object.keys(libraryStateLabels) as LibraryState[]).map((state) => (
+                        {libraryStates.map((state) => (
                           <option key={state} value={state}>
                             {stateLabel('game', state)}
                           </option>

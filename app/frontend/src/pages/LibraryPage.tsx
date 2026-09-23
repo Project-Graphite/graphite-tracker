@@ -6,6 +6,7 @@ import { catalogCategories, categoryLabels } from '../catalog';
 import {
   entryHref,
   libraryStateLabels,
+  libraryStates,
   stateLabel,
   type LibraryEntry,
   type LibraryState,
@@ -212,7 +213,7 @@ function LibraryCard({
           <label className="field-label">
             List
             <select value={entry.state} onChange={(event) => onUpdate({ state: event.target.value as LibraryState })}>
-              {(Object.keys(libraryStateLabels) as LibraryState[]).map((state) => <option key={state} value={state}>{stateLabel(entry.item.category, state)}</option>)}
+              {libraryStates.map((state) => <option key={state} value={state}>{stateLabel(entry.item.category, state)}</option>)}
             </select>
           </label>
           {activeSources.length > 1 && (

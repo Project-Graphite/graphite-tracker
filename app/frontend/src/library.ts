@@ -4,7 +4,9 @@ import {
   type CatalogCategory,
 } from './catalog';
 
-export type LibraryState = 'planned' | 'in_progress' | 'completed' | 'dropped';
+export const libraryStates = ['planned', 'in_progress', 'completed', 'dropped'] as const;
+
+export type LibraryState = (typeof libraryStates)[number];
 
 export interface CatalogMetadata {
   capabilities?: CatalogCapabilities;
@@ -68,7 +70,8 @@ export function entryHref(entry: LibraryEntry) {
 }
 
 export function stateLabel(category: CatalogCategory, state: LibraryState) {
-  const verbs = {
+  if (state === 'dropped') return libraryStateLabels.dropped;
+  const [planned, inProgress, completed] = {
     movie: ['Plan to watch', 'Watching', 'Watched'],
     tv: ['Plan to watch', 'Watching', 'Watched'],
     anime: ['Plan to watch', 'Watching', 'Watched'],
@@ -76,11 +79,5 @@ export function stateLabel(category: CatalogCategory, state: LibraryState) {
     manhwa: ['Plan to read', 'Reading', 'Read'],
     game: ['Plan to play', 'Playing', 'Completed'],
   }[category];
-  return state === 'planned'
-    ? verbs[0]
-    : state === 'in_progress'
-      ? verbs[1]
-      : state === 'completed'
-        ? verbs[2]
-        : 'Dropped';
+  return { planned, in_progress: inProgress, completed }[state];
 }
