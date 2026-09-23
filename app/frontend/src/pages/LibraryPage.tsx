@@ -211,7 +211,7 @@ function LibraryCard({
           {entry.item.sources.length > 1 && (
             <label className="field-label">
               Preferred source
-              <select value={entry.preferredSource ?? ''} onChange={(event) => onUpdate({ preferredSource: event.target.value })}>
+              <select value={entry.preferredSource ?? ''} onChange={(event) => onUpdate({ preferredSource: event.target.value || null })}>
                 <option value="">Automatic</option>
                 {entry.item.sources.filter((item) => item.active).map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
               </select>
@@ -221,7 +221,16 @@ function LibraryCard({
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
           <label className="flex items-center gap-2 text-sm text-muted">
-            <input checked={entry.notificationsEnabled} onChange={(event) => onUpdate({ notificationsEnabled: event.target.checked })} type="checkbox" />
+            <input
+              checked={entry.notificationsEnabled}
+              disabled={
+                entry.state === 'completed' ||
+                entry.state === 'dropped' ||
+                (entry.item.category === 'game' && entry.progress.platforms.length === 0)
+              }
+              onChange={(event) => onUpdate({ notificationsEnabled: event.target.checked })}
+              type="checkbox"
+            />
             Release notifications
           </label>
           <button className="text-button text-sm" onClick={onRemove} type="button">Remove</button>
@@ -252,7 +261,7 @@ function ProgressFields({
         max={options.max}
         min="0"
         onBlur={(event) => {
-          const next = event.target.value === '' ? 0 : Number(event.target.value);
+          const next = event.target.value === '' ? null : Number(event.target.value);
           if (next !== value) onUpdate({ [key]: next });
         }}
         step={options.step ?? '1'}
@@ -260,30 +269,45 @@ function ProgressFields({
       />
     </label>
   );
-  if (entry.item.category === 'tv' || entry.item.category === 'anime') {
+  const progressUnits = entry.item.metadata.capabilities?.progressUnits ?? [];
+  if (progressUnits.includes('season') || progressUnits.includes('episode')) {
     return (
       <>
-        {numberField('Season', 'progressSeason', entry.progress.season)}
-        {numberField('Episode', 'progressEpisode', entry.progress.episode)}
+        {progressUnits.includes('season') &&
+          numberField('Season', 'progressSeason', entry.progress.season, {
+            max: entry.item.metadata.seasonCount ?? undefined,
+          })}
+        {progressUnits.includes('episode') &&
+          numberField('Episode', 'progressEpisode', entry.progress.episode, {
+            max: entry.item.metadata.episodeCount ?? undefined,
+          })}
       </>
     );
   }
-  if (entry.item.category === 'manga' || entry.item.category === 'manhwa') {
+  if (progressUnits.includes('chapter') || progressUnits.includes('volume')) {
     return (
       <>
-        {numberField('Chapter', 'progressChapter', entry.progress.chapter, { step: '0.01' })}
-        {numberField('Volume', 'progressVolume', entry.progress.volume, { step: '0.01' })}
+        {progressUnits.includes('chapter') &&
+          numberField('Chapter', 'progressChapter', entry.progress.chapter, {
+            max: entry.item.metadata.chapterCount ?? undefined,
+            step: '0.01',
+          })}
+        {progressUnits.includes('volume') &&
+          numberField('Volume', 'progressVolume', entry.progress.volume, {
+            max: entry.item.metadata.volumeCount ?? undefined,
+            step: '0.01',
+          })}
       </>
     );
   }
-  if (entry.item.category === 'game') {
+  if (progressUnits.includes('hours') || progressUnits.includes('percentage')) {
     const availablePlatforms = entry.item.metadata.platforms ?? [];
     return (
       <>
         {numberField('Hours played', 'hoursPlayed', entry.progress.hours, { step: '0.25' })}
         {numberField('Completion %', 'completionPercentage', entry.progress.percentage, { max: 100 })}
         <fieldset className="sm:col-span-2">
-          <legend className="field-label">Played platforms</legend>
+          <legend className="field-label">Selected platforms</legend>
           <div className="mt-2 flex flex-wrap gap-3">
             {availablePlatforms.map((platform) => (
               <label className="flex items-center gap-2 text-sm text-muted" key={platform}>
