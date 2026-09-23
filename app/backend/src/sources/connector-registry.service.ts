@@ -14,6 +14,7 @@ import { TmdbService } from './tmdb/tmdb.service';
 export class ConnectorRegistryService {
   private readonly connectors: SourceConnector[];
   private readonly lastRequest = new Map<string, number>();
+  private readonly requestQueues = new Map<string, Promise<void>>();
 
   constructor(
     tmdb: TmdbService,
@@ -130,10 +131,24 @@ export class ConnectorRegistryService {
 
   private async limit(source: string) {
     const interval = source === 'igdb' ? 250 : source === 'mangadex' ? 200 : 40;
-    const wait = Math.max(0, (this.lastRequest.get(source) ?? 0) + interval - Date.now());
-    if (wait) {
-      await new Promise((resolve) => setTimeout(resolve, wait));
+    const previous = this.requestQueues.get(source) ?? Promise.resolve();
+    const current = previous.then(async () => {
+      const wait = Math.max(
+        0,
+        (this.lastRequest.get(source) ?? 0) + interval - Date.now(),
+      );
+      if (wait) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+      this.lastRequest.set(source, Date.now());
+    });
+    this.requestQueues.set(source, current);
+    try {
+      await current;
+    } finally {
+      if (this.requestQueues.get(source) === current) {
+        this.requestQueues.delete(source);
+      }
     }
-    this.lastRequest.set(source, Date.now());
   }
 }
