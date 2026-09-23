@@ -5,6 +5,6 @@ import { BrowseCatalogDto } from './browse-catalog.dto';
 export class SearchCatalogDto extends BrowseCatalogDto {
   @IsString()
   @Length(2, 100)
-  @Transform(({ value }) => String(value).trim())
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   query!: string;
 }

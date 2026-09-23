@@ -3,18 +3,18 @@ import { IsEmail, IsString, Length, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
-  @Transform(({ value }) => String(value).trim().toLowerCase())
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
   email!: string;
 
   @IsString()
   @Length(3, 32)
   @Matches(/^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$/)
-  @Transform(({ value }) => String(value).trim().toLowerCase())
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
   handle!: string;
 
   @IsString()
   @Length(1, 80)
-  @Transform(({ value }) => String(value).trim())
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   displayName!: string;
 
   @IsString()

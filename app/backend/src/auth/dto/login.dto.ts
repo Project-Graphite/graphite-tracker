@@ -3,7 +3,7 @@ import { IsEmail, IsString, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
-  @Transform(({ value }) => String(value).trim().toLowerCase())
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
   email!: string;
 
   @IsString()
