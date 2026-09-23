@@ -45,6 +45,25 @@ const movieGenres: Record<number, string> = {
   10770: 'TV Movie',
 };
 
+const tvGenres: Record<number, string> = {
+  16: 'Animation',
+  18: 'Drama',
+  35: 'Comedy',
+  37: 'Western',
+  80: 'Crime',
+  99: 'Documentary',
+  9648: 'Mystery',
+  10751: 'Family',
+  10759: 'Action & Adventure',
+  10762: 'Kids',
+  10763: 'News',
+  10764: 'Reality',
+  10765: 'Sci-Fi & Fantasy',
+  10766: 'Soap',
+  10767: 'Talk',
+  10768: 'War & Politics',
+};
+
 @Injectable()
 export class TmdbService {
   private readonly baseUrl = 'https://api.themoviedb.org/3';
@@ -336,7 +355,7 @@ export class TmdbService {
       genres:
         show.genres?.map((genre) => genre.name) ??
         show.genre_ids?.flatMap((genreId) =>
-          movieGenres[genreId] ? [movieGenres[genreId]] : [],
+          tvGenres[genreId] ? [tvGenres[genreId]] : [],
         ) ??
         [],
       runtimeMinutes: show.episode_run_time?.[0] ?? null,
@@ -403,8 +422,7 @@ export class TmdbService {
         newestFirst
           ? (right.releaseDate ?? '').localeCompare(left.releaseDate ?? '')
           : (right.rating ?? 0) - (left.rating ?? 0),
-      )
-      .slice(0, 20);
+      );
     return {
       page: Math.max(movies.page, shows.page),
       totalPages: Math.max(movies.total_pages, shows.total_pages),
@@ -457,7 +475,9 @@ export class TmdbService {
           : filters.sort ??
             (section === 'recent' ? `${dateField}.desc` : 'popularity.desc'),
     };
-    const genreId = Object.entries(movieGenres).find(
+    const genreId = Object.entries(
+      dateField === 'first_air_date' ? tvGenres : movieGenres,
+    ).find(
       ([, name]) => name.toLowerCase() === filters.genre?.toLowerCase(),
     )?.[0];
     if (genreId) {
@@ -550,7 +570,7 @@ export class TmdbService {
     }
     if (!response.ok) {
       if (response.status === 404) {
-        throw new NotFoundException('Movie not found');
+        throw new NotFoundException('TMDB title not found');
       }
       throw new BadGatewayException(`TMDB returned ${response.status}`);
     }
