@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { apiRequest, isAbortError } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';

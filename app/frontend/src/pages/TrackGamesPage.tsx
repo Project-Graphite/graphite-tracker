@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogResponse } from '../catalog';

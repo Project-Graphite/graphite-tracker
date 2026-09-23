@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import { titleHref, type CatalogCandidate } from '../catalog';

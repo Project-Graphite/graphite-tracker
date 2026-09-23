@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router';
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
