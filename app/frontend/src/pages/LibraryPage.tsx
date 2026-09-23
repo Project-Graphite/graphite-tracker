@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
@@ -18,37 +18,39 @@ export function LibraryPage() {
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pendingId, setPendingId] = useState('');
   const view = searchParams.get('view') === 'list' ? 'list' : 'grid';
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!auth.accessToken) return;
-    setLoading(true);
+    const controller = new AbortController();
     const parameters = new URLSearchParams();
     for (const key of ['category', 'state', 'query', 'sort']) {
       const value = searchParams.get(key);
       if (value) parameters.set(key, value);
     }
-    try {
-      setEntries(
-        await apiRequest<LibraryEntry[]>(
-          `/library?${parameters.toString()}`,
-          {},
-          auth.accessToken,
-        ),
-      );
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load library');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    setError('');
+    void apiRequest<LibraryEntry[]>(
+      `/library?${parameters.toString()}`,
+      { signal: controller.signal },
+      auth.accessToken,
+    )
+      .then(setEntries)
+      .catch((reason: unknown) => {
+        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+          setError(reason instanceof Error ? reason.message : 'Could not load library');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, [auth.accessToken, searchParams]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function update(id: string, input: Record<string, unknown>) {
     if (!auth.accessToken) return;
+    setPendingId(id);
     setError('');
     try {
       const updated = await apiRequest<LibraryEntry>(
@@ -61,6 +63,8 @@ export function LibraryPage() {
       );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not update entry');
+    } finally {
+      setPendingId('');
     }
   }
 
@@ -154,6 +158,7 @@ export function LibraryPage() {
         <div className={view === 'grid' ? 'mt-9 grid gap-5 md:grid-cols-2' : 'mt-9 grid gap-4'}>
           {entries.map((entry) => (
             <LibraryCard
+              busy={pendingId === entry.id}
               entry={entry}
               key={entry.id}
               onRemove={() => void remove(entry)}
@@ -168,20 +173,23 @@ export function LibraryPage() {
 }
 
 function LibraryCard({
+  busy,
   entry,
   onRemove,
   onUpdate,
   view,
 }: {
+  busy: boolean;
   entry: LibraryEntry;
   onRemove: () => void;
   onUpdate: (input: Record<string, unknown>) => void;
   view: 'grid' | 'list';
 }) {
   const rawgSource = entry.item.sources.find((item) => item.key === 'rawg');
+  const activeSources = entry.item.sources.filter((item) => item.active);
   const href = entryHref(entry);
   return (
-    <article className={`grid gap-4 rounded-xl border border-line bg-surface p-4 ${view === 'list' ? 'sm:grid-cols-[6rem_1fr]' : 'grid-cols-[5rem_1fr]'}`}>
+    <article className={`grid gap-4 rounded-xl border border-line bg-surface p-4 ${view === 'list' ? 'grid-cols-[5rem_1fr] sm:grid-cols-[6rem_1fr]' : 'grid-cols-[5rem_1fr]'}`}>
       <div className="aspect-[2/3] overflow-hidden rounded-md bg-line-soft">
         {entry.item.posterUrl && <img className="h-full w-full object-cover" src={entry.item.posterUrl} alt={`Poster for ${entry.item.title}`} />}
       </div>
@@ -207,16 +215,16 @@ function LibraryCard({
               {(Object.keys(libraryStateLabels) as LibraryState[]).map((state) => <option key={state} value={state}>{stateLabel(entry.item.category, state)}</option>)}
             </select>
           </label>
-          {entry.item.sources.length > 1 && (
+          {activeSources.length > 1 && (
             <label className="field-label">
               Preferred source
               <select value={entry.preferredSource ?? ''} onChange={(event) => onUpdate({ preferredSource: event.target.value || null })}>
                 <option value="">Automatic</option>
-                {entry.item.sources.filter((item) => item.active).map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+                {activeSources.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
               </select>
             </label>
           )}
-          <ProgressFields entry={entry} onUpdate={onUpdate} />
+          <ProgressFields busy={busy} entry={entry} onUpdate={onUpdate} />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
           <label className="flex items-center gap-2 text-sm text-muted">
@@ -240,9 +248,11 @@ function LibraryCard({
 }
 
 function ProgressFields({
+  busy,
   entry,
   onUpdate,
 }: {
+  busy: boolean;
   entry: LibraryEntry;
   onUpdate: (input: Record<string, unknown>) => void;
 }) {
@@ -312,6 +322,7 @@ function ProgressFields({
               <label className="flex items-center gap-2 text-sm text-muted" key={platform}>
                 <input
                   checked={entry.progress.platforms.includes(platform)}
+                  disabled={busy}
                   onChange={(event) =>
                     onUpdate({
                       platforms: event.target.checked
