@@ -6,7 +6,11 @@ import {
 import { LibraryState, MediaCategory, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
-import { CatalogCandidate, CatalogCategory } from '../sources/source.types';
+import {
+  mediaCategories,
+  sourceRecordData,
+} from '../sources/source-settings.service';
+import { CatalogCandidate } from '../sources/source.types';
 import {
   CreateLibraryEntryDto,
   LibraryStateInput,
@@ -19,15 +23,6 @@ const states: Record<LibraryStateInput, LibraryState> = {
   in_progress: LibraryState.IN_PROGRESS,
   completed: LibraryState.COMPLETED,
   dropped: LibraryState.DROPPED,
-};
-
-const categories: Record<CatalogCategory, MediaCategory> = {
-  movie: MediaCategory.MOVIE,
-  tv: MediaCategory.TV,
-  anime: MediaCategory.ANIME,
-  manga: MediaCategory.MANGA,
-  manhwa: MediaCategory.MANHWA,
-  game: MediaCategory.GAME,
 };
 
 const libraryEntryInclude = Prisma.validator<Prisma.LibraryEntryInclude>()({
@@ -50,7 +45,7 @@ export class LibraryService {
         userId,
         ...(query.state ? { state: states[query.state] } : {}),
         catalogItem: {
-          ...(query.category ? { category: categories[query.category] } : {}),
+          ...(query.category ? { category: mediaCategories[query.category] } : {}),
           ...(query.query
             ? {
                 canonicalTitle: {
@@ -91,7 +86,7 @@ export class LibraryService {
   }
 
   async create(userId: string, input: CreateLibraryEntryDto) {
-    const category = input.category as CatalogCategory;
+    const { category } = input;
     const connector = this.connectors.resolve(category, input.source);
     const itemDetails = await this.connectors.details(
       category,
@@ -104,26 +99,10 @@ export class LibraryService {
     const entry = await this.prisma.$transaction(async (transaction) => {
       const source = await transaction.sourceRecord.upsert({
         where: { key: connector.descriptor.key },
-        update: {
-          displayName: connector.descriptor.displayName,
-          categories: connector.descriptor.categories.map(
-            (value) => categories[value],
-          ),
-          languages: connector.descriptor.languages,
-          capabilities: connector.descriptor.capabilities,
-          attribution: connector.descriptor.attribution,
-          enabled: connector.descriptor.enabled,
-        },
+        update: sourceRecordData(connector.descriptor),
         create: {
           key: connector.descriptor.key,
-          displayName: connector.descriptor.displayName,
-          categories: connector.descriptor.categories.map(
-            (value) => categories[value],
-          ),
-          languages: connector.descriptor.languages,
-          capabilities: connector.descriptor.capabilities,
-          attribution: connector.descriptor.attribution,
-          enabled: connector.descriptor.enabled,
+          ...sourceRecordData(connector.descriptor),
         },
       });
       const existingSource = await transaction.sourceEntry.findUnique({
@@ -148,7 +127,7 @@ export class LibraryService {
           })
         : await transaction.catalogItem.create({
             data: this.catalogData(itemDetails, releaseDate, {
-              category: categories[category],
+              category: mediaCategories[category],
               sourceEntries: {
                 create: {
                   sourceId: source.id,
@@ -390,7 +369,7 @@ export class LibraryService {
   ) {
     return {
       id: entry.id,
-      state: this.presentState(entry.state),
+      state: entry.state.toLowerCase(),
       startedAt: entry.startedAt,
       completedAt: entry.completedAt,
       notificationsEnabled: entry.notificationsEnabled,
@@ -423,14 +402,5 @@ export class LibraryService {
         })),
       },
     };
-  }
-
-  private presentState(state: LibraryState) {
-    return {
-      PLANNED: 'planned',
-      IN_PROGRESS: 'in_progress',
-      COMPLETED: 'completed',
-      DROPPED: 'dropped',
-    }[state];
   }
 }

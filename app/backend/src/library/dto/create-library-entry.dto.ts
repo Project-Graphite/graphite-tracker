@@ -1,4 +1,5 @@
 import { IsEnum, IsIn, IsString, Length } from 'class-validator';
+import { CatalogCategory, catalogCategories } from '../../sources/source.types';
 
 export enum LibraryStateInput {
   Planned = 'planned',
@@ -12,8 +13,8 @@ export class CreateLibraryEntryDto {
   @Length(1, 100)
   externalId!: string;
 
-  @IsIn(['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'])
-  category!: 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game';
+  @IsIn(catalogCategories)
+  category!: CatalogCategory;
 
   @IsString()
   @Length(2, 30)

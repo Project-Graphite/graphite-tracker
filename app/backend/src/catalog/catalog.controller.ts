@@ -6,7 +6,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
-import { CatalogCategory } from '../sources/source.types';
+import { CatalogCategory, catalogCategories } from '../sources/source.types';
 import { BrowseCatalogDto } from './dto/browse-catalog.dto';
 import { RecognizeSourceDto } from './dto/recognize-source.dto';
 import { SearchCatalogDto } from './dto/search-catalog.dto';
@@ -81,7 +81,7 @@ export class CatalogController {
   }
 
   private category(value: string): CatalogCategory {
-    if (!['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'].includes(value)) {
+    if (!(catalogCategories as readonly string[]).includes(value)) {
       throw new BadRequestException('Unsupported media category');
     }
     return value as CatalogCategory;

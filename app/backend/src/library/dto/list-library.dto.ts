@@ -1,12 +1,13 @@
 import { IsEnum, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import { CatalogCategory, catalogCategories } from '../../sources/source.types';
 import {
   LibraryStateInput,
 } from './create-library-entry.dto';
 
 export class ListLibraryDto {
   @IsOptional()
-  @IsIn(['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'])
-  category?: 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game';
+  @IsIn(catalogCategories)
+  category?: CatalogCategory;
 
   @IsOptional()
   @IsEnum(LibraryStateInput)

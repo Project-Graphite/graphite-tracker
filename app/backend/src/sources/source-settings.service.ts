@@ -6,9 +6,9 @@ import {
 import { MediaCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectorRegistryService } from './connector-registry.service';
-import { CatalogCategory } from './source.types';
+import { CatalogCategory, ConnectorDescriptor } from './source.types';
 
-const categories: Record<CatalogCategory, MediaCategory> = {
+export const mediaCategories: Record<CatalogCategory, MediaCategory> = {
   movie: MediaCategory.MOVIE,
   tv: MediaCategory.TV,
   anime: MediaCategory.ANIME,
@@ -16,6 +16,17 @@ const categories: Record<CatalogCategory, MediaCategory> = {
   manhwa: MediaCategory.MANHWA,
   game: MediaCategory.GAME,
 };
+
+export function sourceRecordData(descriptor: ConnectorDescriptor) {
+  return {
+    displayName: descriptor.displayName,
+    categories: descriptor.categories.map((category) => mediaCategories[category]),
+    languages: descriptor.languages,
+    capabilities: descriptor.capabilities,
+    attribution: descriptor.attribution,
+    enabled: descriptor.enabled,
+  };
+}
 
 @Injectable()
 export class SourceSettingsService {
@@ -105,13 +116,13 @@ export class SourceSettingsService {
   async setCategory(userId: string, category: CatalogCategory, key: string) {
     this.assertCategory(category);
     const source = await this.enabledSource(userId, key);
-    if (!source.categories.includes(categories[category])) {
+    if (!source.categories.includes(mediaCategories[category])) {
       throw new NotFoundException('Source does not support this category');
     }
     await this.prisma.categorySourcePreference.upsert({
-      where: { userId_category: { userId, category: categories[category] } },
+      where: { userId_category: { userId, category: mediaCategories[category] } },
       update: { sourceId: source.id },
-      create: { userId, category: categories[category], sourceId: source.id },
+      create: { userId, category: mediaCategories[category], sourceId: source.id },
     });
     return this.list(userId);
   }
@@ -119,7 +130,7 @@ export class SourceSettingsService {
   async clearCategory(userId: string, category: CatalogCategory) {
     this.assertCategory(category);
     await this.prisma.categorySourcePreference.deleteMany({
-      where: { userId, category: categories[category] },
+      where: { userId, category: mediaCategories[category] },
     });
     return this.list(userId);
   }
@@ -149,30 +160,15 @@ export class SourceSettingsService {
       this.registry.list().map((descriptor) =>
         this.prisma.sourceRecord.upsert({
           where: { key: descriptor.key },
-          update: {
-            displayName: descriptor.displayName,
-            categories: descriptor.categories.map((category) => categories[category]),
-            languages: descriptor.languages,
-            capabilities: descriptor.capabilities,
-            attribution: descriptor.attribution,
-            enabled: descriptor.enabled,
-          },
-          create: {
-            key: descriptor.key,
-            displayName: descriptor.displayName,
-            categories: descriptor.categories.map((category) => categories[category]),
-            languages: descriptor.languages,
-            capabilities: descriptor.capabilities,
-            attribution: descriptor.attribution,
-            enabled: descriptor.enabled,
-          },
+          update: sourceRecordData(descriptor),
+          create: { key: descriptor.key, ...sourceRecordData(descriptor) },
         }),
       ),
     );
   }
 
   private assertCategory(category: CatalogCategory) {
-    if (!Object.hasOwn(categories, category)) {
+    if (!Object.hasOwn(mediaCategories, category)) {
       throw new BadRequestException('Unsupported media category');
     }
   }

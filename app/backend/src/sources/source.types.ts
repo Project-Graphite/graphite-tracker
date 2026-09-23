@@ -1,4 +1,5 @@
-export type CatalogCategory = 'movie' | 'tv' | 'anime' | 'manga' | 'manhwa' | 'game';
+export const catalogCategories = ['movie', 'tv', 'anime', 'manga', 'manhwa', 'game'] as const;
+export type CatalogCategory = (typeof catalogCategories)[number];
 export type CatalogSection = 'recent' | 'popular';
 export type ProgressUnit = 'season' | 'episode' | 'chapter' | 'volume' | 'hours' | 'percentage';
 

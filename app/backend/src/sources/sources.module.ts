@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { PrismaModule } from '../prisma/prisma.module';
 import { ConnectorCacheService } from './connector-cache.service';
 import { ConnectorRegistryService } from './connector-registry.service';
 import { IgdbService } from './igdb/igdb.service';
@@ -11,7 +10,7 @@ import { SourceSettingsService } from './source-settings.service';
 import { TmdbService } from './tmdb/tmdb.service';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule],
   providers: [
     ConnectorCacheService,
     ConnectorRegistryService,
