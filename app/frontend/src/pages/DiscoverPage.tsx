@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import {
@@ -11,10 +11,10 @@ import {
   type CatalogSection,
   type ConnectorDescriptor,
 } from '../catalog';
-import { ExpandableText } from '../components/ExpandableText';
+import { CatalogCard } from '../components/CatalogCard';
 import { Pagination } from '../components/Pagination';
-import type { LibraryEntry } from '../library';
 import type { SourceSettings } from '../sources';
+import { librarySourceKey, useLibraryEntries } from '../useLibraryEntries';
 
 const sections: Array<{ id: CatalogSection; label: string }> = [
   { id: 'recent', label: 'Recent' },
@@ -91,8 +91,7 @@ export function DiscoverPage({
   const [preferredSource, setPreferredSource] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [added, setAdded] = useState<Set<string>>(new Set());
-  const [libraryReady, setLibraryReady] = useState(false);
+  const library = useLibraryEntries();
   const source = section === 'search'
     ? searchParams.get('source') || preferredSource
     : preferredSource;
@@ -172,39 +171,6 @@ export function DiscoverPage({
     return () => controller.abort();
   }, [category, isRecentPreview, page, query, searchParams, section, source]);
 
-  useEffect(() => {
-    if (!auth.accessToken) {
-      setAdded(new Set());
-      setLibraryReady(true);
-      return;
-    }
-    const controller = new AbortController();
-    setLibraryReady(false);
-    void apiRequest<LibraryEntry[]>(
-      '/library',
-      { signal: controller.signal },
-      auth.accessToken,
-    )
-      .then((entries) => {
-        setAdded(
-          new Set(
-            entries.flatMap((entry) =>
-              entry.item.sources.map(
-                (itemSource) => `${itemSource.key}:${itemSource.externalId}`,
-              ),
-            ),
-          ),
-        );
-        setLibraryReady(true);
-      })
-      .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
-          setError(reason instanceof Error ? reason.message : 'Could not load library state');
-        }
-      });
-    return () => controller.abort();
-  }, [auth.accessToken]);
-
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -220,29 +186,6 @@ export function DiscoverPage({
     const parameters = new URLSearchParams(searchParams);
     parameters.set('page', String(nextPage));
     return `/discover/${category}/${section}?${parameters.toString()}`;
-  }
-
-  async function add(itemSource: string, externalId: string) {
-    if (!auth.accessToken) return;
-    setError('');
-    try {
-      await apiRequest(
-        '/library',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            externalId,
-            category,
-            source: itemSource,
-            state: 'planned',
-          }),
-        },
-        auth.accessToken,
-      );
-      setAdded((current) => new Set(current).add(`${itemSource}:${externalId}`));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not add title');
-    }
   }
 
   async function openFromUrl(event: FormEvent<HTMLFormElement>) {
@@ -364,7 +307,9 @@ export function DiscoverPage({
         </>
       )}
       {busy && !result && <p className="mt-8 text-muted">Loading titles…</p>}
-      {error && <p className="error-message mt-5 max-w-3xl">{error}</p>}
+      {(error || library.error) && (
+        <p className="error-message mt-5 max-w-3xl">{error || library.error}</p>
+      )}
       {result?.stale && (
         <p className="mt-5 rounded-lg border border-line bg-surface p-3 text-sm text-muted">
           The source is temporarily unavailable. Showing the most recent cached result.
@@ -401,49 +346,17 @@ export function DiscoverPage({
               </p>
             </div>
           )}
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {result.results.map((item) => {
-              const itemKey = `${item.source}:${item.externalId}`;
-              const href = titleHref(item);
+              const itemKey = librarySourceKey(item.source, item.externalId);
               return (
-                <article className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface" key={itemKey}>
-                  <div className="aspect-[2/3] bg-line-soft">
-                    {item.posterUrl ? (
-                      <Link to={href}>
-                        <img className="h-full w-full object-cover" loading="lazy" src={item.posterUrl} alt={`Poster for ${item.title}`} />
-                      </Link>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-faint">No poster</div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
-                    <div className="mono-sm flex flex-wrap items-center gap-2 text-faint">
-                      <span>{item.releaseDate?.slice(0, 4) ?? 'Date unknown'}</span>
-                      {item.genres.slice(0, 3).map((genre) => (
-                        <span className="rounded-full border border-line px-2 py-0.5" key={genre}>{genre}</span>
-                      ))}
-                    </div>
-                    <h2 className="mt-2 mb-2 text-xl font-medium leading-tight">
-                      <Link className="text-ink no-underline hover:underline" to={href}>{item.title}</Link>
-                    </h2>
-                    <ExpandableText>{item.synopsis || 'No synopsis available.'}</ExpandableText>
-                    <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-4">
-                      <span className="mono-sm text-faint">
-                        {item.rating === null ? 'Not rated' : `${item.rating.toFixed(1)} / 10`}
-                      </span>
-                      {auth.user && (
-                        <button
-                          className="secondary-button px-3 py-2"
-                          disabled={!libraryReady || added.has(itemKey)}
-                          onClick={() => void add(item.source, item.externalId)}
-                          type="button"
-                        >
-                          {!libraryReady ? 'Loading…' : added.has(itemKey) ? 'Added' : 'Add to list'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </article>
+                <CatalogCard
+                  entry={library.bySource.get(itemKey) ?? null}
+                  item={item}
+                  key={itemKey}
+                  libraryReady={library.ready}
+                  onAdded={library.upsert}
+                />
               );
             })}
           </div>

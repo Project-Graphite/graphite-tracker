@@ -8,8 +8,10 @@ import {
   titleHref,
   type CatalogDetails,
 } from '../catalog';
+import { AddToListButton } from '../components/CatalogCard';
 import {
   libraryStateLabels,
+  stateLabel,
   type LibraryEntry,
   type LibraryState,
 } from '../library';
@@ -70,33 +72,6 @@ export function TitleDetailsPage() {
 
   if (!category) {
     return <Navigate replace to="/discover/movie/recent" />;
-  }
-
-  async function add() {
-    if (!auth.accessToken || !item) return;
-    setLibraryBusy(true);
-    setError('');
-    try {
-      setLibraryEntry(
-        await apiRequest<LibraryEntry>(
-          '/library',
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              externalId: item.externalId,
-              category: item.category,
-              source: item.source,
-              state: 'planned',
-            }),
-          },
-          auth.accessToken,
-        ),
-      );
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not add title');
-    } finally {
-      setLibraryBusy(false);
-    }
   }
 
   async function update(state: LibraryState) {
@@ -171,13 +146,19 @@ export function TitleDetailsPage() {
                 onChange={(event) => void update(event.target.value as LibraryState)}
                 value={libraryEntry.state}
               >
-                {Object.entries(libraryStateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                {(Object.keys(libraryStateLabels) as LibraryState[]).map((state) => (
+                  <option key={state} value={state}>{stateLabel(item.category, state)}</option>
+                ))}
               </select>
             )}
             {auth.ready && auth.user && libraryEntry === null && (
-              <button className="secondary-button compact-button inline-flex" disabled={libraryBusy} onClick={() => void add()} type="button">
-                {libraryBusy ? 'Adding…' : 'Add to list'}
-              </button>
+              <AddToListButton
+                className="secondary-button compact-button inline-flex"
+                entry={libraryEntry}
+                item={item}
+                libraryReady
+                onAdded={setLibraryEntry}
+              />
             )}
           </div>
           <div className="mono-sm mt-5 flex flex-wrap gap-x-5 gap-y-2 text-faint">
