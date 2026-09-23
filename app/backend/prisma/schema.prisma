@@ -108,9 +108,9 @@ model SourceRecord {
   id            String          @id @default(uuid()) @db.Uuid
   key           String          @unique
   displayName   String          @map("display_name")
-  categories    MediaCategory[]
-  languages     String[]
-  capabilities  String[]
+  categories    MediaCategory[] @default([])
+  languages     String[]        @default([])
+  capabilities  String[]        @default([])
   attribution   String
   enabled       Boolean         @default(true)
   sourceEntries SourceEntry[]
