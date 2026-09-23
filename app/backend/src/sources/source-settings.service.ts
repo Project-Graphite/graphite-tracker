@@ -172,7 +172,7 @@ export class SourceSettingsService {
   }
 
   private assertCategory(category: CatalogCategory) {
-    if (!categories[category]) {
+    if (!Object.hasOwn(categories, category)) {
       throw new BadRequestException('Unsupported media category');
     }
   }
