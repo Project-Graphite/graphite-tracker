@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../api';
+import { apiRequest, isAbortError } from '../api';
 import { useAuth } from '../auth';
 import {
   catalogCategories,
@@ -43,7 +43,7 @@ export function TitleDetailsPage() {
     )
       .then(setItem)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load title');
         }
       });
@@ -64,7 +64,7 @@ export function TitleDetailsPage() {
     )
       .then(setLibraryEntry)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load library state');
         }
       });

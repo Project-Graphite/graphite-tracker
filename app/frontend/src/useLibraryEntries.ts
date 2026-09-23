@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiRequest } from './api';
+import { apiRequest, isAbortError } from './api';
 import { useAuth } from './auth';
 import type { CatalogCategory } from './catalog';
 import type { LibraryEntry } from './library';
@@ -32,7 +32,7 @@ export function useLibraryEntries(category?: CatalogCategory) {
     )
       .then(setEntries)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load library state');
         }
       })

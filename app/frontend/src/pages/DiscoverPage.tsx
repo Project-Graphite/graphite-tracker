@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../api';
+import { apiRequest, isAbortError } from '../api';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -115,7 +115,7 @@ export function DiscoverPage({
     void apiRequest<SourceSettings>('/sources', { signal: controller.signal }, auth.accessToken)
       .then(setSettings)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load sources');
         }
       });
@@ -131,7 +131,7 @@ export function DiscoverPage({
     )
       .then(setCatalogSources)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load sources');
         }
       });
@@ -161,7 +161,7 @@ export function DiscoverPage({
     )
       .then(setResult)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load titles');
         }
       })
@@ -190,7 +190,7 @@ export function DiscoverPage({
 
   async function openFromUrl(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const url = String(new FormData(event.currentTarget).get('url') ?? '').trim();
+    const url = String(new FormData(event.currentTarget).get('url')).trim();
     try {
       const match = await apiRequest<{
         category: CatalogCategory;

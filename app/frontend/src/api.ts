@@ -7,6 +7,10 @@ export class ApiError extends Error {
   }
 }
 
+export function isAbortError(reason: unknown) {
+  return reason instanceof DOMException && reason.name === 'AbortError';
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},

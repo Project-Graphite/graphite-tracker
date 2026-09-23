@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiRequest } from '../api';
 import { useAuth } from '../auth';
-import { catalogCategories, categoryLabels, type CatalogCategory } from '../catalog';
+import { catalogCategories, categoryLabels } from '../catalog';
 import type { SourceSettings } from '../sources';
 
 export function SourcesPage() {
@@ -9,18 +9,14 @@ export function SourcesPage() {
   const [settings, setSettings] = useState<SourceSettings>();
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    if (!auth.accessToken) return;
-    try {
-      setSettings(await apiRequest<SourceSettings>('/sources', {}, auth.accessToken));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load sources');
-    }
-  }, [auth.accessToken]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!auth.accessToken) return;
+    void apiRequest<SourceSettings>('/sources', {}, auth.accessToken)
+      .then(setSettings)
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : 'Could not load sources');
+      });
+  }, [auth.accessToken]);
 
   async function request(path: string, method: 'PATCH' | 'PUT' | 'DELETE', body?: object) {
     if (!auth.accessToken) return;
@@ -117,7 +113,7 @@ export function SourcesPage() {
               >
                 <option value="">Use global default</option>
                 {settings.sources
-                  .filter((source) => source.enabled && source.categories.includes(category as CatalogCategory))
+                  .filter((source) => source.enabled && source.categories.includes(category))
                   .map((source) => <option key={source.key} value={source.key}>{source.displayName}</option>)}
               </select>
             </label>

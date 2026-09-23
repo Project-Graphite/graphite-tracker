@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiRequest } from '../api';
+import { apiRequest, isAbortError } from '../api';
 import {
   categoryLabels,
   discoverCategories,
@@ -135,7 +135,7 @@ export function HomePage() {
           setRows((current) => ({ ...current, [category]: result }));
         })
         .catch((reason: unknown) => {
-          if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+          if (!isAbortError(reason)) {
             setErrors((current) => ({
               ...current,
               [category]: reason instanceof Error

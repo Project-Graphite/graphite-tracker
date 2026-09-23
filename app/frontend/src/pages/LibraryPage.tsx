@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../api';
+import { apiRequest, isAbortError } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
 import {
@@ -39,7 +39,7 @@ export function LibraryPage() {
     )
       .then(setEntries)
       .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        if (!isAbortError(reason)) {
           setError(reason instanceof Error ? reason.message : 'Could not load library');
         }
       })
@@ -93,7 +93,7 @@ export function LibraryPage() {
     const form = new FormData(event.currentTarget);
     const parameters = new URLSearchParams({ view });
     for (const key of ['category', 'state', 'query', 'sort']) {
-      const value = String(form.get(key) ?? '').trim();
+      const value = String(form.get(key)).trim();
       if (value) parameters.set(key, value);
     }
     navigate(`/library?${parameters.toString()}`);
@@ -261,7 +261,7 @@ function ProgressFields({
     label: string,
     key: string,
     value: number | null,
-    options: { max?: number; step?: string } = {},
+    options: { max?: number; step?: string },
   ) => (
     <label className="field-label" key={key}>
       {label}
@@ -274,7 +274,7 @@ function ProgressFields({
           const next = event.target.value === '' ? null : Number(event.target.value);
           if (next !== value) onUpdate({ [key]: next });
         }}
-        step={options.step ?? '1'}
+        step={options.step}
         type="number"
       />
     </label>
