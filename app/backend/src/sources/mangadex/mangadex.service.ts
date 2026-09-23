@@ -168,14 +168,15 @@ export class MangaDexService {
       ...(query ? { title: query } : {}),
       ...(filters.year ? { year: String(filters.year) } : {}),
       ...(filters.status ? { 'status[]': [filters.status] } : {}),
-      ...(category === 'manhwa' ? { 'originalLanguage[]': ['ko'] } : {}),
+      ...(category === 'manhwa'
+        ? { 'originalLanguage[]': ['ko'] }
+        : { 'excludedOriginalLanguage[]': ['ko'] }),
       'includes[]': ['cover_art'],
       'contentRating[]': ['safe', 'suggestive'],
       [`order[${selectedOrder}]`]: 'desc',
     });
     const results = response.data
       .map((manga) => this.normalize(manga))
-      .filter((manga) => manga.category === category)
       .filter(
         (manga) =>
           !filters.genre ||
