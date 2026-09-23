@@ -16,7 +16,7 @@ export function SourcesPage() {
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : 'Could not load sources');
       });
-  }, [auth.accessToken]);
+  }, [auth.user?.id]);
 
   async function request(path: string, method: 'PATCH' | 'PUT' | 'DELETE', body?: object) {
     if (!auth.accessToken) return;

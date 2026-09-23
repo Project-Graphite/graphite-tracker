@@ -40,7 +40,7 @@ export function useLibraryEntries(category?: CatalogCategory) {
         if (!controller.signal.aborted) setReady(true);
       });
     return () => controller.abort();
-  }, [auth.accessToken, auth.ready, category]);
+  }, [auth.ready, auth.user?.id, category]);
 
   const bySource = useMemo(
     () =>

@@ -69,7 +69,7 @@ export function TitleDetailsPage() {
         }
       });
     return () => controller.abort();
-  }, [auth.accessToken, auth.ready, auth.user, item]);
+  }, [auth.ready, auth.user?.id, item]);
 
   if (!category) {
     return <Navigate replace to="/discover/movie/recent" />;

@@ -47,7 +47,7 @@ export function LibraryPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [auth.accessToken, searchParams]);
+  }, [auth.user?.id, searchParams]);
 
   async function update(id: string, input: Record<string, unknown>) {
     if (!auth.accessToken) return;
