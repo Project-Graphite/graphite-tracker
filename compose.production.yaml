@@ -57,7 +57,7 @@ services:
           memory: 384M
 
   redis:
-    image: redis:8.2-alpine
+    image: redis:8.10-alpine
     command: [redis-server, --appendonly, 'yes']
     healthcheck:
       test: [CMD, redis-cli, ping]

@@ -38,7 +38,7 @@ services:
       - postgres-data:/var/lib/postgresql
 
   redis:
-    image: redis:8.2-alpine
+    image: redis:8.10-alpine
     command: [redis-server, --save, '60', '1']
     healthcheck:
       test: [CMD, redis-cli, ping]

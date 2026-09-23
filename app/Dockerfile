@@ -1,4 +1,4 @@
-FROM node:22-alpine AS manifests
+FROM node:24-alpine AS manifests
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -15,7 +15,7 @@ RUN npm run build
 FROM manifests AS production-dependencies
 RUN npm ci --omit=dev
 
-FROM node:22-alpine AS web
+FROM node:24-alpine AS web
 
 ENV NODE_ENV=production
 WORKDIR /app
