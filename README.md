@@ -1,11 +1,8 @@
 # Graphite Tracker
 
-Graphite Tracker is a self-hosted entertainment tracker for discovering and organizing movies in a
-private library. It is the foundation of a broader tracker for television, anime, manga, manhwa and
-games.
-
-The project is under active development. Phase 1 currently includes account registration, local
-email verification, sign-in, TMDB movie discovery, recent and popular movie views, and persistent
+Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, manhwa and games. It
+includes account registration, local email verification, sign-in, per-category search with recent
+and popular views (search only for games), title details, per-user source settings and persistent
 library states.
 
 ## Stack
@@ -25,6 +22,8 @@ Requirements:
 
 - Docker Desktop or Docker Engine with Compose
 - A TMDB API Read Access Token
+- Optional, for games: IGDB client credentials (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`), or a RAWG
+  API key (`RAWG_API_KEY`) with `GAME_SOURCE=rawg`
 
 Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
 
@@ -32,7 +31,7 @@ Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
 cp .env.example .env
 ```
 
-Start the stack and apply the committed database migration:
+Start the stack and apply the committed database migrations:
 
 ```sh
 docker compose up -d --build --renew-anon-volumes
@@ -75,11 +74,13 @@ They do not publish an image or deploy the application.
 | `compose.override.yaml` | Local hot-reload services and ports |
 | `compose.production.yaml` | Future Coolify production topology |
 
-## Data source
+## Data sources
 
-Movie metadata and artwork are provided by
-[The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses the TMDB API but is not
-endorsed or certified by TMDB. Graphite Tracker does not stream or redistribute media.
+Movie, television and anime metadata and artwork are provided by
+[The Movie Database (TMDB)](https://www.themoviedb.org/); manga and manhwa data by
+[MangaDex](https://mangadex.org/); game data by [IGDB](https://www.igdb.com/) or
+[RAWG](https://rawg.io/). This product uses the TMDB API but is not endorsed or certified by TMDB.
+Graphite Tracker does not stream or redistribute media.
 
 ## License
 
