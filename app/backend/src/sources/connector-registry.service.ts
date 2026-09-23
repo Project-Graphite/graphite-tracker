@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ConnectorCacheService } from './connector-cache.service';
 import { IgdbService } from './igdb/igdb.service';
 import { MangaDexService } from './mangadex/mangadex.service';
+import { RawgService } from './rawg/rawg.service';
 import {
   CatalogCategory,
   CatalogFilters,
@@ -17,12 +19,24 @@ export class ConnectorRegistryService {
   private readonly requestQueues = new Map<string, Promise<void>>();
 
   constructor(
+    config: ConfigService,
     tmdb: TmdbService,
     mangadex: MangaDexService,
     igdb: IgdbService,
+    rawg: RawgService,
     private readonly cache: ConnectorCacheService,
   ) {
-    this.connectors = [tmdb, mangadex, igdb];
+    const gameSource = (config.get<string>('GAME_SOURCE') ?? 'igdb')
+      .trim()
+      .toLowerCase();
+    if (gameSource !== 'igdb' && gameSource !== 'rawg') {
+      throw new Error('GAME_SOURCE must be either igdb or rawg');
+    }
+    igdb.descriptor.enabled =
+      gameSource === 'igdb' && igdb.descriptor.enabled;
+    rawg.descriptor.enabled =
+      gameSource === 'rawg' && rawg.descriptor.enabled;
+    this.connectors = [tmdb, mangadex, igdb, rawg];
   }
 
   list(category?: CatalogCategory) {
@@ -102,6 +116,7 @@ export class ConnectorRegistryService {
     const connector = source
       ? this.connectors.find((candidate) => candidate.descriptor.key === source)
       : this.connectors.find((candidate) =>
+          candidate.descriptor.enabled &&
           candidate.descriptor.categories.includes(category),
         );
     if (

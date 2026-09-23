@@ -1,7 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConnectorRegistryService } from '../src/sources/connector-registry.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
 import { MangaDexService } from '../src/sources/mangadex/mangadex.service';
+import { RawgService } from '../src/sources/rawg/rawg.service';
+import { TmdbService } from '../src/sources/tmdb/tmdb.service';
 
 const mangaId = '11111111-2222-3333-4444-555555555555';
 const manhwa = {
@@ -162,5 +165,109 @@ describe('Source connectors', () => {
         { type: 'expansion', externalId: '44', title: 'Graphite Quest: Beyond' },
       ],
     });
+  });
+
+  it('normalizes RAWG details and authenticates every request', async () => {
+    const request = vi.fn().mockImplementation((input: URL) => {
+      const body = input.pathname.endsWith('/additions')
+        ? {
+            count: 1,
+            next: null,
+            previous: null,
+            results: [{ id: 43, slug: 'graphite-quest-more', name: 'Graphite Quest: More' }],
+          }
+        : input.pathname.endsWith('/game-series')
+          ? {
+              count: 1,
+              next: null,
+              previous: null,
+              results: [{ id: 44, slug: 'graphite-origins', name: 'Graphite Origins' }],
+            }
+          : {
+              id: 42,
+              slug: 'graphite-quest',
+              name: 'Graphite Quest',
+              name_original: 'Graphite Quest Original',
+              description_raw: 'A game about careful tracking.',
+              released: '2030-01-01',
+              background_image: 'https://media.rawg.io/media/games/graphite.jpg',
+              rating: 4.2,
+              ratings_count: 125,
+              genres: [{ id: 4, name: 'Action', slug: 'action' }],
+              platforms: [
+                {
+                  platform: { id: 6, name: 'PC', slug: 'pc' },
+                  released_at: '2030-01-01',
+                },
+              ],
+            };
+      return Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', request);
+    const service = new RawgService(
+      new ConfigService({ RAWG_API_KEY: 'rawg-key' }),
+    );
+
+    const result = await service.details('game', '42');
+
+    expect(result).toMatchObject({
+      source: 'rawg',
+      externalId: '42',
+      originalTitle: 'Graphite Quest Original',
+      alternateTitles: ['Graphite Quest Original'],
+      rating: 8.4,
+      ratingCount: 125,
+      platforms: ['PC'],
+      releaseDates: [{ date: '2030-01-01', platform: 'PC' }],
+      relationships: [
+        { type: 'series', externalId: '44', title: 'Graphite Origins' },
+        { type: 'dlc', externalId: '43', title: 'Graphite Quest: More' },
+      ],
+      attributionUrl: 'https://rawg.io/',
+    });
+    expect(request).toHaveBeenCalledTimes(3);
+    request.mock.calls.forEach(([url]) => {
+      expect((url as URL).searchParams.get('key')).toBe('rawg-key');
+    });
+    expect(
+      service.recognize(new URL('https://rawg.io/games/graphite-quest')),
+    ).toEqual({ category: 'game', externalId: 'slug:graphite-quest' });
+  });
+
+  it('activates only the game source selected by GAME_SOURCE', () => {
+    const registryFor = (gameSource?: string) => {
+      const config = new ConfigService({
+        ...(gameSource ? { GAME_SOURCE: gameSource } : {}),
+        IGDB_CLIENT_ID: 'client',
+        IGDB_CLIENT_SECRET: 'secret',
+        RAWG_API_KEY: 'rawg-key',
+      });
+      const cache = { getOrLoad: vi.fn() };
+      return new ConnectorRegistryService(
+        config,
+        new TmdbService(config),
+        new MangaDexService(),
+        new IgdbService(config, cache as never),
+        new RawgService(config),
+        cache as never,
+      );
+    };
+    const rawgRegistry = registryFor('rawg');
+
+    expect(
+      rawgRegistry
+        .list('game')
+        .map(({ key, enabled }) => ({ key, enabled })),
+    ).toEqual([
+      { key: 'igdb', enabled: false },
+      { key: 'rawg', enabled: true },
+    ]);
+    expect(rawgRegistry.resolve('game').descriptor.key).toBe('rawg');
+    expect(registryFor().resolve('game').descriptor.key).toBe('igdb');
   });
 });

@@ -5,6 +5,7 @@ import { ConnectorCacheService } from './connector-cache.service';
 import { ConnectorRegistryService } from './connector-registry.service';
 import { IgdbService } from './igdb/igdb.service';
 import { MangaDexService } from './mangadex/mangadex.service';
+import { RawgService } from './rawg/rawg.service';
 import { SourceSettingsController } from './source-settings.controller';
 import { SourceSettingsService } from './source-settings.service';
 import { TmdbService } from './tmdb/tmdb.service';
@@ -16,6 +17,7 @@ import { TmdbService } from './tmdb/tmdb.service';
     ConnectorRegistryService,
     IgdbService,
     MangaDexService,
+    RawgService,
     SourceSettingsService,
     TmdbService,
   ],

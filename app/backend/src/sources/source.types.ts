@@ -43,7 +43,7 @@ export interface CatalogCandidate {
   platforms?: string[];
   releaseDates?: Array<{ date: string; platform: string | null }>;
   relationships?: Array<{
-    type: 'franchise' | 'dlc' | 'expansion';
+    type: 'franchise' | 'series' | 'dlc' | 'expansion';
     externalId: string;
     title: string;
   }>;
@@ -56,11 +56,13 @@ export interface CatalogPage {
   totalResults: number;
   results: CatalogCandidate[];
   attribution: string;
+  attributionUrl?: string;
   stale?: boolean;
 }
 
 export interface CatalogDetails extends CatalogCandidate {
   attribution: string;
+  attributionUrl?: string;
   stale?: boolean;
 }
 
@@ -70,6 +72,7 @@ export interface ConnectorDescriptor {
   categories: CatalogCategory[];
   languages: string[];
   attribution: string;
+  attributionUrl?: string;
   capabilities: Array<
     'SEARCH' | 'DETAILS' | 'RELEASES' | 'CHAPTERS' | 'EPISODES' | 'PLATFORMS' | 'DEEP_LINK'
   >;

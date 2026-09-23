@@ -26,6 +26,9 @@ export class SourceSettingsService {
 
   async list(userId: string) {
     await this.sync();
+    const descriptors = new Map(
+      this.registry.list().map((descriptor) => [descriptor.key, descriptor]),
+    );
     const [records, global, categoryPreferences] = await Promise.all([
       this.prisma.sourceRecord.findMany({
         include: {
@@ -42,6 +45,13 @@ export class SourceSettingsService {
         include: { source: true },
       }),
     ]);
+    const enabledSources = new Set(
+      records
+        .filter(
+          (record) => record.enabled && (record.userSettings[0]?.enabled ?? true),
+        )
+        .map((record) => record.key),
+    );
     return {
       sources: records.map((record) => ({
         key: record.key,
@@ -50,20 +60,25 @@ export class SourceSettingsService {
         languages: record.languages,
         capabilities: record.capabilities,
         attribution: record.attribution,
-        enabled: record.enabled && (record.userSettings[0]?.enabled ?? true),
+        attributionUrl: descriptors.get(record.key)?.attributionUrl,
+        available: record.enabled,
+        enabled: enabledSources.has(record.key),
       })),
-      global: global?.source.key ?? null,
+      global:
+        global && enabledSources.has(global.source.key) ? global.source.key : null,
       categories: Object.fromEntries(
-        categoryPreferences.map((preference) => [
-          preference.category.toLowerCase(),
-          preference.source.key,
-        ]),
+        categoryPreferences
+          .filter((preference) => enabledSources.has(preference.source.key))
+          .map((preference) => [
+            preference.category.toLowerCase(),
+            preference.source.key,
+          ]),
       ),
     };
   }
 
   async setEnabled(userId: string, key: string, enabled: boolean) {
-    const source = await this.source(key);
+    const source = await this.availableSource(key);
     await this.prisma.userSourceSetting.upsert({
       where: { userId_sourceId: { userId, sourceId: source.id } },
       update: { enabled },
@@ -73,7 +88,7 @@ export class SourceSettingsService {
   }
 
   async setGlobal(userId: string, key: string) {
-    const source = await this.source(key);
+    const source = await this.enabledSource(userId, key);
     await this.prisma.globalSourcePreference.upsert({
       where: { userId },
       update: { sourceId: source.id },
@@ -89,7 +104,7 @@ export class SourceSettingsService {
 
   async setCategory(userId: string, category: CatalogCategory, key: string) {
     this.assertCategory(category);
-    const source = await this.source(key);
+    const source = await this.enabledSource(userId, key);
     if (!source.categories.includes(categories[category])) {
       throw new NotFoundException('Source does not support this category');
     }
@@ -109,11 +124,22 @@ export class SourceSettingsService {
     return this.list(userId);
   }
 
-  private async source(key: string) {
+  private async availableSource(key: string) {
     await this.sync();
     const source = await this.prisma.sourceRecord.findUnique({ where: { key } });
     if (!source?.enabled) {
       throw new NotFoundException('Source is not available');
+    }
+    return source;
+  }
+
+  private async enabledSource(userId: string, key: string) {
+    const source = await this.availableSource(key);
+    const setting = await this.prisma.userSourceSetting.findUnique({
+      where: { userId_sourceId: { userId, sourceId: source.id } },
+    });
+    if (setting?.enabled === false) {
+      throw new BadRequestException('Enable this source before selecting it');
     }
     return source;
   }
