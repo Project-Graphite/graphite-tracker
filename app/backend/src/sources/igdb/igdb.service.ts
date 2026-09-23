@@ -26,7 +26,7 @@ interface IgdbImage {
 }
 
 interface IgdbReleaseDate {
-  date: number;
+  date?: number;
   platform?: IgdbNamed;
 }
 
@@ -43,7 +43,7 @@ interface IgdbGame {
   platforms?: IgdbNamed[];
   total_rating?: number;
   total_rating_count?: number;
-  status?: number;
+  game_status?: { status: string };
   franchises?: IgdbNamed[];
   dlcs?: IgdbNamed[];
   expansions?: IgdbNamed[];
@@ -88,7 +88,7 @@ export class IgdbService {
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
     this.assertCategory(category);
-    return this.list(`search "${this.escape(query)}";`, page, filters);
+    return this.list(`search "${this.escape(query)}";`, [], page, filters);
   }
 
   async browse(
@@ -100,9 +100,8 @@ export class IgdbService {
     this.assertCategory(category);
     const now = Math.floor(Date.now() / 1000);
     return this.list(
-      section === 'recent'
-        ? `where first_release_date <= ${now}; sort first_release_date desc;`
-        : 'where total_rating_count > 25; sort total_rating_count desc;',
+      section === 'recent' ? 'sort first_release_date desc;' : 'sort total_rating_count desc;',
+      [section === 'recent' ? `first_release_date <= ${now}` : 'total_rating_count > 25'],
       page,
       filters,
     );
@@ -134,20 +133,22 @@ export class IgdbService {
       : null;
   }
 
-  private async list(fragment: string, page: number, filters: CatalogFilters) {
-    let query = fragment;
+  private async list(
+    fragment: string,
+    conditions: string[],
+    page: number,
+    filters: CatalogFilters,
+  ) {
+    const where = [...conditions];
     if (filters.year) {
       const start = Math.floor(Date.UTC(filters.year, 0, 1) / 1000);
       const end = Math.floor(Date.UTC(filters.year + 1, 0, 1) / 1000);
-      const condition = `first_release_date >= ${start} & first_release_date < ${end}`;
-      query = query.includes('where ')
-        ? query.replace('where ', `where ${condition} & `)
-        : `${query} where ${condition};`;
+      where.push(`first_release_date >= ${start} & first_release_date < ${end}`);
     }
     const offset = (page - 1) * 20;
     const games = await this.request<IgdbGame[]>(
       'games',
-      `${this.fields()} ${query} limit 20; offset ${offset};`,
+      `${this.fields()} ${fragment} ${where.length ? `where ${where.join(' & ')};` : ''} limit 20; offset ${offset};`,
     );
     const filtered = games
       .map((game) => this.normalize(game))
@@ -164,7 +165,7 @@ export class IgdbService {
       );
     return {
       page,
-      totalPages: filtered.length === 20 ? page + 1 : page,
+      totalPages: games.length === 20 ? page + 1 : page,
       totalResults: offset + filtered.length,
       results: filtered,
       attribution: this.descriptor.attribution,
@@ -211,20 +212,24 @@ export class IgdbService {
       language: 'en',
       genres: game.genres?.map((genre) => genre.name) ?? [],
       runtimeMinutes: null,
-      status: game.status === undefined ? null : String(game.status),
+      status: game.game_status?.status ?? null,
       tagline: null,
       rating: game.total_rating ? game.total_rating / 10 : null,
       ratingCount: game.total_rating_count ?? 0,
       platforms: game.platforms?.map((platform) => platform.name) ?? [],
       releaseDates:
-        game.release_dates?.map((release) => ({
-          date: new Date(release.date * 1000).toISOString().slice(0, 10),
-          platform: release.platform?.name ?? null,
-        })) ?? [],
+        game.release_dates?.flatMap((release) =>
+          release.date
+            ? [
+                {
+                  date: new Date(release.date * 1000).toISOString().slice(0, 10),
+                  platform: release.platform?.name ?? null,
+                },
+              ]
+            : [],
+        ) ?? [],
       relationships,
-      deepLinks: game.url
-        ? [{ label: 'View on IGDB', url: game.url }]
-        : [{ label: 'View on IGDB', url: `https://www.igdb.com/games/${game.id}` }],
+      deepLinks: game.url ? [{ label: 'View on IGDB', url: game.url }] : [],
       capabilities: {
         progressUnits: ['hours', 'percentage'],
         hasEpisodes: false,
@@ -236,7 +241,7 @@ export class IgdbService {
   }
 
   private fields() {
-    return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,url;';
+    return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,url;';
   }
 
   private assertCategory(category: CatalogCategory) {
