@@ -161,7 +161,7 @@ export function HomePage() {
       <section className="grid gap-10 border-b border-line pb-14 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
         <div>
           <p className="eyebrow">One library · every medium</p>
-          <h1 className="display-title">Track what you watch, read, and play.</h1>
+          <h1 className="page-title">Track what you watch, read, and play.</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
             Browse five entertainment categories, track games separately, and keep one library for everything.
           </p>

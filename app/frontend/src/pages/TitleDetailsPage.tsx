@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import {
   catalogCategories,
   categoryLabels,
+  countLabel,
   titleHref,
   type CatalogDetails,
 } from '../catalog';
@@ -136,15 +137,15 @@ export function TitleDetailsPage() {
           )}
           {item.tagline && <p className="mt-6 text-lg text-muted">{item.tagline}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-4 border-y border-line py-4">
-            <div aria-label={item.rating ? `${item.rating.toFixed(1)} out of 10` : 'Not rated'} className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-2">
               <strong className="text-2xl font-medium">{item.rating ? item.rating.toFixed(1) : '—'}</strong>
-              <span className="mono-sm text-faint">/ 10 · {item.ratingCount.toLocaleString()} ratings</span>
+              <span className="mono-sm text-faint">/ 10 · {countLabel(item.ratingCount, 'rating')}</span>
             </div>
             {auth.ready && auth.user && libraryEntry === undefined && <span className="mono-sm text-faint">Loading list state…</span>}
             {auth.ready && auth.user && libraryEntry && (
               <select
                 aria-label="Library state"
-                className="compact-select"
+                className="compact-control"
                 disabled={libraryBusy}
                 onChange={(event) => void update(event.target.value as LibraryState)}
                 value={libraryEntry.state}
@@ -166,11 +167,11 @@ export function TitleDetailsPage() {
           </div>
           <div className="mono-sm mt-5 flex flex-wrap gap-x-5 gap-y-2 text-faint">
             {item.status && <span>{item.status}</span>}
-            {item.runtimeMinutes && <span>{item.runtimeMinutes} minutes</span>}
-            {item.seasonCount !== undefined && <span>{item.seasonCount ?? '?'} seasons</span>}
-            {item.episodeCount !== undefined && <span>{item.episodeCount ?? '?'} episodes</span>}
-            {item.chapterCount !== undefined && <span>{item.chapterCount ?? '?'} chapters</span>}
-            {item.volumeCount !== undefined && <span>{item.volumeCount ?? '?'} volumes</span>}
+            {item.runtimeMinutes ? <span>{item.runtimeMinutes} minutes</span> : null}
+            {item.seasonCount !== undefined && <span>{item.seasonCount === null ? '? seasons' : countLabel(item.seasonCount, 'season')}</span>}
+            {item.episodeCount !== undefined && <span>{item.episodeCount === null ? '? episodes' : countLabel(item.episodeCount, 'episode')}</span>}
+            {item.chapterCount !== undefined && <span>{item.chapterCount === null ? '? chapters' : countLabel(item.chapterCount, 'chapter')}</span>}
+            {item.volumeCount !== undefined && <span>{item.volumeCount === null ? '? volumes' : countLabel(item.volumeCount, 'volume')}</span>}
             <span>{item.language.toUpperCase()}</span>
           </div>
           {item.genres.length > 0 && (

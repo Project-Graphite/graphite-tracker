@@ -4,6 +4,7 @@ import { apiRequest } from '../api';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
+  countLabel,
   discoverCategories,
   titleHref,
   type CatalogCategory,
@@ -211,7 +212,7 @@ export function DiscoverPage({
   return (
     <div className="page-enter">
       <p className="eyebrow">Unified catalogue</p>
-      <h1 className="page-title">Discover {categoryLabels[category].toLowerCase()}.</h1>
+      <h1 className="page-title">Discover {categoryLabels[category]}.</h1>
       <nav aria-label="Media categories" className="mt-7 flex gap-2 overflow-x-auto pb-2">
         {discoverCategories.map((item) => (
           <NavLink
@@ -317,7 +318,7 @@ export function DiscoverPage({
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
             <h2 className="m-0 text-xl font-medium">
               {section === 'search' && !isRecentPreview
-                ? `${result.totalResults.toLocaleString()} results`
+                ? countLabel(result.totalResults, 'result')
                 : section === 'recent' || isRecentPreview
                   ? 'Recently released'
                   : 'Popular now'}
