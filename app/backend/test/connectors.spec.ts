@@ -1,5 +1,7 @@
+import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { ConnectorRegistryService } from '../src/sources/connector-registry.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
 import { MangaDexService } from '../src/sources/mangadex/mangadex.service';
@@ -44,7 +46,7 @@ describe('Source connectors', () => {
     );
 
     await expect(
-      new MangaDexService().recognize(
+      new MangaDexService({} as never, new ConnectorHttpService()).recognize(
         new URL(`https://mangadex.org/title/${mangaId}/tower-story`),
       ),
     ).resolves.toEqual({ category: 'manhwa', externalId: mangaId });
@@ -72,7 +74,10 @@ describe('Source connectors', () => {
       ),
     );
 
-    const result = await new MangaDexService().details('manhwa', mangaId);
+    const result = await new MangaDexService({} as never, new ConnectorHttpService()).details(
+      'manhwa',
+      mangaId,
+    );
 
     expect(result).toMatchObject({
       category: 'manhwa',
@@ -104,7 +109,12 @@ describe('Source connectors', () => {
     );
     vi.stubGlobal('fetch', request);
 
-    const result = await new MangaDexService().browse('manhwa', 'recent', 1, {});
+    const result = await new MangaDexService({} as never, new ConnectorHttpService()).browse(
+      'manhwa',
+      'recent',
+      1,
+      {},
+    );
 
     expect(result.results).toHaveLength(1);
     const [url] = request.mock.calls[0] as [URL];
@@ -150,6 +160,7 @@ describe('Source connectors', () => {
         IGDB_CLIENT_SECRET: 'secret',
       }),
       cache as never,
+      new ConnectorHttpService(),
     );
 
     const result = await service.details('game', '42');
@@ -211,6 +222,7 @@ describe('Source connectors', () => {
     vi.stubGlobal('fetch', request);
     const service = new RawgService(
       new ConfigService({ RAWG_API_KEY: 'rawg-key' }),
+      new ConnectorHttpService(),
     );
 
     const result = await service.details('game', '42');
@@ -248,12 +260,13 @@ describe('Source connectors', () => {
         RAWG_API_KEY: 'rawg-key',
       });
       const cache = { getOrLoad: vi.fn() };
+      const http = new ConnectorHttpService();
       return new ConnectorRegistryService(
         config,
-        new TmdbService(config),
-        new MangaDexService(),
-        new IgdbService(config, cache as never),
-        new RawgService(config),
+        new TmdbService(config, http),
+        new MangaDexService(cache as never, http),
+        new IgdbService(config, cache as never, http),
+        new RawgService(config, http),
         cache as never,
       );
     };
@@ -269,5 +282,36 @@ describe('Source connectors', () => {
     ]);
     expect(rawgRegistry.resolve('game').descriptor.key).toBe('rawg');
     expect(registryFor().resolve('game').descriptor.key).toBe('igdb');
+  });
+
+  it('filters MangaDex by the tag ID of the selected genre', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [], total: 0, limit: 20, offset: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', request);
+    const cache = {
+      getOrLoad: vi.fn().mockResolvedValue({
+        value: {
+          data: [
+            { id: 'tag-romance', attributes: { name: { en: 'Romance' }, group: 'genre' } },
+            { id: 'tag-long-strip', attributes: { name: { en: 'Long Strip' }, group: 'format' } },
+          ],
+        },
+        stale: false,
+      }),
+    };
+    const service = new MangaDexService(cache as never, new ConnectorHttpService());
+
+    await service.search('manga', 'tower', 1, { genre: 'romance' });
+
+    const [url] = request.mock.calls[0] as [URL];
+    expect(url.searchParams.getAll('includedTags[]')).toEqual(['tag-romance']);
+    await expect(service.genres()).resolves.toEqual(['Romance']);
+    await expect(
+      service.search('manga', 'tower', 1, { genre: 'Long Strip' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

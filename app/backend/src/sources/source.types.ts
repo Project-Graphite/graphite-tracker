@@ -78,6 +78,7 @@ export interface ConnectorDescriptor {
     'SEARCH' | 'DETAILS' | 'RELEASES' | 'CHAPTERS' | 'EPISODES' | 'PLATFORMS' | 'DEEP_LINK'
   >;
   outboundDomains: string[];
+  requestIntervalMs: number;
   enabled: boolean;
 }
 
@@ -96,6 +97,7 @@ export interface SourceConnector {
     filters: CatalogFilters,
   ): Promise<CatalogPage>;
   details(category: CatalogCategory, externalId: string): Promise<CatalogDetails>;
+  genres?(category: CatalogCategory): Promise<string[]>;
   recognize(
     url: URL,
   ):

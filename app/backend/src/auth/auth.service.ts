@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 
 const scryptAsync = promisify(scrypt);
 export const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+const refreshReuseGraceMs = 30 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -100,19 +101,34 @@ export class AuthService {
       where: { tokenHash: this.digest(rawToken) },
       include: { user: true },
     });
-    if (
-      !session ||
-      session.revokedAt ||
-      session.expiresAt <= new Date() ||
-      !session.user.isActive ||
-      !session.user.verifiedAt
-    ) {
+    if (!session) {
       throw new UnauthorizedException('Refresh session is invalid');
     }
-    await this.prisma.refreshSession.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date() },
-    });
+    const now = new Date();
+    const rotated =
+      !session.revokedAt &&
+      session.expiresAt > now &&
+      (
+        await this.prisma.refreshSession.updateMany({
+          where: { id: session.id, revokedAt: null },
+          data: { revokedAt: now },
+        })
+      ).count === 1;
+    if (!rotated) {
+      if (
+        session.revokedAt &&
+        now.getTime() - session.revokedAt.getTime() > refreshReuseGraceMs
+      ) {
+        await this.prisma.refreshSession.updateMany({
+          where: { userId: session.userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+      }
+      throw new UnauthorizedException('Refresh session is invalid');
+    }
+    if (!session.user.isActive || !session.user.verifiedAt) {
+      throw new UnauthorizedException('Refresh session is invalid');
+    }
     return this.issueSession(session.user);
   }
 

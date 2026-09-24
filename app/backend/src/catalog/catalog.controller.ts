@@ -5,6 +5,7 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
+import { RateLimit } from '../redis/rate-limit.guard';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory, catalogCategories } from '../sources/source.types';
 import { BrowseCatalogDto } from './dto/browse-catalog.dto';
@@ -17,15 +18,19 @@ export class CatalogController {
 
   @Get('sources')
   sources(@Query('category') category?: string) {
-    return this.connectors.list(category ? this.category(category) : undefined);
+    return this.connectors
+      .list(category ? this.category(category) : undefined)
+      .map(({ key, displayName, enabled }) => ({ key, displayName, enabled }));
   }
 
   @Get('recognize')
+  @RateLimit('catalog', 120, 60)
   recognize(@Query() query: RecognizeSourceDto) {
     return this.connectors.recognize(query.url);
   }
 
   @Get(':category/search')
+  @RateLimit('catalog', 120, 60)
   searchCategory(
     @Param('category') category: string,
     @Query() query: SearchCatalogDto,
@@ -41,6 +46,7 @@ export class CatalogController {
   }
 
   @Get(':category/recent')
+  @RateLimit('catalog', 120, 60)
   recentCategory(
     @Param('category') category: string,
     @Query() query: BrowseCatalogDto,
@@ -49,6 +55,7 @@ export class CatalogController {
   }
 
   @Get(':category/popular')
+  @RateLimit('catalog', 120, 60)
   popularCategory(
     @Param('category') category: string,
     @Query() query: BrowseCatalogDto,
@@ -56,7 +63,13 @@ export class CatalogController {
     return this.browseCategory(category, 'popular', query);
   }
 
+  @Get(':category/genres')
+  genres(@Param('category') category: string, @Query('source') source?: string) {
+    return this.connectors.genres(this.category(category), source);
+  }
+
   @Get(':category/:externalId')
+  @RateLimit('catalog', 120, 60)
   details(
     @Param('category') category: string,
     @Param('externalId') externalId: string,

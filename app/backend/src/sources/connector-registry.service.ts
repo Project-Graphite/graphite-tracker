@@ -15,8 +15,6 @@ import { TmdbService } from './tmdb/tmdb.service';
 @Injectable()
 export class ConnectorRegistryService {
   private readonly connectors: SourceConnector[];
-  private readonly lastRequest = new Map<string, number>();
-  private readonly requestQueues = new Map<string, Promise<void>>();
 
   constructor(
     config: ConfigService,
@@ -93,13 +91,24 @@ export class ConnectorRegistryService {
     return { ...result.value, stale: result.stale };
   }
 
-  async recognize(value: string) {
-    let url: URL;
-    try {
-      url = new URL(value);
-    } catch {
-      throw new NotFoundException('Source URL is invalid');
+  async genres(category: CatalogCategory, source?: string) {
+    const connector = this.resolve(category, source);
+    const genres = connector.genres?.bind(connector);
+    if (!genres) {
+      return [];
     }
+    const result = await this.cached(
+      connector,
+      ['genres', category],
+      86_400,
+      604_800,
+      () => genres(category),
+    );
+    return result.value;
+  }
+
+  async recognize(value: string) {
+    const url = new URL(value);
     for (const connector of this.connectors) {
       if (!connector.descriptor.enabled) {
         continue;
@@ -129,7 +138,7 @@ export class ConnectorRegistryService {
     return connector;
   }
 
-  private async cached<T>(
+  private cached<T>(
     connector: SourceConnector,
     parts: unknown[],
     freshSeconds: number,
@@ -140,33 +149,7 @@ export class ConnectorRegistryService {
       `connector:${connector.descriptor.key}:${Buffer.from(JSON.stringify(parts)).toString('base64url')}`,
       freshSeconds,
       staleSeconds,
-      async () => {
-        await this.limit(connector.descriptor.key);
-        return load();
-      },
+      load,
     );
-  }
-
-  private async limit(source: string) {
-    const interval = source === 'igdb' ? 250 : source === 'mangadex' ? 200 : 40;
-    const previous = this.requestQueues.get(source) ?? Promise.resolve();
-    const current = previous.then(async () => {
-      const wait = Math.max(
-        0,
-        (this.lastRequest.get(source) ?? 0) + interval - Date.now(),
-      );
-      if (wait) {
-        await new Promise((resolve) => setTimeout(resolve, wait));
-      }
-      this.lastRequest.set(source, Date.now());
-    });
-    this.requestQueues.set(source, current);
-    try {
-      await current;
-    } finally {
-      if (this.requestQueues.get(source) === current) {
-        this.requestQueues.delete(source);
-      }
-    }
   }
 }

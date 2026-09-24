@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { TmdbService } from '../src/sources/tmdb/tmdb.service';
 import { TmdbSearchResponse } from '../src/sources/tmdb/tmdb.types';
 
@@ -17,7 +18,7 @@ describe('TmdbService', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('normalizes the movie contract from a committed fixture', () => {
-    const service = new TmdbService(new ConfigService());
+    const service = new TmdbService(new ConfigService(), new ConnectorHttpService());
 
     expect(service.normalizeMovie(fixture.results[0]!)).toEqual({
       source: 'tmdb',
@@ -62,6 +63,7 @@ describe('TmdbService', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     const result = await service.searchMovies('fight club', 1);
@@ -85,6 +87,7 @@ describe('TmdbService', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     const result = await service[method](1);
@@ -138,6 +141,7 @@ describe('TmdbService', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     const tv = await service.browse('tv', 'recent', 1, {});
@@ -179,6 +183,7 @@ describe('TmdbService', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     const result = await service.movieDetails('550');
@@ -199,6 +204,7 @@ describe('TmdbService', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     await expect(service.movieDetails('999999999')).rejects.toBeInstanceOf(
@@ -222,10 +228,49 @@ describe('TmdbService', () => {
     );
     const service = new TmdbService(
       new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
     );
 
     await expect(service.details('anime', 'movie:550')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('rejects a genre the category does not have', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
+    );
+
+    await expect(
+      service.browse('movie', 'popular', 1, { genre: 'Soap' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('filters anime by a TV-only genre without mixing in unfiltered films', async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ page: 1, total_pages: 1, total_results: 0, results: [] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
+    );
+
+    await service.browse('anime', 'popular', 1, { genre: 'Action & Adventure' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.pathname).toBe('/3/discover/tv');
+    expect(url.searchParams.get('with_genres')).toBe('16,10759');
+    await expect(service.genres('anime')).resolves.not.toContain('Animation');
   });
 });

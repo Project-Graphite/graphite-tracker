@@ -1,9 +1,10 @@
 import {
   BadRequestException,
-  BadGatewayException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConnectorCacheService } from '../connector-cache.service';
+import { ConnectorHttpService } from '../connector-http.service';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -51,6 +52,13 @@ interface MangaDexAggregate {
   volumes: Record<string, { chapters: Record<string, unknown> }>;
 }
 
+interface MangaDexTags {
+  data: Array<{
+    id: string;
+    attributes: { name: Record<string, string>; group: string };
+  }>;
+}
+
 @Injectable()
 export class MangaDexService {
   readonly descriptor: ConnectorDescriptor = {
@@ -59,10 +67,17 @@ export class MangaDexService {
     categories: ['manga', 'manhwa'],
     languages: [],
     attribution: 'Manga data provided by MangaDex',
+    attributionUrl: 'https://mangadex.org/',
     capabilities: ['SEARCH', 'DETAILS', 'RELEASES', 'CHAPTERS', 'DEEP_LINK'],
-    outboundDomains: ['mangadex.org', 'api.mangadex.org', 'uploads.mangadex.org'],
+    outboundDomains: ['mangadex.org'],
+    requestIntervalMs: 220,
     enabled: true,
   };
+
+  constructor(
+    private readonly cache: ConnectorCacheService,
+    private readonly http: ConnectorHttpService,
+  ) {}
 
   async search(
     category: CatalogCategory,
@@ -118,7 +133,14 @@ export class MangaDexService {
         ? this.latestMarker(Object.keys(aggregate.volumes), item.volumeCount)
         : item.volumeCount,
       attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
     };
+  }
+
+  async genres() {
+    return [...(await this.tags()).values()]
+      .map(({ name }) => name)
+      .sort((left, right) => left.localeCompare(right));
   }
 
   async recognize(
@@ -158,12 +180,19 @@ export class MangaDexService {
     ) {
       throw new BadRequestException('Sort does not match this media category');
     }
+    const tag = filters.genre
+      ? (await this.tags()).get(filters.genre.toLowerCase())
+      : undefined;
+    if (filters.genre && !tag) {
+      throw new BadRequestException('Genre does not match this media category');
+    }
     const response = await this.request<MangaDexList>('/manga', {
       limit: '20',
       offset: String((page - 1) * 20),
       ...(query ? { title: query } : {}),
       ...(filters.year ? { year: String(filters.year) } : {}),
       ...(filters.status ? { 'status[]': [filters.status] } : {}),
+      ...(tag ? { 'includedTags[]': [tag.id] } : {}),
       ...(category === 'manhwa'
         ? { 'originalLanguage[]': ['ko'] }
         : { 'excludedOriginalLanguage[]': ['ko'] }),
@@ -171,22 +200,31 @@ export class MangaDexService {
       'contentRating[]': ['safe', 'suggestive'],
       [`order[${selectedOrder}]`]: 'desc',
     });
-    const results = response.data
-      .map((manga) => this.normalize(manga))
-      .filter(
-        (manga) =>
-          !filters.genre ||
-          manga.genres.some(
-            (genre) => genre.toLowerCase() === filters.genre?.toLowerCase(),
-          ),
-      );
     return {
       page,
       totalPages: Math.max(1, Math.ceil(response.total / response.limit)),
       totalResults: response.total,
-      results,
+      results: response.data.map((manga) => this.normalize(manga)),
       attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
     };
+  }
+
+  private async tags() {
+    const { value } = await this.cache.getOrLoad(
+      'connector:mangadex:tags',
+      604_800,
+      2_592_000,
+      () => this.request<MangaDexTags>('/manga/tag', {}),
+    );
+    return new Map(
+      value.data
+        .filter(({ attributes }) => attributes.group === 'genre')
+        .map(({ id, attributes }) => {
+          const name = this.localized(attributes.name);
+          return [name.toLowerCase(), { id, name }] as const;
+        }),
+    );
   }
 
   private normalize(manga: MangaDexManga): CatalogCandidate {
@@ -251,31 +289,13 @@ export class MangaDexService {
     return markers.length > 0 ? Math.max(...markers) : fallback ?? null;
   }
 
-  private async request<T>(
-    path: string,
-    parameters: Record<string, string | string[]>,
-  ) {
+  private request<T>(path: string, parameters: Record<string, string | string[]>) {
     const url = new URL(`https://api.mangadex.org${path}`);
     Object.entries(parameters).forEach(([key, value]) => {
       (Array.isArray(value) ? value : [value]).forEach((entry) =>
         url.searchParams.append(key, entry),
       );
     });
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(8_000),
-      });
-    } catch {
-      throw new BadGatewayException('MangaDex request failed');
-    }
-    if (response.status === 404) {
-      throw new NotFoundException('MangaDex title not found');
-    }
-    if (!response.ok) {
-      throw new BadGatewayException(`MangaDex returned ${response.status}`);
-    }
-    return (await response.json()) as T;
+    return this.http.json<T>(this.descriptor, url);
   }
 }

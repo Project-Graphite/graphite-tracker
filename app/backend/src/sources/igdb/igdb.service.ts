@@ -1,11 +1,11 @@
 import {
-  BadGatewayException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConnectorCacheService } from '../connector-cache.service';
+import { ConnectorHttpService } from '../connector-http.service';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -64,6 +64,7 @@ export class IgdbService {
   constructor(
     private readonly config: ConfigService,
     private readonly cache: ConnectorCacheService,
+    private readonly http: ConnectorHttpService,
   ) {
     this.descriptor = {
       key: 'igdb',
@@ -71,8 +72,10 @@ export class IgdbService {
       categories: ['game'],
       languages: [],
       attribution: 'Game data provided by IGDB',
+      attributionUrl: 'https://www.igdb.com/',
       capabilities: ['SEARCH', 'DETAILS', 'RELEASES', 'PLATFORMS', 'DEEP_LINK'],
-      outboundDomains: ['igdb.com', 'images.igdb.com'],
+      outboundDomains: ['igdb.com', 'twitch.tv'],
+      requestIntervalMs: 260,
       enabled: Boolean(
         this.config.get<string>('IGDB_CLIENT_ID') &&
           this.config.get<string>('IGDB_CLIENT_SECRET'),
@@ -116,7 +119,11 @@ export class IgdbService {
     if (!game) {
       throw new NotFoundException('IGDB game not found');
     }
-    return { ...this.normalize(game), attribution: this.descriptor.attribution };
+    return {
+      ...this.normalize(game),
+      attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
+    };
   }
 
   recognize(url: URL): { category: CatalogCategory; externalId: string } | null {
@@ -165,6 +172,7 @@ export class IgdbService {
       totalResults: offset + filtered.length,
       results: filtered,
       attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
     };
   }
 
@@ -256,39 +264,25 @@ export class IgdbService {
       3_300,
       () => this.fetchToken(clientId, clientSecret),
     );
-    let response: Response;
-    try {
-      response = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
+    return this.http.json<T>(
+      this.descriptor,
+      new URL(`https://api.igdb.com/v4/${endpoint}`),
+      {
         method: 'POST',
         headers: {
-          Accept: 'application/json',
           'Client-ID': clientId,
           Authorization: `Bearer ${token.access_token}`,
         },
         body,
-        signal: AbortSignal.timeout(8_000),
-      });
-    } catch {
-      throw new BadGatewayException('IGDB request failed');
-    }
-    if (!response.ok) {
-      throw new BadGatewayException(`IGDB returned ${response.status}`);
-    }
-    return (await response.json()) as T;
+      },
+    );
   }
 
-  private async fetchToken(clientId: string, clientSecret: string) {
+  private fetchToken(clientId: string, clientSecret: string) {
     const url = new URL('https://id.twitch.tv/oauth2/token');
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('client_secret', clientSecret);
     url.searchParams.set('grant_type', 'client_credentials');
-    const response = await fetch(url, {
-      method: 'POST',
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) {
-      throw new BadGatewayException('Twitch authentication failed');
-    }
-    return (await response.json()) as TwitchToken;
+    return this.http.json<TwitchToken>(this.descriptor, url, { method: 'POST' });
   }
 }

@@ -1,11 +1,11 @@
 import {
   BadRequestException,
-  BadGatewayException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ConnectorHttpService } from '../connector-http.service';
 import {
   TmdbMovieResult,
   TmdbSearchResponse,
@@ -73,10 +73,14 @@ export class TmdbService {
     attribution: 'The Movie Database (TMDB)',
     capabilities: ['SEARCH', 'DETAILS', 'RELEASES', 'EPISODES', 'DEEP_LINK'],
     outboundDomains: ['themoviedb.org', 'image.tmdb.org'],
+    requestIntervalMs: 25,
     enabled: true,
   };
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly http: ConnectorHttpService,
+  ) {}
 
   async searchMovies(query: string, page: number, filters: CatalogFilters = {}) {
     const response = await this.searchMovieRequest(query, page, filters);
@@ -166,6 +170,7 @@ export class TmdbService {
             page,
             filters,
             'primary_release_date',
+            this.requiredGenreId(movieGenres, filters.genre),
           ),
         ),
       );
@@ -180,36 +185,61 @@ export class TmdbService {
             page,
             filters,
             'first_air_date',
+            this.requiredGenreId(tvGenres, filters.genre),
           ),
         ),
       );
     }
     if (category === 'anime') {
+      const movieGenre = this.genreId(movieGenres, filters.genre);
+      const tvGenre = this.genreId(tvGenres, filters.genre);
+      if (filters.genre && !movieGenre && !tvGenre) {
+        throw new BadRequestException('Genre does not match this media category');
+      }
+      const empty = { page, total_pages: 0, total_results: 0, results: [] };
       const [movies, shows] = await Promise.all([
-        this.request<TmdbSearchResponse>(
-          '/discover/movie',
-          this.discoverFilters(
-            'anime',
-            section,
-            page,
-            filters,
-            'primary_release_date',
-          ),
-        ),
-        this.request<TmdbTvSearchResponse>(
-          '/discover/tv',
-          this.discoverFilters(
-            'anime',
-            section,
-            page,
-            filters,
-            'first_air_date',
-          ),
-        ),
+        (filters.genre && !movieGenre) || filters.status
+          ? empty
+          : this.request<TmdbSearchResponse>(
+              '/discover/movie',
+              this.discoverFilters(
+                'anime',
+                section,
+                page,
+                filters,
+                'primary_release_date',
+                movieGenre,
+              ),
+            ),
+        filters.genre && !tvGenre
+          ? empty
+          : this.request<TmdbTvSearchResponse>(
+              '/discover/tv',
+              this.discoverFilters(
+                'anime',
+                section,
+                page,
+                filters,
+                'first_air_date',
+                tvGenre,
+              ),
+            ),
       ]);
       return this.normalizeAnimeList(movies, shows, section === 'recent');
     }
     throw new NotFoundException('TMDB does not support this category');
+  }
+
+  async genres(category: CatalogCategory) {
+    const names =
+      category === 'movie'
+        ? Object.values(movieGenres)
+        : category === 'tv'
+          ? Object.values(tvGenres)
+          : [...new Set([...Object.values(movieGenres), ...Object.values(tvGenres)])].filter(
+              (name) => name !== 'Animation',
+            );
+    return names.sort((left, right) => left.localeCompare(right));
   }
 
   async details(category: CatalogCategory, externalId: string): Promise<CatalogDetails> {
@@ -444,12 +474,27 @@ export class TmdbService {
     return Object.values(filters).some((value) => value !== undefined);
   }
 
+  private genreId(genres: Record<number, string>, name?: string) {
+    return Object.entries(genres).find(
+      ([, genre]) => genre.toLowerCase() === name?.toLowerCase(),
+    )?.[0];
+  }
+
+  private requiredGenreId(genres: Record<number, string>, name?: string) {
+    const id = this.genreId(genres, name);
+    if (name && !id) {
+      throw new BadRequestException('Genre does not match this media category');
+    }
+    return id;
+  }
+
   private discoverFilters(
     category: CatalogCategory,
     section: CatalogSection,
     page: number,
     filters: CatalogFilters,
     dateField: 'primary_release_date' | 'first_air_date',
+    genreId: string | undefined,
   ) {
     const validSorts =
       category === 'movie'
@@ -468,11 +513,6 @@ export class TmdbService {
           : filters.sort ??
             (section === 'recent' ? `${dateField}.desc` : 'popularity.desc'),
     };
-    const genreId = Object.entries(
-      dateField === 'first_air_date' ? tvGenres : movieGenres,
-    ).find(
-      ([, name]) => name.toLowerCase() === filters.genre?.toLowerCase(),
-    )?.[0];
     if (genreId) {
       parameters.with_genres = genreId;
     }
@@ -540,7 +580,7 @@ export class TmdbService {
     });
   }
 
-  private async request<T>(path: string, parameters: Record<string, string>) {
+  private request<T>(path: string, parameters: Record<string, string>) {
     const token = this.config.get<string>('TMDB_READ_ACCESS_TOKEN');
     if (!token) {
       throw new ServiceUnavailableException('TMDB is not configured');
@@ -549,24 +589,8 @@ export class TmdbService {
     Object.entries(parameters).forEach(([key, value]) =>
       url.searchParams.set(key, value),
     );
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-        signal: AbortSignal.timeout(8_000),
-      });
-    } catch {
-      throw new BadGatewayException('TMDB request failed');
-    }
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new NotFoundException('TMDB title not found');
-      }
-      throw new BadGatewayException(`TMDB returned ${response.status}`);
-    }
-    return (await response.json()) as T;
+    return this.http.json<T>(this.descriptor, url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
   }
 }

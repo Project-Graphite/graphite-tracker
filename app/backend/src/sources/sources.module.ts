@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { ConnectorCacheService } from './connector-cache.service';
+import { ConnectorHttpService } from './connector-http.service';
 import { ConnectorRegistryService } from './connector-registry.service';
 import { IgdbService } from './igdb/igdb.service';
 import { MangaDexService } from './mangadex/mangadex.service';
@@ -13,6 +14,7 @@ import { TmdbService } from './tmdb/tmdb.service';
   imports: [AuthModule],
   providers: [
     ConnectorCacheService,
+    ConnectorHttpService,
     ConnectorRegistryService,
     IgdbService,
     MangaDexService,

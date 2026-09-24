@@ -1,11 +1,10 @@
 import {
-  BadGatewayException,
   BadRequestException,
   Injectable,
-  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ConnectorHttpService } from '../connector-http.service';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -54,7 +53,10 @@ interface RawgPage {
 export class RawgService {
   readonly descriptor: ConnectorDescriptor;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly http: ConnectorHttpService,
+  ) {
     this.descriptor = {
       key: 'rawg',
       displayName: 'RAWG',
@@ -63,7 +65,8 @@ export class RawgService {
       attribution: 'Game data provided by RAWG',
       attributionUrl: 'https://rawg.io/',
       capabilities: ['SEARCH', 'DETAILS', 'RELEASES', 'PLATFORMS', 'DEEP_LINK'],
-      outboundDomains: ['rawg.io', 'media.rawg.io'],
+      outboundDomains: ['rawg.io'],
+      requestIntervalMs: 200,
       enabled: Boolean(this.config.get<string>('RAWG_API_KEY')),
     };
   }
@@ -230,10 +233,7 @@ export class RawgService {
     return ordering;
   }
 
-  private async request<T>(
-    path: string,
-    parameters: Record<string, string>,
-  ): Promise<T> {
+  private request<T>(path: string, parameters: Record<string, string>) {
     const key = this.config.get<string>('RAWG_API_KEY');
     if (!key) {
       throw new ServiceUnavailableException('RAWG is not configured');
@@ -243,21 +243,6 @@ export class RawgService {
     Object.entries(parameters).forEach(([name, value]) =>
       url.searchParams.set(name, value),
     );
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(8_000),
-      });
-    } catch {
-      throw new BadGatewayException('RAWG request failed');
-    }
-    if (response.status === 404) {
-      throw new NotFoundException('RAWG game not found');
-    }
-    if (!response.ok) {
-      throw new BadGatewayException(`RAWG returned ${response.status}`);
-    }
-    return (await response.json()) as T;
+    return this.http.json<T>(this.descriptor, url);
   }
 }

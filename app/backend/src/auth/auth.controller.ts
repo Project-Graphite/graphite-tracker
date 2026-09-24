@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
+import { RateLimit } from '../redis/rate-limit.guard';
 import { AuthService, refreshLifetimeMs } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -23,16 +24,19 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @RateLimit('register', 5, 3_600)
   register(@Body() input: RegisterDto) {
     return this.auth.register(input);
   }
 
   @Post('verify-email')
+  @RateLimit('verify-email', 20, 3_600)
   verifyEmail(@Body() input: VerifyEmailDto) {
     return this.auth.verifyEmail(input.token);
   }
 
   @Post('login')
+  @RateLimit('login', 10, 900)
   async login(
     @Body() input: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -43,6 +47,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @RateLimit('refresh', 60, 900)
   async refresh(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,

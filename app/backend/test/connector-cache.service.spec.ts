@@ -1,10 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
+import { RedisService } from '../src/redis/redis.service';
 import { ConnectorCacheService } from '../src/sources/connector-cache.service';
 
 describe('ConnectorCacheService', () => {
   it('coalesces concurrent loads and writes the result once', async () => {
-    const service = new ConnectorCacheService(new ConfigService());
+    const service = new ConnectorCacheService(new RedisService(new ConfigService()));
     const internals = service as unknown as {
       read<T>(key: string): Promise<T | undefined>;
       write<T>(key: string, value: T, staleSeconds: number): Promise<void>;
@@ -25,7 +26,7 @@ describe('ConnectorCacheService', () => {
   });
 
   it('returns a stale value when a connector load fails', async () => {
-    const service = new ConnectorCacheService(new ConfigService());
+    const service = new ConnectorCacheService(new RedisService(new ConfigService()));
     const internals = service as unknown as {
       read<T>(key: string): Promise<T | undefined>;
     };
