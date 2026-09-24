@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { LibraryState, MediaCategory, Prisma } from '@prisma/client';
+import { ActivityKind, LibraryState, MediaCategory, Prisma } from '@prisma/client';
 import { CatalogItemsService } from '../catalog/catalog-items.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
@@ -127,19 +127,27 @@ export class LibraryService {
     const entry = await this.prisma.$transaction(async (transaction) => {
       const source = await this.catalogItems.sourceRecord(transaction, connector.descriptor);
       const item = await this.catalogItems.upsert(transaction, details, source.id);
-      return transaction.libraryEntry.upsert({
+      const existing = await transaction.libraryEntry.findUnique({
         where: { userId_catalogItemId: { userId, catalogItemId: item.id } },
-        update: {},
-        create: {
-          userId,
-          catalogItemId: item.id,
-          state,
-          startedAt: state === LibraryState.IN_PROGRESS ? new Date() : null,
-          completedAt: state === LibraryState.COMPLETED ? new Date() : null,
-          statusEvents: { create: { newState: state } },
-        },
         include: libraryEntryInclude,
       });
+      return (
+        existing ??
+        transaction.libraryEntry.create({
+          data: {
+            userId,
+            catalogItemId: item.id,
+            state,
+            startedAt: state === LibraryState.IN_PROGRESS ? new Date() : null,
+            completedAt: state === LibraryState.COMPLETED ? new Date() : null,
+            statusEvents: { create: { newState: state } },
+            activity: {
+              create: { userId, catalogItemId: item.id, kind: ActivityKind.ADDED, state },
+            },
+          },
+          include: libraryEntryInclude,
+        })
+      );
     });
     return this.present(entry);
   }
@@ -217,6 +225,17 @@ export class LibraryService {
           current.state === nextState
             ? undefined
             : { create: { oldState: current.state, newState: nextState } },
+        activity:
+          current.state === nextState
+            ? undefined
+            : {
+                create: {
+                  userId,
+                  catalogItemId: current.catalogItemId,
+                  kind: ActivityKind.STATE_CHANGED,
+                  state: nextState,
+                },
+              },
       },
       include: libraryEntryInclude,
     });

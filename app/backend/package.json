@@ -11,7 +11,8 @@
     "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "admin:grant": "node dist/admin/grant-admin.command.js"
   },
   "dependencies": {
     "@nestjs/common": "12.1.0",

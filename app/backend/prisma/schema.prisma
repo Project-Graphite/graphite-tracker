@@ -22,6 +22,30 @@ enum LibraryState {
   DROPPED     @map("dropped")
 }
 
+enum ReviewVisibility {
+  PUBLIC  @map("public")
+  PRIVATE @map("private")
+}
+
+enum ReportReason {
+  SPAM     @map("spam")
+  ABUSE    @map("abuse")
+  SPOILERS @map("spoilers")
+  OTHER    @map("other")
+}
+
+enum ReportResolution {
+  DISMISSED @map("dismissed")
+  HIDDEN    @map("hidden")
+}
+
+enum ActivityKind {
+  ADDED         @map("added")
+  STATE_CHANGED @map("state_changed")
+  RATED         @map("rated")
+  REVIEWED      @map("reviewed")
+}
+
 enum ImportState {
   PARSING  @map("parsing")
   MATCHING @map("matching")
@@ -71,6 +95,10 @@ model User {
   categorySourcePreferences CategorySourcePreference[]
   sourceSettings UserSourceSetting[]
   importBatches  ImportBatch[]
+  reviews         Review[]
+  reportsFiled    ReviewReport[]  @relation("ReportsFiled")
+  reportsResolved ReviewReport[]  @relation("ReportsResolved")
+  activity        ActivityEvent[]
 
   @@map("users")
 }
@@ -128,6 +156,8 @@ model CatalogItem {
   updatedAt       DateTime       @updatedAt @map("updated_at")
   sourceEntries   SourceEntry[]
   libraryEntries  LibraryEntry[]
+  reviews         Review[]
+  activity        ActivityEvent[]
 
   @@index([category, canonicalTitle])
   @@map("catalog_items")
@@ -194,6 +224,7 @@ model LibraryEntry {
   preferredSource      SourceRecord?        @relation("PreferredSource", fields: [preferredSourceId], references: [id], onDelete: SetNull)
   statusEvents         LibraryStatusEvent[]
   importedSources      ImportedSourceReference[]
+  activity             ActivityEvent[]
 
   @@unique([userId, catalogItemId])
   @@index([userId, state])
@@ -308,4 +339,62 @@ model ImportedSourceReference {
 
   @@unique([libraryEntryId, sourceName, sourceUrl])
   @@map("imported_source_references")
+}
+
+model Review {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  catalogItemId    String           @map("catalog_item_id") @db.Uuid
+  rating           Int?
+  title            String?
+  body             String?
+  containsSpoilers Boolean          @default(false) @map("contains_spoilers")
+  visibility       ReviewVisibility @default(PRIVATE)
+  hiddenAt         DateTime?        @map("hidden_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogItem      CatalogItem      @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+  reports          ReviewReport[]
+  activity         ActivityEvent[]
+
+  @@unique([userId, catalogItemId])
+  @@index([catalogItemId, visibility])
+  @@map("reviews")
+}
+
+model ReviewReport {
+  id          String            @id @default(uuid()) @db.Uuid
+  reviewId    String            @map("review_id") @db.Uuid
+  reporterId  String            @map("reporter_id") @db.Uuid
+  reason      ReportReason
+  resolution  ReportResolution?
+  moderatorId String?           @map("moderator_id") @db.Uuid
+  resolvedAt  DateTime?         @map("resolved_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  review      Review            @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter    User              @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  moderator   User?             @relation("ReportsResolved", fields: [moderatorId], references: [id], onDelete: SetNull)
+
+  @@unique([reporterId, reviewId])
+  @@index([resolution, createdAt])
+  @@map("review_reports")
+}
+
+model ActivityEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  kind           ActivityKind
+  catalogItemId  String        @map("catalog_item_id") @db.Uuid
+  libraryEntryId String?       @map("library_entry_id") @db.Uuid
+  reviewId       String?       @map("review_id") @db.Uuid
+  state          LibraryState?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem   @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+  libraryEntry   LibraryEntry? @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+  review         Review?       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("activity_events")
 }

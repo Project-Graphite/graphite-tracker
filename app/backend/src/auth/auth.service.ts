@@ -146,6 +146,7 @@ export class AuthService {
     email: string;
     handle: string;
     displayName: string;
+    isAdmin: boolean;
   }) {
     const refreshToken = randomBytes(48).toString('base64url');
     await this.prisma.refreshSession.create({
@@ -170,6 +171,7 @@ export class AuthService {
         email: user.email,
         handle: user.handle,
         displayName: user.displayName,
+        isAdmin: user.isAdmin,
       },
     };
   }
