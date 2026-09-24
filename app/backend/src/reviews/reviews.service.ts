@@ -143,11 +143,12 @@ export class ReviewsService {
         create: { userId, catalogItemId, ...data },
         update: data,
       });
+      const ratingChanged = rating !== (existing?.rating ?? null);
       const kinds = [
-        ...(rating !== null && rating !== existing?.rating ? [ActivityKind.RATED] : []),
+        ...(ratingChanged && rating !== null ? [ActivityKind.RATED] : []),
         ...(body !== null && !existing?.body ? [ActivityKind.REVIEWED] : []),
       ];
-      if (kinds.includes(ActivityKind.RATED)) {
+      if (ratingChanged) {
         await transaction.activityEvent.deleteMany({
           where: { reviewId: saved.id, kind: ActivityKind.RATED },
         });
