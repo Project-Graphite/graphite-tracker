@@ -70,7 +70,12 @@ function YourReview({
       ) : (
         <p className="m-0 text-sm text-muted">You have not rated this title yet.</p>
       )}
-      <button className="secondary-button px-3 py-2 text-sm" onClick={() => setEditing(true)} type="button">
+      <button
+        className="secondary-button px-3 py-2 text-sm"
+        disabled={!review && !me.data && !me.error}
+        onClick={() => setEditing(true)}
+        type="button"
+      >
         {review ? 'Edit' : 'Rate or review'}
       </button>
     </div>

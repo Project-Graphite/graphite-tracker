@@ -62,7 +62,6 @@ function Facts({ item }: { item: CatalogDetails }) {
   const counts = [
     ['seasonCount', 'season'],
     ['episodeCount', 'episode'],
-    ['chapterCount', 'chapter'],
     ['volumeCount', 'volume'],
   ] as const;
   return (
@@ -75,6 +74,11 @@ function Facts({ item }: { item: CatalogDetails }) {
           <span key={key}>{value === null ? `? ${noun}s` : countLabel(value, noun)}</span>
         );
       })}
+      {item.chapterCount !== undefined && (
+        <span>
+          {item.chapterCount === null ? 'latest chapter unknown' : `latest chapter ${item.chapterCount}`}
+        </span>
+      )}
       <span>{item.language.toUpperCase()}</span>
     </div>
   );

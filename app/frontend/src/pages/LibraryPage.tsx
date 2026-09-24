@@ -82,8 +82,8 @@ export function LibraryPage() {
           </div>
         </div>
       </div>
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
-        <form onSubmit={search} role="search">
+      <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+        <form className="col-span-2 lg:col-span-1" onSubmit={search} role="search">
           <label className="field-label">
             Search
             <input defaultValue={searchParams.get('query') ?? ''} key={searchParams.get('query')} name="query" placeholder="Title" type="search" />
@@ -107,7 +107,7 @@ export function LibraryPage() {
             ))}
           </select>
         </label>
-        <label className="field-label">
+        <label className="field-label col-span-2 lg:col-span-1">
           Sort
           <select onChange={(event) => go({ sort: event.target.value })} value={searchParams.get('sort') ?? ''}>
             <option value="">Recently updated</option>

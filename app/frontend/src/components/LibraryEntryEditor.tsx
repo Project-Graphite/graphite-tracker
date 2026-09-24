@@ -81,7 +81,7 @@ function ProgressFields({
         <NumberField label="Completion %" max={100} name="completionPercentage" onCommit={onUpdate} value={entry.progress.percentage} />
       )}
       {units.includes('hours') && (
-        <fieldset className="m-0 border-0 p-0 sm:col-span-2">
+        <fieldset className="m-0 border-0 p-0 @sm:col-span-2">
           <legend className="field-label">Platforms you play on</legend>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
             {platforms.map((platform) => (
@@ -170,8 +170,8 @@ export function LibraryEntryEditor({
   };
 
   return (
-    <div className="grid gap-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div className="@container grid gap-5">
+      <div className="grid gap-4 @sm:grid-cols-2">
         <label className="field-label">
           List
           <select

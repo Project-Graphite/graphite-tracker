@@ -159,7 +159,7 @@ export function DiscoverPage({
     <div className="page-enter">
       <p className="eyebrow">Unified catalogue</p>
       <h1 className="page-title">Discover {categoryLabels[category]}</h1>
-      <nav aria-label="Media categories" className="mt-7 flex gap-2 overflow-x-auto pb-1">
+      <nav aria-label="Media categories" className="mt-7 flex flex-wrap gap-2">
         {discoverCategories.map((item) => (
           <NavLink
             className={({ isActive }) =>
@@ -188,12 +188,12 @@ export function DiscoverPage({
         ))}
       </nav>
       <form
-        className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
+        className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-6"
         key={`${category}:${section}:${searchParams.toString()}`}
         onSubmit={apply}
       >
         {section === 'search' && (
-          <label className="field-label sm:col-span-2">
+          <label className="field-label col-span-2">
             Title
             <input defaultValue={query} minLength={2} name="q" placeholder="Search by title" required />
           </label>
@@ -251,7 +251,7 @@ export function DiscoverPage({
             </select>
           </label>
         )}
-        <div className="flex items-end gap-3">
+        <div className="col-span-2 flex items-end gap-3 lg:col-span-1">
           <button className="primary-button flex-1" type="submit">
             {section === 'search' ? 'Search' : 'Apply'}
           </button>
