@@ -15,6 +15,7 @@ interface User {
   email: string;
   handle: string;
   displayName: string;
+  isAdmin: boolean;
 }
 
 interface Session {

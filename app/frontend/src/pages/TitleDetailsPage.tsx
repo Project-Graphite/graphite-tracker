@@ -12,15 +12,18 @@ import { Attribution } from '../components/Attribution';
 import { AddToListButton } from '../components/CatalogCard';
 import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
+import { TitleReviews } from '../components/TitleReviews';
 import type { LibraryEntry } from '../library';
-import { useResource } from '../useResource';
+import { useResource, type Resource } from '../useResource';
 
-function LibraryPanel({ item }: { item: CatalogDetails }) {
+function LibraryPanel({
+  item,
+  lookup,
+}: {
+  item: CatalogDetails;
+  lookup: Resource<LibraryEntry[]>;
+}) {
   const auth = useAuth();
-  const lookup = useResource<LibraryEntry[]>(
-    auth.user ? `/library/lookup?refs=${encodeURIComponent(catalogRef(item))}` : null,
-    true,
-  );
   const entry = lookup.data?.[0] ?? null;
 
   return (
@@ -78,6 +81,7 @@ function Facts({ item }: { item: CatalogDetails }) {
 }
 
 export function TitleDetailsPage() {
+  const auth = useAuth();
   const { category: categoryParam, externalId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const source = searchParams.get('source');
@@ -87,6 +91,13 @@ export function TitleDetailsPage() {
       ? `/catalog/${category}/${encodeURIComponent(externalId)}${source ? `?source=${encodeURIComponent(source)}` : ''}`
       : null,
   );
+  const lookup = useResource<LibraryEntry[]>(
+    auth.user && details.data
+      ? `/library/lookup?refs=${encodeURIComponent(catalogRef(details.data))}`
+      : null,
+    true,
+  );
+  const entry = !auth.user ? null : lookup.data ? (lookup.data[0] ?? null) : undefined;
 
   if (!category) {
     return <Navigate replace to="/discover/movie/recent" />;
@@ -160,7 +171,7 @@ export function TitleDetailsPage() {
           )}
         </header>
         <div className="md:col-start-1 md:row-start-2">
-          <LibraryPanel item={item} />
+          <LibraryPanel item={item} lookup={lookup} />
         </div>
         <div className="min-w-0 md:col-start-2 md:row-start-2">
           <section>
@@ -218,6 +229,7 @@ export function TitleDetailsPage() {
             ))}
             <Attribution source={item} />
           </div>
+          <TitleReviews entry={entry} item={item} />
         </div>
       </div>
     </article>

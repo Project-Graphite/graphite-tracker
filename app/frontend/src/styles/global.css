@@ -44,6 +44,7 @@
 
 :root {
   color-scheme: dark;
+  accent-color: var(--color-ink);
   font-family: var(--font-sans);
   background: var(--color-paper);
   color: var(--color-ink);
@@ -60,13 +61,20 @@ body {
 
 @layer base {
   input:not([type='checkbox'], [type='radio']),
-  select {
+  select,
+  textarea {
     width: 100%;
     border: 1px solid var(--color-line);
     border-radius: 0.5rem;
     background: var(--color-surface);
     padding: 0.75rem 0.875rem;
     color: var(--color-ink);
+  }
+
+  textarea {
+    resize: vertical;
+    font: inherit;
+    line-height: 1.55;
   }
 
   input::placeholder {

@@ -43,9 +43,17 @@ export function Shell() {
                 <NavLink className={navClass} to="/library">
                   library
                 </NavLink>
-                <NavLink className={navClass} to="/sources">
-                  sources
+                <NavLink className={navClass} to={`/users/${auth.user.handle}`}>
+                  profile
                 </NavLink>
+                <NavLink className={navClass} to="/settings">
+                  settings
+                </NavLink>
+                {auth.user.isAdmin && (
+                  <NavLink className={navClass} to="/admin">
+                    admin
+                  </NavLink>
+                )}
                 <button className="text-button whitespace-nowrap" onClick={() => void signOut()} type="button">
                   sign out
                 </button>
@@ -66,8 +74,19 @@ export function Shell() {
       <main className="shell flex-1 py-10 sm:py-14" id="content">
         <Outlet />
       </main>
-      <footer className="shell mono-sm mt-16 border-t border-line-soft py-8 text-faint">
-        Track stories across every medium.
+      <footer className="shell mono-sm mt-16 flex flex-wrap justify-between gap-x-6 gap-y-3 border-t border-line-soft py-8 text-faint">
+        <span>Track stories across every medium.</span>
+        <nav aria-label="About" className="flex gap-5">
+          <Link className="text-faint no-underline hover:text-ink" to="/privacy">
+            privacy
+          </Link>
+          <Link className="text-faint no-underline hover:text-ink" to="/terms">
+            terms
+          </Link>
+          <Link className="text-faint no-underline hover:text-ink" to="/credits">
+            credits
+          </Link>
+        </nav>
       </footer>
     </div>
   );

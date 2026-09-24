@@ -24,7 +24,7 @@ export function LibraryCard({
 }) {
   const [editing, setEditing] = useState(false);
   const href = entryHref(entry);
-  const summary = [stateLabel(entry.item.category, entry.state), progressSummary(entry)]
+  const summary = [stateLabel(entry.item.category, entry.state), progressSummary(entry.progress)]
     .filter(Boolean)
     .join(' · ');
   const meta = [categoryLabels[entry.item.category], entry.item.releaseDate?.slice(0, 4)]

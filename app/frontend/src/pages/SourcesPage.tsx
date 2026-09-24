@@ -36,10 +36,8 @@ export function SourcesPage() {
   const { data } = settings;
 
   return (
-    <div className="page-enter">
-      <p className="eyebrow">Catalogue connectors</p>
-      <h1 className="page-title">Sources</h1>
-      <p className="mt-4 max-w-3xl text-muted">
+    <div>
+      <p className="m-0 max-w-3xl text-muted">
         Choose which approved connectors you use and which one to prefer. Changing a source never
         removes library progress.
       </p>

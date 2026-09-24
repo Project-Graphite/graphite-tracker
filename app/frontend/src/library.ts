@@ -84,7 +84,7 @@ export function stateLabel(category: CatalogCategory, state: LibraryState) {
   return { planned, in_progress: inProgress, completed }[state];
 }
 
-export function progressSummary({ progress }: LibraryEntry) {
+export function progressSummary(progress: Omit<LibraryEntry['progress'], 'platforms'>) {
   return [
     progress.season !== null && `S${progress.season}`,
     progress.episode !== null && `E${progress.episode}`,

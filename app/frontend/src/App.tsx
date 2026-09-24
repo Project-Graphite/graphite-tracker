@@ -3,25 +3,32 @@ import { Navigate, Route, Routes, useLocation, useParams, type Location } from '
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
+import { AdminPage } from './pages/AdminPage';
 import { DiscoverPage } from './pages/DiscoverPage';
 import { HomePage } from './pages/HomePage';
 import { ImportBatchPage } from './pages/ImportBatchPage';
 import { ImportPage } from './pages/ImportPage';
+import { CreditsPage, PrivacyPage, TermsPage } from './pages/LegalPages';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ProfileSettingsPage, SettingsLayout } from './pages/SettingsPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { TitleDetailsPage } from './pages/TitleDetailsPage';
 import { TrackGamesPage } from './pages/TrackGamesPage';
 import { VerifyPage } from './pages/VerifyPage';
 
-function Protected({ children }: { children: ReactNode }) {
+function Protected({ admin = false, children }: { admin?: boolean; children: ReactNode }) {
   const auth = useAuth();
   const location = useLocation();
   if (!auth.ready) {
     return <p className="text-muted">Loading your session…</p>;
   }
-  return auth.user ? children : <Navigate replace state={{ from: location }} to="/login" />;
+  if (!auth.user) {
+    return <Navigate replace state={{ from: location }} to="/login" />;
+  }
+  return admin && !auth.user.isAdmin ? <Navigate replace to="/" /> : children;
 }
 
 function DiscoverRoute() {
@@ -60,7 +67,15 @@ export function App() {
         <Route path="library" element={<Protected><LibraryPage /></Protected>} />
         <Route path="import" element={<Protected><ImportPage /></Protected>} />
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
-        <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
+        <Route path="settings" element={<Protected><SettingsLayout /></Protected>}>
+          <Route index element={<ProfileSettingsPage />} />
+          <Route path="sources" element={<SourcesPage />} />
+        </Route>
+        <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
+        <Route path="users/:handle" element={<ProfilePage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
+        <Route path="terms" element={<TermsPage />} />
+        <Route path="credits" element={<CreditsPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify" element={<VerifyPage />} />
         <Route path="login" element={<SignedOutLogin />} />

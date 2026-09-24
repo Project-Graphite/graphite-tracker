@@ -94,7 +94,7 @@ function CandidateRow({
         {candidate.existing && (
           <p className="mt-3 mb-0 text-sm text-muted">
             In your library:{' '}
-            {[stateLabel(candidate.existing.item.category, candidate.existing.state), progressSummary(candidate.existing)]
+            {[stateLabel(candidate.existing.item.category, candidate.existing.state), progressSummary(candidate.existing.progress)]
               .filter(Boolean)
               .join(' · ')}
           </p>
