@@ -63,7 +63,11 @@ export function LibraryPage() {
           <p className="eyebrow">Your collection</p>
           <h1 className="page-title">Library</h1>
         </div>
-        <div aria-label="Layout" className="flex gap-2" role="group">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link className="secondary-button px-3 py-2 text-sm" to="/import">
+            Import backup
+          </Link>
+          <div aria-label="Layout" className="flex gap-2" role="group">
           {(['grid', 'list'] as const).map((option) => (
             <button
               aria-pressed={layout === option}
@@ -75,6 +79,7 @@ export function LibraryPage() {
               {option}
             </button>
           ))}
+          </div>
         </div>
       </div>
       <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">

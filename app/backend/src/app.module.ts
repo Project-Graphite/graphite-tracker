@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { HealthModule } from './health/health.module';
+import { ImportsModule } from './imports/imports.module';
 import { LibraryModule } from './library/library.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -17,6 +18,7 @@ import { SourcesModule } from './sources/sources.module';
     SourcesModule,
     CatalogModule,
     LibraryModule,
+    ImportsModule,
     HealthModule,
   ],
 })

@@ -31,6 +31,7 @@ export interface LibraryEntry {
     platforms: string[];
   };
   preferredSource: string | null;
+  importedSources: Array<{ id: string; name: string; url: string }>;
   item: {
     id: string;
     category: CatalogCategory;

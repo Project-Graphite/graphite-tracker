@@ -150,6 +150,17 @@ export function LibraryEntryEditor({
       );
     }, 'Could not update this title');
 
+  const removeImportedSource = (referenceId: string) =>
+    void send(async () => {
+      await auth.request(`/library/${entry.id}/imported-sources/${referenceId}`, {
+        method: 'DELETE',
+      });
+      onChange({
+        ...entry,
+        importedSources: entry.importedSources.filter((source) => source.id !== referenceId),
+      });
+    }, 'Could not remove this source');
+
   const remove = () => {
     if (!window.confirm(`Remove ${entry.item.title} from your library?`)) return;
     void send(async () => {
@@ -212,6 +223,28 @@ export function LibraryEntryEditor({
           </p>
         )}
       </div>
+      {entry.importedSources.length > 0 && (
+        <div>
+          <p className="field-label m-0">Imported sources</p>
+          <ul className="m-0 mt-2 grid gap-2 p-0">
+            {entry.importedSources.map((source) => (
+              <li className="flex list-none items-baseline justify-between gap-3 text-sm" key={source.id}>
+                <span className="min-w-0 text-muted">
+                  {source.name} <span className="mono-sm text-faint">· not supported, never checked</span>
+                </span>
+                <button
+                  className="text-button mono-sm"
+                  disabled={busy}
+                  onClick={() => removeImportedSource(source.id)}
+                  type="button"
+                >
+                  remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {error && <p className="error-message m-0">{error}</p>}
       <div className="border-t border-line pt-4">
         <button className="text-button text-sm" disabled={busy} onClick={remove} type="button">

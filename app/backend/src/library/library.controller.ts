@@ -65,4 +65,14 @@ export class LibraryController {
   ) {
     await this.library.remove(user.id, id);
   }
+
+  @Delete(':id/imported-sources/:referenceId')
+  @HttpCode(204)
+  async removeImportedSource(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('referenceId', ParseUUIDPipe) referenceId: string,
+  ) {
+    await this.library.removeImportedSource(user.id, id, referenceId);
+  }
 }

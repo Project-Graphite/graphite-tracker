@@ -5,6 +5,8 @@ import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
 import { DiscoverPage } from './pages/DiscoverPage';
 import { HomePage } from './pages/HomePage';
+import { ImportBatchPage } from './pages/ImportBatchPage';
+import { ImportPage } from './pages/ImportPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -56,6 +58,8 @@ export function App() {
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
         <Route path="games" element={<TrackGamesPage />} />
         <Route path="library" element={<Protected><LibraryPage /></Protected>} />
+        <Route path="import" element={<Protected><ImportPage /></Protected>} />
+        <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
         <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify" element={<VerifyPage />} />

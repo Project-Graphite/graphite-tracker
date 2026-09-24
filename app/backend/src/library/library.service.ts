@@ -26,6 +26,7 @@ const pageSize = 24;
 
 const libraryEntryInclude = Prisma.validator<Prisma.LibraryEntryInclude>()({
   preferredSource: true,
+  importedSources: { orderBy: { createdAt: 'asc' } },
   catalogItem: {
     include: { sourceEntries: { include: { source: true } } },
   },
@@ -80,23 +81,35 @@ export class LibraryService {
     };
   }
 
-  async lookup(userId: string, refs: string) {
-    const sources = refs
-      .split(',')
-      .slice(0, 100)
-      .flatMap((ref) => {
-        const separator = ref.indexOf(':');
-        return separator > 0 && separator < ref.length - 1
-          ? [{ externalId: ref.slice(separator + 1), source: { key: ref.slice(0, separator) } }]
-          : [];
-      });
-    if (sources.length === 0) {
+  lookup(userId: string, refs: string) {
+    return this.bySources(
+      userId,
+      refs
+        .split(',')
+        .slice(0, 100)
+        .flatMap((ref) => {
+          const separator = ref.indexOf(':');
+          return separator > 0 && separator < ref.length - 1
+            ? [{ source: ref.slice(0, separator), externalId: ref.slice(separator + 1) }]
+            : [];
+        }),
+    );
+  }
+
+  async bySources(userId: string, refs: Array<{ source: string; externalId: string }>) {
+    if (refs.length === 0) {
       return [];
     }
     const entries = await this.prisma.libraryEntry.findMany({
       where: {
         userId,
-        catalogItem: { sourceEntries: { some: { OR: sources } } },
+        catalogItem: {
+          sourceEntries: {
+            some: {
+              OR: refs.map(({ source, externalId }) => ({ externalId, source: { key: source } })),
+            },
+          },
+        },
       },
       include: libraryEntryInclude,
     });
@@ -219,6 +232,15 @@ export class LibraryService {
     }
   }
 
+  async removeImportedSource(userId: string, id: string, referenceId: string) {
+    const result = await this.prisma.importedSourceReference.deleteMany({
+      where: { id: referenceId, libraryEntry: { id, userId } },
+    });
+    if (!result.count) {
+      throw new NotFoundException('Imported source not found');
+    }
+  }
+
   private async preferredSourceId(catalogItemId: string, key: string) {
     const source = await this.prisma.sourceRecord.findFirst({
       where: {
@@ -300,6 +322,11 @@ export class LibraryService {
         platforms: entry.platforms,
       },
       preferredSource: entry.preferredSource?.key ?? null,
+      importedSources: entry.importedSources.map((reference) => ({
+        id: reference.id,
+        name: reference.sourceName,
+        url: reference.sourceUrl,
+      })),
       item: {
         id: entry.catalogItem.id,
         category: entry.catalogItem.category.toLowerCase(),

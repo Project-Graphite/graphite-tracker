@@ -22,6 +22,34 @@ enum LibraryState {
   DROPPED     @map("dropped")
 }
 
+enum ImportState {
+  PARSING  @map("parsing")
+  MATCHING @map("matching")
+  READY    @map("ready")
+  APPLYING @map("applying")
+  APPLIED  @map("applied")
+  FAILED   @map("failed")
+}
+
+enum ImportConflictPolicy {
+  ADD_MISSING           @map("add_missing")
+  KEEP_GREATER_PROGRESS @map("keep_greater_progress")
+}
+
+enum ImportMatch {
+  PENDING     @map("pending")
+  EXACT       @map("exact")
+  SUGGESTED   @map("suggested")
+  UNMATCHED   @map("unmatched")
+  DUPLICATE   @map("duplicate")
+  UNSUPPORTED @map("unsupported")
+}
+
+enum ImportDecision {
+  ACCEPT @map("accept")
+  SKIP   @map("skip")
+}
+
 model User {
   id                 String              @id @default(uuid()) @db.Uuid
   email              String              @unique
@@ -42,6 +70,7 @@ model User {
   globalSourcePreference GlobalSourcePreference?
   categorySourcePreferences CategorySourcePreference[]
   sourceSettings UserSourceSetting[]
+  importBatches  ImportBatch[]
 
   @@map("users")
 }
@@ -164,6 +193,7 @@ model LibraryEntry {
   catalogItem          CatalogItem          @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
   preferredSource      SourceRecord?        @relation("PreferredSource", fields: [preferredSourceId], references: [id], onDelete: SetNull)
   statusEvents         LibraryStatusEvent[]
+  importedSources      ImportedSourceReference[]
 
   @@unique([userId, catalogItemId])
   @@index([userId, state])
@@ -217,4 +247,65 @@ model LibraryStatusEvent {
 
   @@index([libraryEntryId, createdAt])
   @@map("library_status_events")
+}
+
+model ImportBatch {
+  id               String                    @id @default(uuid()) @db.Uuid
+  userId           String                    @map("user_id") @db.Uuid
+  sourceApp        String?                   @map("source_app")
+  fileDigest       String                    @map("file_digest")
+  state            ImportState               @default(PARSING)
+  conflictPolicy   ImportConflictPolicy      @default(ADD_MISSING) @map("conflict_policy")
+  error            String?
+  expiresAt        DateTime                  @map("expires_at")
+  appliedAt        DateTime?                 @map("applied_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidates       ImportCandidate[]
+  sourceReferences ImportedSourceReference[]
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("import_batches")
+}
+
+model ImportCandidate {
+  id            String          @id @default(uuid()) @db.Uuid
+  batchId       String          @map("batch_id") @db.Uuid
+  position      Int
+  kind          String
+  title         String
+  trackerTitles String[]        @default([]) @map("tracker_titles")
+  sourceName    String?         @map("source_name")
+  sourceUrl     String?         @map("source_url")
+  mangadexId    String?         @map("mangadex_id")
+  progress      Decimal?        @db.Decimal(10, 2)
+  state         LibraryState
+  match         ImportMatch     @default(PENDING)
+  issue         String?
+  options       Json            @default("[]")
+  choice        Int?
+  decision      ImportDecision?
+  outcome       String?
+  catalogItemId String?         @map("catalog_item_id") @db.Uuid
+  batch         ImportBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, position])
+  @@index([batchId, match])
+  @@map("import_candidates")
+}
+
+model ImportedSourceReference {
+  id             String       @id @default(uuid()) @db.Uuid
+  libraryEntryId String       @map("library_entry_id") @db.Uuid
+  batchId        String?      @map("batch_id") @db.Uuid
+  sourceName     String       @map("source_name")
+  sourceUrl      String       @map("source_url")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  libraryEntry   LibraryEntry @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+  batch          ImportBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@unique([libraryEntryId, sourceName, sourceUrl])
+  @@map("imported_source_references")
 }
