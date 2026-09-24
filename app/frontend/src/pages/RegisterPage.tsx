@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 
 export function RegisterPage() {
@@ -24,7 +25,7 @@ export function RegisterPage() {
       setToken(result.verificationToken ?? '');
       setCreated(true);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Registration failed');
+      setError(errorMessage(reason, 'Registration failed'));
     } finally {
       setBusy(false);
     }

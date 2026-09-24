@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { NavLink, useNavigate, useSearchParams } from 'react-router';
-import { apiRequest, isAbortError } from '../api';
+import { useState, type FormEvent } from 'react';
+import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
+import { apiRequest, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -13,10 +13,12 @@ import {
   type ConnectorDescriptor,
   type DiscoverCategory,
 } from '../catalog';
-import { CatalogCard } from '../components/CatalogCard';
+import { Attribution } from '../components/Attribution';
+import { CatalogGrid } from '../components/CatalogCard';
+import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import type { SourceSettings } from '../sources';
-import { librarySourceKey, useLibraryEntries } from '../useLibraryEntries';
+import { useResource } from '../useResource';
 
 const sections: Array<{ id: CatalogSection; label: string }> = [
   { id: 'recent', label: 'Recent' },
@@ -24,48 +26,43 @@ const sections: Array<{ id: CatalogSection; label: string }> = [
   { id: 'search', label: 'Search' },
 ];
 
-const televisionStatuses = [
-  ['returning', 'Returning'],
-  ['planned', 'Planned'],
-  ['production', 'In production'],
-  ['ended', 'Ended'],
-  ['canceled', 'Canceled'],
-  ['pilot', 'Pilot'],
-] as const;
+const filterKeys = ['genre', 'year', 'status', 'sort', 'source'] as const;
 
-const comicStatuses = [
-  ['ongoing', 'Ongoing'],
-  ['completed', 'Completed'],
-  ['hiatus', 'Hiatus'],
-  ['cancelled', 'Cancelled'],
-] as const;
-
-function statusOptions(category: CatalogCategory) {
-  if (category === 'tv' || category === 'anime') return televisionStatuses;
-  if (category === 'manga' || category === 'manhwa') return comicStatuses;
+function statusOptions(category: DiscoverCategory, section: CatalogSection) {
+  if ((category === 'tv' || category === 'anime') && section !== 'search') {
+    return [
+      ['returning', 'Returning'],
+      ['planned', 'Planned'],
+      ['production', 'In production'],
+      ['ended', 'Ended'],
+      ['canceled', 'Canceled'],
+      ['pilot', 'Pilot'],
+    ];
+  }
+  if (category === 'manga' || category === 'manhwa') {
+    return [
+      ['ongoing', 'Ongoing'],
+      ['completed', 'Completed'],
+      ['hiatus', 'Hiatus'],
+      ['cancelled', 'Cancelled'],
+    ];
+  }
   return [];
 }
 
-function sortOptions(category: DiscoverCategory) {
-  if (category === 'movie') {
+function sortOptions(category: DiscoverCategory, section: CatalogSection) {
+  if (category === 'manga' || category === 'manhwa') {
     return [
-      ['popularity.desc', 'Popularity'],
-      ['vote_average.desc', 'Rating'],
-      ['primary_release_date.desc', 'Newest'],
-    ] as const;
+      ['followedCount', 'Most followed'],
+      ['latestUploadedChapter', 'Latest update'],
+    ];
   }
-  if (category === 'tv' || category === 'anime') {
-    return [
-      ['popularity.desc', 'Popularity'],
-      ['vote_average.desc', 'Rating'],
-      ['first_air_date.desc', 'Newest'],
-    ] as const;
-  }
+  const newest = category === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc';
   return [
-    ['followedCount', 'Most followed'],
-    ['latestUploadedChapter', 'Latest update'],
-    ['relevance', 'Relevance'],
-  ] as const;
+    ...(section === 'search' ? [] : [['popularity.desc', 'Popularity']]),
+    ['vote_average.desc', 'Rating'],
+    [newest, 'Newest'],
+  ];
 }
 
 function pageFrom(value: string | null) {
@@ -83,144 +80,93 @@ export function DiscoverPage({
   const auth = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [urlError, setUrlError] = useState('');
   const query = searchParams.get('q')?.trim() ?? '';
   const page = pageFrom(searchParams.get('page'));
-  const [result, setResult] = useState<CatalogResponse>();
-  const [settings, setSettings] = useState<SourceSettings>();
-  const [catalogSources, setCatalogSources] = useState<ConnectorDescriptor[]>([]);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const library = useLibraryEntries();
-  const sources: ConnectorDescriptor[] = settings
-    ? settings.sources.filter((item) => item.categories.includes(category))
-    : catalogSources;
-  const configured = settings?.categories[category] ?? settings?.global;
-  const preferredSource =
-    configured && sources.some((item) => item.key === configured && item.enabled)
-      ? configured
-      : '';
-  const sourcesReady = auth.ready && (!auth.accessToken || settings !== undefined);
-  const source = section === 'search'
-    ? searchParams.get('source') || preferredSource
-    : preferredSource;
-  const isRecentPreview = section === 'search' && query.length < 2;
-  const availableStatuses = statusOptions(category);
+  const settings = useResource<SourceSettings>(
+    auth.ready && auth.user ? '/sources' : null,
+    true,
+  );
+  const publicSources = useResource<ConnectorDescriptor[]>(
+    auth.ready && !auth.user ? `/catalog/sources?category=${category}` : null,
+  );
+  const sources = settings.data
+    ? settings.data.sources.filter(
+        (source) => source.enabled && source.categories.includes(category),
+      )
+    : (publicSources.data ?? []).filter((source) => source.enabled);
+  const preferred = settings.data?.categories[category] ?? settings.data?.global;
+  const source =
+    searchParams.get('source') ||
+    (preferred && sources.some((item) => item.key === preferred) ? preferred : '');
+  const sourcesReady = Boolean(
+    settings.data ?? publicSources.data ?? (settings.error || publicSources.error),
+  );
+  const genres = useResource<string[]>(
+    `/catalog/${category}/genres${source ? `?source=${source}` : ''}`,
+  );
 
-  useEffect(() => {
-    if (!auth.accessToken) {
-      setSettings(undefined);
-      return;
-    }
-    const controller = new AbortController();
-    void apiRequest<SourceSettings>('/sources', { signal: controller.signal }, auth.accessToken)
-      .then(setSettings)
-      .catch((reason: unknown) => {
-        if (!isAbortError(reason)) {
-          setError(reason instanceof Error ? reason.message : 'Could not load sources');
-        }
-      });
-    return () => controller.abort();
-  }, [auth.user?.id]);
-
-  useEffect(() => {
-    if (auth.accessToken) return;
-    const controller = new AbortController();
-    void apiRequest<ConnectorDescriptor[]>(
-      `/catalog/sources?category=${category}`,
-      { signal: controller.signal },
-    )
-      .then(setCatalogSources)
-      .catch((reason: unknown) => {
-        if (!isAbortError(reason)) {
-          setError(reason instanceof Error ? reason.message : 'Could not load sources');
-        }
-      });
-    return () => controller.abort();
-  }, [auth.accessToken, category]);
-
-  useEffect(() => {
-    if (!sourcesReady) return;
-    const controller = new AbortController();
-    const parameters = new URLSearchParams({
-      page: String(isRecentPreview ? 1 : page),
-    });
-    if (section === 'search' && !isRecentPreview) {
-      parameters.set('query', query);
-      for (const key of ['genre', 'year', 'status', 'sort'] as const) {
-        const value = searchParams.get(key);
-        if (value) parameters.set(key, value);
-      }
-    }
-    if (source) parameters.set('source', source);
-    setResult(undefined);
-    setBusy(true);
-    setError('');
-    void apiRequest<CatalogResponse>(
-      `/catalog/${category}/${isRecentPreview ? 'recent' : section}?${parameters.toString()}`,
-      { signal: controller.signal },
-    )
-      .then(setResult)
-      .catch((reason: unknown) => {
-        if (!isAbortError(reason)) {
-          setError(reason instanceof Error ? reason.message : 'Could not load titles');
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
-      });
-    return () => controller.abort();
-  }, [category, isRecentPreview, page, query, searchParams, section, source, sourcesReady]);
+  const parameters = new URLSearchParams({ page: String(page) });
+  if (section === 'search') parameters.set('query', query);
+  for (const key of filterKeys) {
+    const value = key === 'source' ? source : searchParams.get(key);
+    if (value) parameters.set(key, value);
+  }
+  const canLoad = sourcesReady && (section !== 'search' || query.length >= 2);
+  const results = useResource<CatalogResponse>(
+    canLoad ? `/catalog/${category}/${section}?${parameters.toString()}` : null,
+  );
+  const statuses = statusOptions(category, section);
+  const hasFilters = filterKeys.some((key) => searchParams.get(key));
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const parameters = new URLSearchParams({ page: '1' });
-    for (const key of ['q', 'genre', 'year', 'status', 'source', 'sort']) {
+    const next = new URLSearchParams();
+    for (const key of ['q', ...filterKeys]) {
       const value = String(form.get(key) ?? '').trim();
-      if (value) parameters.set(key, value);
+      if (value) next.set(key, value);
     }
-    navigate(`/discover/${category}/${section}?${parameters.toString()}`);
+    navigate(`/discover/${category}/${section}?${next.toString()}`);
   }
 
   function pageHref(nextPage: number) {
-    const parameters = new URLSearchParams(searchParams);
-    parameters.set('page', String(nextPage));
-    return `/discover/${category}/${section}?${parameters.toString()}`;
+    const next = new URLSearchParams(searchParams);
+    next.set('page', String(nextPage));
+    return `/discover/${category}/${section}?${next.toString()}`;
   }
 
   async function openFromUrl(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setUrlError('');
     const url = String(new FormData(event.currentTarget).get('url')).trim();
     try {
-      const match = await apiRequest<{
-        category: CatalogCategory;
-        externalId: string;
-        source: string;
-      }>(`/catalog/recognize?url=${encodeURIComponent(url)}`);
       navigate(
-        titleHref({
-          category: match.category,
-          externalId: match.externalId,
-          source: match.source,
-        }),
+        titleHref(
+          await apiRequest<{ category: CatalogCategory; externalId: string; source: string }>(
+            `/catalog/recognize?url=${encodeURIComponent(url)}`,
+          ),
+        ),
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Source URL was not recognized');
+      setUrlError(errorMessage(reason, 'This link was not recognized'));
     }
   }
+
+  const error = settings.error || publicSources.error || genres.error || results.error;
 
   return (
     <div className="page-enter">
       <p className="eyebrow">Unified catalogue</p>
-      <h1 className="page-title">Discover {categoryLabels[category]}.</h1>
-      <nav aria-label="Media categories" className="mt-7 flex gap-2 overflow-x-auto pb-2">
+      <h1 className="page-title">Discover {categoryLabels[category]}</h1>
+      <nav aria-label="Media categories" className="mt-7 flex gap-2 overflow-x-auto pb-1">
         {discoverCategories.map((item) => (
           <NavLink
             className={({ isActive }) =>
-              `secondary-button whitespace-nowrap ${isActive ? 'border-ink text-ink' : ''}`
+              `secondary-button px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
             }
             key={item}
-            to={`/discover/${item}/recent`}
+            to={`/discover/${item}/${section}`}
           >
             {categoryLabels[item]}
           </NavLink>
@@ -230,10 +176,8 @@ export function DiscoverPage({
         {sections.map(({ id, label }) => (
           <NavLink
             className={({ isActive }) =>
-              `border-b-2 px-4 py-3 text-sm font-semibold no-underline transition-colors ${
-                isActive
-                  ? 'border-ink text-ink'
-                  : 'border-transparent text-muted hover:text-ink'
+              `-mb-px border-b-2 px-4 py-3 text-sm font-semibold no-underline transition-colors ${
+                isActive ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
               }`
             }
             key={id}
@@ -243,125 +187,131 @@ export function DiscoverPage({
           </NavLink>
         ))}
       </nav>
+      <form
+        className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
+        key={`${category}:${section}:${searchParams.toString()}`}
+        onSubmit={apply}
+      >
+        {section === 'search' && (
+          <label className="field-label sm:col-span-2">
+            Title
+            <input defaultValue={query} minLength={2} name="q" placeholder="Search by title" required />
+          </label>
+        )}
+        {(genres.data?.length ?? 0) > 0 && (
+          <label className="field-label">
+            Genre
+            <select defaultValue={searchParams.get('genre') ?? ''} name="genre">
+              <option value="">Any genre</option>
+              {genres.data?.map((genre) => (
+                <option key={genre} value={genre}>{genre}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="field-label">
+          Year
+          <input
+            defaultValue={searchParams.get('year') ?? ''}
+            max="2200"
+            min="1800"
+            name="year"
+            placeholder="Any year"
+            type="number"
+          />
+        </label>
+        {statuses.length > 0 && (
+          <label className="field-label">
+            Status
+            <select defaultValue={searchParams.get('status') ?? ''} name="status">
+              <option value="">Any status</option>
+              {statuses.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="field-label">
+          Sort
+          <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
+            <option value="">{section === 'search' ? 'Relevance' : 'Default'}</option>
+            {sortOptions(category, section).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+        {sources.length > 1 && (
+          <label className="field-label">
+            Source
+            <select defaultValue={source} name="source">
+              <option value="">Default</option>
+              {sources.map((item) => (
+                <option key={item.key} value={item.key}>{item.displayName}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <div className="flex items-end gap-3">
+          <button className="primary-button flex-1" type="submit">
+            {section === 'search' ? 'Search' : 'Apply'}
+          </button>
+          {hasFilters && (
+            <Link
+              className="text-button mono-sm py-3"
+              to={`/discover/${category}/${section}${query ? `?q=${encodeURIComponent(query)}` : ''}`}
+            >
+              Clear
+            </Link>
+          )}
+        </div>
+      </form>
       {section === 'search' && (
-        <>
-          <form
-            className="mt-7 grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-6"
-            key={`${category}:${searchParams.toString()}`}
-            onSubmit={apply}
-          >
-            <label className="field-label sm:col-span-2">
-              Title
-              <input defaultValue={query} minLength={2} name="q" required />
-            </label>
-            <label className="field-label">
-              Genre
-              <input defaultValue={searchParams.get('genre') ?? ''} name="genre" placeholder="Any genre" />
-            </label>
-            <label className="field-label">
-              Year
-              <input defaultValue={searchParams.get('year') ?? ''} max="2200" min="1800" name="year" type="number" />
-            </label>
-            {availableStatuses.length > 0 && (
-              <label className="field-label">
-                Status
-                <select defaultValue={searchParams.get('status') ?? ''} name="status">
-                  <option value="">Any status</option>
-                  {availableStatuses.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label className="field-label">
-              Source
-              <select defaultValue={searchParams.get('source') ?? preferredSource} name="source">
-                <option value="">Default</option>
-                {sources.filter((item) => item.enabled).map((item) => (
-                  <option key={item.key} value={item.key}>{item.displayName}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field-label">
-              Sort
-              <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
-                <option value="">Default</option>
-                {sortOptions(category).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-            <button className="primary-button self-end" disabled={busy} type="submit">
-              {busy ? 'Loading…' : 'Apply'}
-            </button>
-          </form>
-          <form className="mt-4 grid max-w-3xl gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_auto]" onSubmit={openFromUrl}>
-            <label className="field-label">
-              Title URL
-              <input name="url" placeholder="Paste a TMDB, MangaDex, IGDB, or RAWG URL" required type="url" />
-            </label>
-            <button className="secondary-button self-end" type="submit">Open from URL</button>
-          </form>
-        </>
+        <form className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" onSubmit={(event) => void openFromUrl(event)}>
+          <label className="field-label">
+            Open from a source link
+            <input name="url" placeholder="Paste a TMDB, MangaDex, IGDB or RAWG link" required type="url" />
+          </label>
+          <button className="secondary-button self-end" type="submit">Open</button>
+          {urlError && <p className="error-message m-0 sm:col-span-2">{urlError}</p>}
+        </form>
       )}
-      {busy && !result && <p className="mt-8 text-muted">Loading titles…</p>}
-      {(error || library.error) && (
-        <p className="error-message mt-5 max-w-3xl">{error || library.error}</p>
-      )}
-      {result?.stale && (
-        <p className="mt-5 rounded-lg border border-line bg-surface p-3 text-sm text-muted">
-          The source is temporarily unavailable. Showing the most recent cached result.
-        </p>
-      )}
-      {result && (
-        <section className="mt-10">
-          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
-            <h2 className="m-0 text-xl font-medium">
-              {section === 'search' && !isRecentPreview
-                ? countLabel(result.totalResults, 'result')
-                : section === 'recent' || isRecentPreview
-                  ? 'Recently released'
-                  : 'Popular now'}
-            </h2>
-            <span className="mono-sm text-faint">
-              Data:{' '}
-              {result.attributionUrl ? (
-                <a className="rule-link" href={result.attributionUrl} rel="noreferrer" target="_blank">
-                  {result.attribution}
-                </a>
-              ) : (
-                result.attribution
-              )}
-            </span>
-          </div>
-          {result.results.length === 0 && (
-            <div className="rounded-xl border border-dashed border-line p-8 text-center">
-              <h3 className="m-0 text-xl font-medium">No titles found.</h3>
-              <p className="mt-2 text-muted">
-                {section === 'search' && !isRecentPreview
-                  ? 'Try broader filters or another search.'
-                  : 'No titles are available in this section yet.'}
+      {error && <p className="error-message mt-6 max-w-3xl">{error}</p>}
+      {section === 'search' && query.length < 2 ? (
+        <div className="mt-10">
+          <EmptyState title={`Search ${categoryLabels[category]}`}>
+            <p className="mt-2 mb-0 text-muted">Enter at least two characters of a title.</p>
+          </EmptyState>
+        </div>
+      ) : results.loading || !sourcesReady ? (
+        <p className="mt-10 text-muted">Loading titles…</p>
+      ) : (
+        results.data && (
+          <section className="mt-10">
+            {results.data.stale && (
+              <p className="notice mb-5">
+                The source is temporarily unavailable. Showing the most recent cached result.
               </p>
+            )}
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
+              <h2 className="m-0 text-xl font-medium">
+                {section === 'search'
+                  ? `${countLabel(results.data.totalResults, 'result')} for “${query}”`
+                  : section === 'recent'
+                    ? 'Recently released'
+                    : 'Popular now'}
+              </h2>
+              <Attribution source={results.data} />
             </div>
-          )}
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {result.results.map((item) => {
-              const itemKey = librarySourceKey(item.source, item.externalId);
-              return (
-                <CatalogCard
-                  entry={library.bySource.get(itemKey) ?? null}
-                  item={item}
-                  key={itemKey}
-                  libraryReady={library.ready}
-                  onAdded={library.upsert}
-                />
-              );
-            })}
-          </div>
-          {!isRecentPreview && (
-            <Pagination page={result.page} pageHref={pageHref} totalPages={result.totalPages} />
-          )}
-        </section>
+            {results.data.results.length === 0 ? (
+              <EmptyState title="No titles found">
+                <p className="mt-2 mb-0 text-muted">Try broader filters or another search.</p>
+              </EmptyState>
+            ) : (
+              <CatalogGrid items={results.data.results} />
+            )}
+            <Pagination page={results.data.page} pageHref={pageHref} totalPages={results.data.totalPages} />
+          </section>
+        )
       )}
     </div>
   );

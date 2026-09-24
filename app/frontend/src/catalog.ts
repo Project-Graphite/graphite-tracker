@@ -1,3 +1,5 @@
+import type { Page } from './api';
+
 export const discoverCategories = [
   'movie',
   'tv',
@@ -11,7 +13,7 @@ export const catalogCategories = [...discoverCategories, 'game'] as const;
 export type CatalogCategory = (typeof catalogCategories)[number];
 export type DiscoverCategory = (typeof discoverCategories)[number];
 
-export const catalogSections = ['search', 'recent', 'popular'] as const;
+export const catalogSections = ['recent', 'popular', 'search'] as const;
 
 export type CatalogSection = (typeof catalogSections)[number];
 
@@ -63,21 +65,15 @@ export interface CatalogCandidate {
   deepLinks?: Array<{ label: string; url: string }>;
 }
 
-export interface CatalogDetails extends CatalogCandidate {
+export interface Attribution {
   attribution: string;
   attributionUrl?: string;
   stale?: boolean;
 }
 
-export interface CatalogResponse {
-  page: number;
-  totalPages: number;
-  totalResults: number;
-  results: CatalogCandidate[];
-  attribution: string;
-  attributionUrl?: string;
-  stale?: boolean;
-}
+export type CatalogDetails = CatalogCandidate & Attribution;
+
+export type CatalogResponse = Page<CatalogCandidate> & Attribution;
 
 export interface ConnectorDescriptor {
   key: string;
@@ -87,6 +83,10 @@ export interface ConnectorDescriptor {
 
 export function countLabel(count: number, noun: string) {
   return `${count.toLocaleString()} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+export function catalogRef(item: Pick<CatalogCandidate, 'externalId' | 'source'>) {
+  return `${item.source}:${item.externalId}`;
 }
 
 export function titleHref(item: Pick<CatalogCandidate, 'category' | 'externalId' | 'source'>) {

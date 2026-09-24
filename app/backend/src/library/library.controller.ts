@@ -15,7 +15,7 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateLibraryEntryDto } from './dto/create-library-entry.dto';
-import { ListLibraryDto } from './dto/list-library.dto';
+import { ListLibraryDto, LookupLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
 import { LibraryService } from './library.service';
 
@@ -32,13 +32,12 @@ export class LibraryController {
     return this.library.list(user.id, query);
   }
 
-  @Get('source/:source/:externalId')
-  findBySourceId(
+  @Get('lookup')
+  lookup(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('source') source: string,
-    @Param('externalId') externalId: string,
+    @Query() query: LookupLibraryDto,
   ) {
-    return this.library.findBySourceId(user.id, source, externalId);
+    return this.library.lookup(user.id, query.refs);
   }
 
   @Post()

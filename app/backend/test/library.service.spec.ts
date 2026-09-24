@@ -4,22 +4,26 @@ import { describe, expect, it, vi } from 'vitest';
 import { LibraryService } from '../src/library/library.service';
 
 describe('LibraryService', () => {
-  it('looks up the current user entry by TMDB external ID', async () => {
-    const findFirst = vi.fn().mockResolvedValue(null);
+  it('looks up the current user entries by source external IDs', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
     const service = new LibraryService(
-      { libraryEntry: { findFirst } } as never,
+      { libraryEntry: { findMany } } as never,
+      {} as never,
       {} as never,
     );
 
-    await expect(service.findBySourceId('user-id', 'tmdb', '550')).resolves.toBeNull();
-    expect(findFirst).toHaveBeenCalledWith({
+    await expect(service.lookup('user-id', 'tmdb:550,tmdb:anime,tmdb:tv:42,broken')).resolves.toEqual([]);
+    expect(findMany).toHaveBeenCalledWith({
       where: {
         userId: 'user-id',
         catalogItem: {
           sourceEntries: {
             some: {
-              externalId: '550',
-              source: { key: 'tmdb' },
+              OR: [
+                { externalId: '550', source: { key: 'tmdb' } },
+                { externalId: 'anime', source: { key: 'tmdb' } },
+                { externalId: 'tv:42', source: { key: 'tmdb' } },
+              ],
             },
           },
         },
@@ -47,6 +51,7 @@ describe('LibraryService', () => {
           update,
         },
       } as never,
+      {} as never,
       {} as never,
     );
 
@@ -79,6 +84,7 @@ describe('LibraryService', () => {
         },
       } as never,
       {} as never,
+      {} as never,
     );
 
     await expect(
@@ -109,6 +115,7 @@ describe('LibraryService', () => {
           update,
         },
       } as never,
+      {} as never,
       {} as never,
     );
 

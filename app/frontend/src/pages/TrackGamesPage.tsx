@@ -1,218 +1,142 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
-import { apiRequest } from '../api';
+import type { FormEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogResponse } from '../catalog';
-import { CatalogCard } from '../components/CatalogCard';
-import {
-  entryHref,
-  libraryStates,
-  stateLabel,
-  type LibraryEntry,
-  type LibraryState,
-} from '../library';
-import { librarySourceKey, useLibraryEntries } from '../useLibraryEntries';
+import { Attribution } from '../components/Attribution';
+import { CatalogGrid } from '../components/CatalogCard';
+import { EmptyState } from '../components/EmptyState';
+import { LibraryCard } from '../components/LibraryCard';
+import { Pagination } from '../components/Pagination';
+import { posterGridClass } from '../components/Poster';
+import type { LibraryEntry } from '../library';
+import { useResource, type Resource } from '../useResource';
+
+function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
+  return (
+    <section className="mt-14">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-4">
+        <div>
+          <p className="eyebrow">Your collection</p>
+          <h2 className="mt-2 mb-0 text-2xl font-medium">Tracked games</h2>
+        </div>
+        {tracked.data && tracked.data.totalPages > 1 && (
+          <Link className="rule-link mono-sm" to="/library?category=game">
+            View all {tracked.data.totalResults.toLocaleString()}
+          </Link>
+        )}
+      </div>
+      {tracked.error ? (
+        <p className="error-message mt-5">{tracked.error}</p>
+      ) : !tracked.data ? (
+        <p className="mt-5 text-muted">Loading tracked games…</p>
+      ) : tracked.data.results.length === 0 ? (
+        <div className="mt-5">
+          <EmptyState title="No games tracked yet">
+            <p className="mt-2 mb-0 text-muted">Search above and add your first game.</p>
+          </EmptyState>
+        </div>
+      ) : (
+        <div className={`mt-6 ${posterGridClass}`}>
+          {tracked.data.results.map((entry) => (
+            <LibraryCard
+              entry={entry}
+              key={entry.id}
+              layout="grid"
+              onChange={(next) =>
+                tracked.mutate((current) => ({
+                  ...current,
+                  results: current.results.map((item) => (item.id === next.id ? next : item)),
+                }))
+              }
+              onRemove={() =>
+                tracked.mutate((current) => ({
+                  ...current,
+                  totalResults: current.totalResults - 1,
+                  results: current.results.filter((item) => item.id !== entry.id),
+                }))
+              }
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export function TrackGamesPage() {
   const auth = useAuth();
-  const library = useLibraryEntries('game');
-  const [result, setResult] = useState<CatalogResponse>();
-  const [searchedQuery, setSearchedQuery] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [updatingId, setUpdatingId] = useState('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q')?.trim() ?? '';
+  const page = Number(searchParams.get('page')) || 1;
+  const results = useResource<CatalogResponse>(
+    query.length >= 2
+      ? `/catalog/game/search?query=${encodeURIComponent(query)}&page=${page}`
+      : null,
+  );
+  const tracked = useResource<Page<LibraryEntry>>(
+    auth.user ? '/library?category=game' : null,
+    true,
+  );
 
-  async function search(event: FormEvent<HTMLFormElement>) {
+  function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const query = String(new FormData(event.currentTarget).get('query')).trim();
-    setBusy(true);
-    setError('');
-    try {
-      setResult(
-        await apiRequest<CatalogResponse>(
-          `/catalog/game/search?query=${encodeURIComponent(query)}&page=1`,
-        ),
-      );
-      setSearchedQuery(query);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not search games');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateState(entry: LibraryEntry, state: LibraryState) {
-    if (!auth.accessToken) return;
-    setUpdatingId(entry.id);
-    setError('');
-    try {
-      library.upsert(
-        await apiRequest<LibraryEntry>(
-          `/library/${entry.id}`,
-          { method: 'PATCH', body: JSON.stringify({ state }) },
-          auth.accessToken,
-        ),
-      );
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not update game');
-    } finally {
-      setUpdatingId('');
-    }
+    const next = String(new FormData(event.currentTarget).get('query')).trim();
+    navigate(`/games?q=${encodeURIComponent(next)}`);
   }
 
   return (
     <div className="page-enter">
       <p className="eyebrow">Your game catalogue</p>
-      <h1 className="page-title">Track games.</h1>
+      <h1 className="page-title">Track games</h1>
       <p className="mt-5 max-w-2xl text-muted">
-        Find a game, choose the list it belongs to, and keep its status in one place.
+        Find a game, choose its list, and record hours, completion and the platforms you play on.
       </p>
-
-      <form
-        className="mt-8 grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_auto]"
-        onSubmit={(event) => void search(event)}
-      >
-        <label className="field-label">
-          Search games
-          <input
-            minLength={2}
-            name="query"
-            placeholder="Enter a game title"
-            required
-          />
-        </label>
-        <button className="primary-button self-end" disabled={busy} type="submit">
-          {busy ? 'Searching…' : 'Search'}
+      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={search} role="search">
+        <input
+          aria-label="Game title"
+          defaultValue={query}
+          minLength={2}
+          name="query"
+          placeholder="Search games by title"
+          required
+          type="search"
+        />
+        <button className="primary-button" type="submit">
+          Search
         </button>
       </form>
-
-      {(error || library.error) && (
-        <p className="error-message mt-5">{error || library.error}</p>
-      )}
-
-      {result && (
+      {results.error && <p className="error-message mt-6">{results.error}</p>}
+      {results.loading && <p className="mt-8 text-muted">Searching games…</p>}
+      {results.data && (
         <section className="mt-10">
-          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
-            <h2 className="m-0 text-2xl font-medium">
-              Results for {searchedQuery}
-            </h2>
-            <span className="mono-sm text-faint">
-              Data:{' '}
-              {result.attributionUrl ? (
-                <a
-                  className="rule-link"
-                  href={result.attributionUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  {result.attribution}
-                </a>
-              ) : (
-                result.attribution
-              )}
-            </span>
-          </div>
-          {result.results.length === 0 ? (
-            <p className="mt-5 text-muted">No games found.</p>
-          ) : (
-            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {result.results.slice(0, 10).map((item) => {
-                const itemKey = librarySourceKey(item.source, item.externalId);
-                return (
-                  <CatalogCard
-                    entry={library.bySource.get(itemKey) ?? null}
-                    item={item}
-                    key={itemKey}
-                    libraryReady={library.ready}
-                    onAdded={library.upsert}
-                    showSynopsis={false}
-                  />
-                );
-              })}
-            </div>
+          {results.data.stale && (
+            <p className="notice mb-5">
+              The game source is temporarily unavailable. Showing the most recent cached result.
+            </p>
           )}
+          <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
+            <h2 className="m-0 text-xl font-medium">
+              {countLabel(results.data.totalResults, 'result')} for “{query}”
+            </h2>
+            <Attribution source={results.data} />
+          </div>
+          {results.data.results.length === 0 ? (
+            <EmptyState title="No games found">
+              <p className="mt-2 mb-0 text-muted">Try another title.</p>
+            </EmptyState>
+          ) : (
+            <CatalogGrid items={results.data.results} onAdded={tracked.reload} />
+          )}
+          <Pagination
+            page={results.data.page}
+            pageHref={(next) => `/games?q=${encodeURIComponent(query)}&page=${next}`}
+            totalPages={results.data.totalPages}
+          />
         </section>
       )}
-
-      <section className="mt-14">
-        <div className="flex items-baseline justify-between gap-4 border-b border-line pb-4">
-          <div>
-            <p className="eyebrow">Your collection</p>
-            <h2 className="mt-2 mb-0 text-2xl font-medium">Tracked games</h2>
-          </div>
-          <span className="mono-sm text-faint">
-            {library.ready && countLabel(library.entries.length, 'game')}
-          </span>
-        </div>
-        {!library.ready ? (
-          <p className="mt-5 text-muted">Loading tracked games…</p>
-        ) : library.entries.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-line p-8 text-center">
-            <h3 className="m-0 text-xl font-medium">No games tracked yet.</h3>
-            <p className="mt-2 text-muted">Search above and add your first game.</p>
-          </div>
-        ) : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {library.entries.map((entry) => {
-              const href = entryHref(entry);
-              return (
-                <article
-                  className="grid grid-cols-[5rem_1fr] gap-4 rounded-xl border border-line bg-surface p-4"
-                  key={entry.id}
-                >
-                  <div className="aspect-[2/3] overflow-hidden rounded-md bg-line-soft">
-                    {entry.item.posterUrl && (
-                      <img
-                        alt={`Poster for ${entry.item.title}`}
-                        className="h-full w-full object-cover"
-                        src={entry.item.posterUrl}
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="mono-sm m-0 text-faint">
-                      {entry.item.releaseDate?.slice(0, 4) ?? 'Date unknown'}
-                    </p>
-                    <h3 className="mt-1 mb-0 text-lg font-medium">
-                      {href ? (
-                        <Link className="text-ink no-underline hover:underline" to={href}>
-                          {entry.item.title}
-                        </Link>
-                      ) : (
-                        entry.item.title
-                      )}
-                    </h3>
-                    <label className="field-label mt-4">
-                      List
-                      <select
-                        disabled={updatingId === entry.id}
-                        onChange={(event) =>
-                          void updateState(entry, event.target.value as LibraryState)
-                        }
-                        value={entry.state}
-                      >
-                        {libraryStates.map((state) => (
-                          <option key={state} value={state}>
-                            {stateLabel('game', state)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <p className="mono-sm mt-3 mb-0 text-faint">
-                      {entry.progress.hours === null
-                        ? 'No play time recorded'
-                        : `${countLabel(entry.progress.hours, 'hour')} played`}
-                      {entry.progress.percentage === null
-                        ? ''
-                        : ` / ${entry.progress.percentage}% complete`}
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {auth.user && <TrackedGames tracked={tracked} />}
     </div>
   );
 }

@@ -32,6 +32,7 @@ export interface LibraryEntry {
   };
   preferredSource: string | null;
   item: {
+    id: string;
     category: CatalogCategory;
     title: string;
     posterUrl: string | null;
@@ -80,4 +81,17 @@ export function stateLabel(category: CatalogCategory, state: LibraryState) {
     game: ['Plan to play', 'Playing', 'Completed'],
   }[category];
   return { planned, in_progress: inProgress, completed }[state];
+}
+
+export function progressSummary({ progress }: LibraryEntry) {
+  return [
+    progress.season !== null && `S${progress.season}`,
+    progress.episode !== null && `E${progress.episode}`,
+    progress.chapter !== null && `Ch. ${progress.chapter}`,
+    progress.volume !== null && `Vol. ${progress.volume}`,
+    progress.hours !== null && `${progress.hours} h`,
+    progress.percentage !== null && `${progress.percentage}%`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }

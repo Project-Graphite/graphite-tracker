@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -26,9 +28,9 @@ interface Registration {
 }
 
 interface AuthContextValue {
-  accessToken?: string;
   user?: User;
   ready: boolean;
+  request<T>(path: string, init?: RequestInit): Promise<T>;
   register(input: {
     email: string;
     handle: string;
@@ -66,27 +68,53 @@ function restoreSession() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>();
   const [ready, setReady] = useState(false);
+  const current = useRef<Session>(undefined);
+
+  const applySession = useCallback((next: Session | undefined) => {
+    current.current = next;
+    setSession(next);
+  }, []);
 
   useEffect(() => {
     restoreSession()
-      .then(setSession)
+      .then(applySession)
       .finally(() => setReady(true));
-  }, []);
+  }, [applySession]);
 
   useEffect(() => {
     if (!session) return;
     const timer = window.setTimeout(
-      () => void restoreSession().then(setSession),
+      () => void restoreSession().then(applySession),
       13 * 60 * 1000,
     );
     return () => window.clearTimeout(timer);
-  }, [session]);
+  }, [applySession, session]);
+
+  const request = useCallback(
+    async function authenticatedRequest<T>(path: string, init: RequestInit = {}) {
+      const token = current.current?.accessToken;
+      try {
+        return await apiRequest<T>(path, init, token);
+      } catch (reason) {
+        if (!(reason instanceof ApiError && reason.status === 401 && token)) {
+          throw reason;
+        }
+        const renewed = await restoreSession();
+        applySession(renewed);
+        if (!renewed) {
+          throw reason;
+        }
+        return apiRequest<T>(path, init, renewed.accessToken);
+      }
+    },
+    [applySession],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      accessToken: session?.accessToken,
       user: session?.user,
       ready,
+      request,
       register: (input) =>
         apiRequest<Registration>('/auth/register', {
           method: 'POST',
@@ -99,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       },
       login: async (email, password) => {
-        setSession(
+        applySession(
           await apiRequest<Session>('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password }),
@@ -107,17 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       },
       logout: async () => {
-        if (session?.accessToken) {
-          await apiRequest(
-            '/auth/logout',
-            { method: 'POST' },
-            session.accessToken,
-          );
-        }
-        setSession(undefined);
+        await apiRequest('/auth/logout', { method: 'POST' });
+        applySession(undefined);
       },
     }),
-    [ready, session],
+    [applySession, ready, request, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

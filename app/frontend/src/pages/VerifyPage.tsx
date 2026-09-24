@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 
 export function VerifyPage() {
@@ -18,7 +19,7 @@ export function VerifyPage() {
       await auth.verify(String(form.get('token')));
       setVerified(true);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Verification failed');
+      setError(errorMessage(reason, 'Verification failed'));
     } finally {
       setBusy(false);
     }

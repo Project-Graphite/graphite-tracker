@@ -1,24 +1,25 @@
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useParams } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useParams, type Location } from 'react-router';
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
+import { DiscoverPage } from './pages/DiscoverPage';
 import { HomePage } from './pages/HomePage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { TitleDetailsPage } from './pages/TitleDetailsPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { DiscoverPage } from './pages/DiscoverPage';
 import { TrackGamesPage } from './pages/TrackGamesPage';
 import { VerifyPage } from './pages/VerifyPage';
 
 function Protected({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const location = useLocation();
   if (!auth.ready) {
     return <p className="text-muted">Loading your session…</p>;
   }
-  return auth.user ? children : <Navigate replace to="/login" />;
+  return auth.user ? children : <Navigate replace state={{ from: location }} to="/login" />;
 }
 
 function DiscoverRoute() {
@@ -37,10 +38,12 @@ function DiscoverRoute() {
 
 function SignedOutLogin() {
   const auth = useAuth();
+  const location = useLocation();
   if (!auth.ready) {
     return <p className="text-muted">Loading your session…</p>;
   }
-  return auth.user ? <Navigate replace to="/" /> : <LoginPage />;
+  const from = (location.state as { from?: Location } | null)?.from;
+  return auth.user ? <Navigate replace to={from ?? '/'} /> : <LoginPage />;
 }
 
 export function App() {
@@ -51,7 +54,7 @@ export function App() {
         <Route path="discover/:category/:section" element={<DiscoverRoute />} />
         <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
-        <Route path="games" element={<Protected><TrackGamesPage /></Protected>} />
+        <Route path="games" element={<TrackGamesPage />} />
         <Route path="library" element={<Protected><LibraryPage /></Protected>} />
         <Route path="sources" element={<Protected><SourcesPage /></Protected>} />
         <Route path="register" element={<RegisterPage />} />

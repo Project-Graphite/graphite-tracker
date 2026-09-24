@@ -1,8 +1,7 @@
-import { IsEnum, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 import { CatalogCategory, catalogCategories } from '../../sources/source.types';
-import {
-  LibraryStateInput,
-} from './create-library-entry.dto';
+import { LibraryStateInput } from './create-library-entry.dto';
 
 export class ListLibraryDto {
   @IsOptional()
@@ -21,4 +20,16 @@ export class ListLibraryDto {
   @IsOptional()
   @IsIn(['updated', 'title', 'release'])
   sort = 'updated';
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10_000)
+  page = 1;
+}
+
+export class LookupLibraryDto {
+  @IsString()
+  @Length(3, 10_000)
+  refs!: string;
 }

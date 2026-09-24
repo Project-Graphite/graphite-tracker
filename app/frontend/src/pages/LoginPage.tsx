@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
+import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 
 export function LoginPage() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -15,10 +15,8 @@ export function LoginPage() {
     const form = new FormData(event.currentTarget);
     try {
       await auth.login(String(form.get('email')), String(form.get('password')));
-      navigate('/discover/movie/recent');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Sign in failed');
-    } finally {
+      setError(errorMessage(reason, 'Sign in failed'));
       setBusy(false);
     }
   }

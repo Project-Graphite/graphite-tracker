@@ -142,13 +142,6 @@ body {
     opacity: 0.55;
   }
 
-  .compact-button,
-  .compact-control {
-    width: auto;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-  }
-
   .text-button {
     border: 0;
     background: transparent;
@@ -176,45 +169,53 @@ body {
     font-size: 0.85rem;
   }
 
-  .error-message {
+  .error-message,
+  .notice {
     border: 1px solid var(--color-line);
     border-radius: 0.5rem;
     background: var(--color-surface);
     padding: 0.75rem;
-    color: var(--color-ink);
     font-size: 0.875rem;
   }
 
-  .catalog-carousel {
+  .error-message {
+    color: var(--color-ink);
+  }
+
+  .notice {
+    color: var(--color-muted);
+  }
+
+  .catalog-row {
     display: grid;
-    grid-auto-columns: 100%;
+    grid-auto-columns: calc((100% - 1rem) / 2);
     grid-auto-flow: column;
-    gap: 1.25rem;
+    gap: 1rem;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: inline mandatory;
     scrollbar-width: none;
   }
 
-  .catalog-carousel::-webkit-scrollbar {
+  .catalog-row::-webkit-scrollbar {
     display: none;
   }
 
   @media (min-width: 40rem) {
-    .catalog-carousel {
-      grid-auto-columns: calc((100% - 1.25rem) / 2);
+    .catalog-row {
+      grid-auto-columns: calc((100% - 2rem) / 3);
     }
   }
 
   @media (min-width: 64rem) {
-    .catalog-carousel {
-      grid-auto-columns: calc((100% - 2.5rem) / 3);
+    .catalog-row {
+      grid-auto-columns: calc((100% - 3rem) / 4);
     }
   }
 
   @media (min-width: 80rem) {
-    .catalog-carousel {
-      grid-auto-columns: calc((100% - 5rem) / 5);
+    .catalog-row {
+      grid-auto-columns: calc((100% - 4rem) / 5);
     }
   }
 }
