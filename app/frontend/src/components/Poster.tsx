@@ -22,7 +22,7 @@ export function Poster({
       src={posterUrl}
     />
   ) : (
-    <span className="flex h-full items-center justify-center p-3 text-center text-sm text-faint">
+    <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
       {title}
     </span>
   );
