@@ -33,6 +33,12 @@ export interface TmdbTvResult {
   episode_run_time?: number[];
   number_of_episodes?: number;
   number_of_seasons?: number;
+  last_episode_to_air?: {
+    season_number: number;
+    episode_number: number;
+    air_date: string | null;
+    name?: string;
+  } | null;
   status?: string;
   tagline?: string;
   vote_average?: number;
@@ -51,4 +57,11 @@ export interface TmdbSearchResponse {
   total_pages: number;
   total_results: number;
   results: TmdbMovieResult[];
+}
+
+export interface TmdbReleaseDates {
+  results: Array<{
+    iso_3166_1: string;
+    release_dates: Array<{ type: number; release_date: string }>;
+  }>;
 }

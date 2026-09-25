@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConnectorHttpService } from '../connector-http.service';
+import { today } from '../release-signals';
 import {
   TmdbMovieResult,
+  TmdbReleaseDates,
   TmdbSearchResponse,
   TmdbTvResult,
   TmdbTvSearchResponse,
@@ -20,6 +22,7 @@ import {
   CatalogPage,
   CatalogSection,
   ConnectorDescriptor,
+  ReleaseSignal,
 } from '../source.types';
 
 const movieGenres: Record<number, string> = {
@@ -277,6 +280,46 @@ export class TmdbService {
           ? this.normalizeAnimeMovie(record as TmdbMovieResult)
           : this.normalizeTv(record as TmdbTvResult, 'anime');
       return { ...item, attribution: this.descriptor.attribution };
+    }
+    throw new NotFoundException('TMDB does not support this category');
+  }
+
+  async releases(category: CatalogCategory, externalId: string): Promise<ReleaseSignal[]> {
+    const [mediaType, id] = category === 'anime' ? externalId.split(':') : [category, externalId];
+    if (mediaType === 'movie' && id) {
+      const { results } = await this.request<TmdbReleaseDates>(
+        `/movie/${encodeURIComponent(id)}/release_dates`,
+        {},
+      );
+      const now = today();
+      return (
+        [
+          [3, 'theatrical', 'In cinemas'],
+          [4, 'digital', 'Available digitally'],
+        ] as const
+      ).flatMap(([type, key, label]) => {
+        const [date] = results
+          .flatMap((country) => country.release_dates)
+          .filter((release) => release.type === type)
+          .map((release) => release.release_date.slice(0, 10))
+          .sort();
+        return date && date <= now ? [{ key, kind: 'release' as const, label, occurredAt: date }] : [];
+      });
+    }
+    if (mediaType === 'tv' && id) {
+      const episode = (await this.request<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`, {}))
+        .last_episode_to_air;
+      return episode?.air_date && episode.air_date <= today()
+        ? [
+            {
+              key: `episode:${episode.season_number}x${episode.episode_number}`,
+              kind: 'episode',
+              label: `Season ${episode.season_number}, episode ${episode.episode_number}${episode.name ? `: ${episode.name}` : ''}`,
+              ordinal: episode.season_number * 10_000 + episode.episode_number,
+              occurredAt: episode.air_date,
+            },
+          ]
+        : [];
     }
     throw new NotFoundException('TMDB does not support this category');
   }

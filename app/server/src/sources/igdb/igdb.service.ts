@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
+import { platformReleaseSignals } from '../release-signals';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -127,6 +128,10 @@ export class IgdbService {
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
+  }
+
+  async releases(category: CatalogCategory, externalId: string) {
+    return platformReleaseSignals((await this.details(category, externalId)).releaseDates ?? []);
   }
 
   recognize(url: URL): { category: CatalogCategory; externalId: string } | null {

@@ -115,6 +115,16 @@ export class ConnectorRegistryService {
     return result.value;
   }
 
+  releases(category: CatalogCategory, externalId: string, source: string) {
+    const connector = this.resolve(category, source);
+    if (!connector.releases || !connector.descriptor.capabilities.includes('RELEASES')) {
+      throw new NotFoundException(
+        `${connector.descriptor.displayName} does not provide release updates`,
+      );
+    }
+    return connector.releases(category, externalId);
+  }
+
   async recognize(value: string) {
     const url = new URL(value);
     for (const connector of this.connectors) {

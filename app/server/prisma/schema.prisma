@@ -52,6 +52,25 @@ enum ActivityKind {
   REVIEWED      @map("reviewed")
 }
 
+enum DigestCadence {
+  DAILY  @map("daily")
+  WEEKLY @map("weekly")
+}
+
+enum ReleaseKind {
+  EPISODE      @map("episode")
+  CHAPTER      @map("chapter")
+  RELEASE      @map("release")
+  RELEASE_DATE @map("release_date")
+}
+
+enum NotificationState {
+  QUEUED  @map("queued")
+  SENT    @map("sent")
+  SKIPPED @map("skipped")
+  FAILED  @map("failed")
+}
+
 enum ImportState {
   PARSING  @map("parsing")
   MATCHING @map("matching")
@@ -105,8 +124,25 @@ model User {
   reportsFiled    ReviewReport[]  @relation("ReportsFiled")
   reportsResolved ReviewReport[]  @relation("ReportsResolved")
   activity        ActivityEvent[]
+  notificationPreference NotificationPreference?
+  notificationEvents     NotificationEvent[]
 
   @@map("users")
+}
+
+model NotificationPreference {
+  userId           String          @id @map("user_id") @db.Uuid
+  enabled          Boolean         @default(false)
+  categories       MediaCategory[] @default([MOVIE, TV, ANIME, MANGA, MANHWA, GAME])
+  cadence          DigestCadence   @default(DAILY)
+  lastDigestAt     DateTime?       @map("last_digest_at")
+  deliveryFailures Int             @default(0) @map("delivery_failures")
+  suspendedAt      DateTime?       @map("suspended_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 model ProfilePrivacy {
@@ -201,12 +237,51 @@ model SourceEntry {
   availableChapter Decimal?    @map("available_chapter") @db.Decimal(10, 2)
   availableEpisode Int?        @map("available_episode")
   lastSeenUpdate   String?     @map("last_seen_update")
+  releasesCheckedAt   DateTime? @map("releases_checked_at")
+  releasesAttemptedAt DateTime? @map("releases_attempted_at")
   catalogItem     CatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
   source          SourceRecord @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  releaseMarkers  ReleaseMarker[]
 
   @@unique([sourceId, externalId])
   @@index([catalogItemId])
   @@map("source_entries")
+}
+
+model ReleaseMarker {
+  id            String              @id @default(uuid()) @db.Uuid
+  sourceEntryId String              @map("source_entry_id") @db.Uuid
+  key           String
+  kind          ReleaseKind
+  label         String
+  platform      String?
+  ordinal       Float?
+  occurredAt    DateTime            @map("occurred_at") @db.Date
+  createdAt     DateTime            @default(now()) @map("created_at")
+  sourceEntry   SourceEntry         @relation(fields: [sourceEntryId], references: [id], onDelete: Cascade)
+  events        NotificationEvent[]
+
+  @@unique([sourceEntryId, key])
+  @@map("release_markers")
+}
+
+model NotificationEvent {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  releaseMarkerId String            @map("release_marker_id") @db.Uuid
+  libraryEntryId  String            @map("library_entry_id") @db.Uuid
+  state           NotificationState @default(QUEUED)
+  error           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  sentAt          DateTime?         @map("sent_at")
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  releaseMarker   ReleaseMarker     @relation(fields: [releaseMarkerId], references: [id], onDelete: Cascade)
+  libraryEntry    LibraryEntry      @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, releaseMarkerId])
+  @@index([state, userId])
+  @@index([libraryEntryId])
+  @@map("notification_events")
 }
 
 model LibraryEntry {
@@ -233,6 +308,7 @@ model LibraryEntry {
   statusEvents         LibraryStatusEvent[]
   importedSources      ImportedSourceReference[]
   activity             ActivityEvent[]
+  notificationEvents   NotificationEvent[]
 
   @@unique([userId, catalogItemId])
   @@index([userId, state])

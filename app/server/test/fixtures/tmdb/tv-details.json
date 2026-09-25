@@ -1,0 +1,21 @@
+{
+  "id": 1399,
+  "name": "Tower Chronicles",
+  "original_name": "Tower Chronicles",
+  "overview": "A climber enters a mysterious tower.",
+  "poster_path": "/tower.jpg",
+  "backdrop_path": null,
+  "first_air_date": "2024-04-01",
+  "original_language": "en",
+  "origin_country": ["US"],
+  "genres": [{ "id": 18, "name": "Drama" }],
+  "number_of_seasons": 2,
+  "number_of_episodes": 18,
+  "status": "Returning Series",
+  "last_episode_to_air": {
+    "season_number": 2,
+    "episode_number": 8,
+    "air_date": "2026-09-20",
+    "name": "The Ninth Floor"
+  }
+}

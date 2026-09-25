@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
+import { today } from '../release-signals';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -13,6 +14,7 @@ import {
   CatalogPage,
   CatalogSection,
   ConnectorDescriptor,
+  ReleaseSignal,
 } from '../source.types';
 
 interface MangaDexRelationship {
@@ -141,6 +143,28 @@ export class MangaDexService {
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
+  }
+
+  async releases(category: CatalogCategory, externalId: string): Promise<ReleaseSignal[]> {
+    const aggregate = await this.request<MangaDexAggregate>(
+      `/manga/${encodeURIComponent(externalId)}/aggregate`,
+      { 'translatedLanguage[]': ['en'] },
+    );
+    const chapter = this.latestMarker(
+      Object.values(aggregate.volumes).flatMap((volume) => Object.keys(volume.chapters)),
+      null,
+    );
+    return chapter === null
+      ? []
+      : [
+          {
+            key: `chapter:${chapter}`,
+            kind: 'chapter',
+            label: `Chapter ${chapter}`,
+            ordinal: chapter,
+            occurredAt: today(),
+          },
+        ];
   }
 
   async genres() {

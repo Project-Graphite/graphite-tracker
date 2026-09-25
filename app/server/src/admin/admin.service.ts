@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, ReportResolution, ReviewVisibility } from '@prisma/client';
+import { NotificationState, Prisma, ReportResolution, ReviewVisibility } from '@prisma/client';
 import {
   catalogItemSummary,
   catalogItemSummaryInclude,
@@ -168,6 +168,36 @@ export class AdminService {
       }),
     ]);
     return paged(page, total, users);
+  }
+
+  async failedNotifications(page: number) {
+    const where = { state: NotificationState.FAILED };
+    const [total, events] = await this.prisma.$transaction([
+      this.prisma.notificationEvent.count({ where }),
+      this.prisma.notificationEvent.findMany({
+        where,
+        include: {
+          user: { select: { handle: true, displayName: true } },
+          releaseMarker: { select: { label: true } },
+          libraryEntry: { select: { catalogItem: { include: catalogItemSummaryInclude } } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return paged(
+      page,
+      total,
+      events.map((event) => ({
+        id: event.id,
+        user: event.user,
+        release: event.releaseMarker.label,
+        error: event.error,
+        createdAt: event.createdAt,
+        item: catalogItemSummary(event.libraryEntry.catalogItem),
+      })),
+    );
   }
 
   async setUserActive(adminId: string, id: string, active: boolean) {

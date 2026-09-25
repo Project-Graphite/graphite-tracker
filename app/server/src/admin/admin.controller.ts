@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import {
+  AdminPageDto,
   ListReportsDto,
   ListReviewsDto,
   ListUsersDto,
@@ -56,6 +57,11 @@ export class AdminController {
     @Body() input: SetReviewHiddenDto,
   ) {
     await this.admin.setReviewHidden(user.id, id, input.hidden);
+  }
+
+  @Get('notifications')
+  failedNotifications(@Query() query: AdminPageDto) {
+    return this.admin.failedNotifications(query.page);
   }
 
   @Get('users')

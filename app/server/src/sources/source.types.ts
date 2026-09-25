@@ -82,6 +82,15 @@ export interface ConnectorDescriptor {
   enabled: boolean;
 }
 
+export interface ReleaseSignal {
+  key: string;
+  kind: 'episode' | 'chapter' | 'release' | 'release_date';
+  label: string;
+  occurredAt: string;
+  platform?: string;
+  ordinal?: number;
+}
+
 export interface SourceConnector {
   descriptor: ConnectorDescriptor;
   search(
@@ -98,6 +107,7 @@ export interface SourceConnector {
   ): Promise<CatalogPage>;
   details(category: CatalogCategory, externalId: string): Promise<CatalogDetails>;
   genres?(category: CatalogCategory): Promise<string[]>;
+  releases?(category: CatalogCategory, externalId: string): Promise<ReleaseSignal[]>;
   recognize(
     url: URL,
   ):

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConnectorHttpService } from '../connector-http.service';
+import { platformReleaseSignals } from '../release-signals';
 import {
   CatalogCandidate,
   CatalogCategory,
@@ -137,6 +138,14 @@ export class RawgService {
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
+  }
+
+  async releases(category: CatalogCategory, externalId: string) {
+    const game = await this.request<RawgGame>(
+      `/games/${encodeURIComponent(externalId.replace(/^slug:/, ''))}`,
+      {},
+    );
+    return platformReleaseSignals(this.normalize(game).releaseDates ?? []);
   }
 
   recognize(url: URL): { category: CatalogCategory; externalId: string } | null {

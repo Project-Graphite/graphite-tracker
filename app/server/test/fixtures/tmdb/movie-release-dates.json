@@ -1,0 +1,17 @@
+{
+  "id": 550,
+  "results": [
+    {
+      "iso_3166_1": "US",
+      "release_dates": [
+        { "type": 1, "release_date": "2026-05-10T00:00:00.000Z" },
+        { "type": 3, "release_date": "2026-06-20T00:00:00.000Z" },
+        { "type": 4, "release_date": "2099-01-15T00:00:00.000Z" }
+      ]
+    },
+    {
+      "iso_3166_1": "GB",
+      "release_dates": [{ "type": 3, "release_date": "2026-06-18T00:00:00.000Z" }]
+    }
+  ]
+}

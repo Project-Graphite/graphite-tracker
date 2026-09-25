@@ -54,6 +54,7 @@ export class UsersService {
         verifiedAt: true,
         createdAt: true,
         privacy: { omit: { id: true, userId: true } },
+        notificationPreference: { omit: { userId: true } },
         globalSourcePreference: sourceKey,
         categorySourcePreferences: { select: { category: true, ...sourceKey.select } },
         sourceSettings: { select: { enabled: true, ...sourceKey.select } },

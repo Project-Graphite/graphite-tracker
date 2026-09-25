@@ -14,7 +14,7 @@ import {
 } from './dto/create-library-entry.dto';
 import { ListLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
-import { effectiveSourceEntry, SourcePreferences } from './effective-source';
+import { effectiveSourceEntry, loadSourcePreferences, SourcePreferences } from './effective-source';
 
 export const libraryStates: Record<LibraryStateInput, LibraryState> = {
   planned: LibraryState.PLANNED,
@@ -75,7 +75,7 @@ export class LibraryService {
           take: pageSize,
         }),
       ]),
-      this.sourcePreferences(userId),
+      loadSourcePreferences(this.prisma, userId),
     ]);
     return {
       page: query.page,
@@ -118,7 +118,7 @@ export class LibraryService {
         },
         include: libraryEntryInclude,
       }),
-      this.sourcePreferences(userId),
+      loadSourcePreferences(this.prisma, userId),
     ]);
     return entries.map((entry) => this.present(entry, preferences));
   }
@@ -156,7 +156,7 @@ export class LibraryService {
         })
       );
     });
-    return this.present(entry, await this.sourcePreferences(userId));
+    return this.present(entry, await loadSourcePreferences(this.prisma, userId));
   }
 
   async update(userId: string, id: string, input: UpdateLibraryEntryDto) {
@@ -246,7 +246,7 @@ export class LibraryService {
       },
       include: libraryEntryInclude,
     });
-    return this.present(entry, await this.sourcePreferences(userId));
+    return this.present(entry, await loadSourcePreferences(this.prisma, userId));
   }
 
   async remove(userId: string, id: string) {
@@ -267,23 +267,6 @@ export class LibraryService {
     }
   }
 
-  private async sourcePreferences(userId: string): Promise<SourcePreferences> {
-    const usable = { enabled: true, userSettings: { none: { userId, enabled: false } } };
-    const [global, categories] = await Promise.all([
-      this.prisma.globalSourcePreference.findFirst({
-        where: { userId, source: usable },
-        select: { sourceId: true },
-      }),
-      this.prisma.categorySourcePreference.findMany({
-        where: { userId, source: usable },
-        select: { category: true, sourceId: true },
-      }),
-    ]);
-    return {
-      global: global?.sourceId ?? null,
-      categories: new Map(categories.map(({ category, sourceId }) => [category, sourceId])),
-    };
-  }
 
   private async preferredSourceId(catalogItemId: string, key: string) {
     const source = await this.prisma.sourceRecord.findFirst({
