@@ -183,11 +183,11 @@ describe('ImportsService', () => {
   });
 
   it('does not touch the library while suggestions are undecided', async () => {
-    const update = vi.fn();
+    const updateMany = vi.fn();
     const imports = service({
       importBatch: {
         findFirst: vi.fn().mockResolvedValue({ id: 'batch-id', state: ImportState.READY }),
-        update,
+        updateMany,
       },
       importCandidate: { count: vi.fn().mockResolvedValue(2) },
     });
@@ -195,7 +195,31 @@ describe('ImportsService', () => {
     await expect(
       imports.apply('user-id', 'batch-id', ImportConflictPolicy.ADD_MISSING),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(update).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('starts applying a batch only once when two requests race', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const imports = service({
+      importBatch: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'batch-id', state: ImportState.READY }),
+        updateMany,
+      },
+      importCandidate: { count: vi.fn().mockResolvedValue(0) },
+    });
+    const applyAccepted = vi.spyOn(
+      imports as unknown as { applyAccepted(): Promise<void> },
+      'applyAccepted',
+    );
+
+    await expect(
+      imports.apply('user-id', 'batch-id', ImportConflictPolicy.ADD_MISSING),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'batch-id', state: ImportState.READY },
+      data: { state: ImportState.APPLYING, conflictPolicy: ImportConflictPolicy.ADD_MISSING },
+    });
+    expect(applyAccepted).not.toHaveBeenCalled();
   });
 
   describe('applying a confirmed entry', () => {

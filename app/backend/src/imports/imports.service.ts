@@ -250,10 +250,13 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     if (undecided > 0) {
       throw new BadRequestException('Accept or skip every suggested match before applying');
     }
-    await this.prisma.importBatch.update({
-      where: { id },
+    const started = await this.prisma.importBatch.updateMany({
+      where: { id, state: ImportState.READY },
       data: { state: ImportState.APPLYING, conflictPolicy },
     });
+    if (started.count === 0) {
+      throw new BadRequestException('This import is not ready for review');
+    }
     this.inBackground(this.applyAccepted(userId, id, conflictPolicy));
     return this.detail(userId, id);
   }
