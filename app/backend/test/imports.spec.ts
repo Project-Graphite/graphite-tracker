@@ -168,9 +168,7 @@ describe('ImportsService', () => {
         { ...entry, title: '' },
       ],
     });
-    const match = vi.spyOn(internals, 'match').mockResolvedValue(undefined);
-
-    await internals.read('batch-id', Buffer.from('backup'));
+    await expect(internals.read('batch-id', Buffer.from('backup'))).resolves.toBe(true);
 
     const rows = (createMany.mock.calls[0] as [{ data: Array<Record<string, unknown>> }])[0].data;
     expect(rows.map((row) => row.match)).toEqual([
@@ -179,7 +177,30 @@ describe('ImportsService', () => {
       ImportMatch.UNSUPPORTED,
     ]);
     expect(rows[0]).toMatchObject({ state: LibraryState.PLANNED, position: 0 });
-    expect(match).toHaveBeenCalledWith('batch-id');
+  });
+
+  it('matches an upload once its preview is stored and never after a failed read', async () => {
+    const imports = service({
+      importBatch: {
+        create: vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'unreadable-batch' })
+          .mockResolvedValueOnce({ id: 'stored-batch' }),
+      },
+    });
+    const internals = imports as unknown as {
+      match(batchId: string): Promise<void>;
+      read(batchId: string, file: Buffer): Promise<boolean>;
+    };
+    vi.spyOn(internals, 'read').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const match = vi.spyOn(internals, 'match').mockResolvedValue(undefined);
+    vi.spyOn(imports, 'detail').mockResolvedValue({} as never);
+
+    await imports.create('user-id', Buffer.from('unreadable'));
+    await imports.create('user-id', Buffer.from('backup'));
+
+    await vi.waitFor(() => expect(match).toHaveBeenCalledWith('stored-batch'));
+    expect(match).toHaveBeenCalledTimes(1);
   });
 
   it('does not touch the library while suggestions are undecided', async () => {

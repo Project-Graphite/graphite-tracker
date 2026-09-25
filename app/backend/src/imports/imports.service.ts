@@ -80,7 +80,9 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         expiresAt: new Date(Date.now() + retentionMs),
       },
     });
-    this.inBackground(this.read(batch.id, file));
+    this.inBackground(
+      this.read(batch.id, file).then((stored) => (stored ? this.match(batch.id) : undefined)),
+    );
     return this.detail(userId, batch.id);
   }
 
@@ -309,9 +311,9 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
           error: error instanceof Error ? error.message : 'The backup could not be read',
         },
       });
-      return;
+      return false;
     }
-    await this.match(batchId);
+    return true;
   }
 
   private parse(file: Buffer) {
