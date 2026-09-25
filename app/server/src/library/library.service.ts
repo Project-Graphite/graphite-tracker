@@ -14,6 +14,7 @@ import {
 } from './dto/create-library-entry.dto';
 import { ListLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
+import { effectiveSourceEntry, SourcePreferences } from './effective-source';
 
 export const libraryStates: Record<LibraryStateInput, LibraryState> = {
   planned: LibraryState.PLANNED,
@@ -56,28 +57,31 @@ export class LibraryService {
           : {}),
       },
     };
-    const [total, entries] = await this.prisma.$transaction([
-      this.prisma.libraryEntry.count({ where }),
-      this.prisma.libraryEntry.findMany({
-        where,
-        include: libraryEntryInclude,
-        orderBy: [
-          query.sort === 'title'
-            ? { catalogItem: { canonicalTitle: 'asc' } }
-            : query.sort === 'release'
-              ? { catalogItem: { releaseDate: { sort: 'desc', nulls: 'last' } } }
-              : { updatedAt: 'desc' },
-          { id: 'asc' },
-        ],
-        skip: (query.page - 1) * pageSize,
-        take: pageSize,
-      }),
+    const [[total, entries], preferences] = await Promise.all([
+      this.prisma.$transaction([
+        this.prisma.libraryEntry.count({ where }),
+        this.prisma.libraryEntry.findMany({
+          where,
+          include: libraryEntryInclude,
+          orderBy: [
+            query.sort === 'title'
+              ? { catalogItem: { canonicalTitle: 'asc' } }
+              : query.sort === 'release'
+                ? { catalogItem: { releaseDate: { sort: 'desc', nulls: 'last' } } }
+                : { updatedAt: 'desc' },
+            { id: 'asc' },
+          ],
+          skip: (query.page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]),
+      this.sourcePreferences(userId),
     ]);
     return {
       page: query.page,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       totalResults: total,
-      results: entries.map((entry) => this.present(entry)),
+      results: entries.map((entry) => this.present(entry, preferences)),
     };
   }
 
@@ -100,20 +104,23 @@ export class LibraryService {
     if (refs.length === 0) {
       return [];
     }
-    const entries = await this.prisma.libraryEntry.findMany({
-      where: {
-        userId,
-        catalogItem: {
-          sourceEntries: {
-            some: {
-              OR: refs.map(({ source, externalId }) => ({ externalId, source: { key: source } })),
+    const [entries, preferences] = await Promise.all([
+      this.prisma.libraryEntry.findMany({
+        where: {
+          userId,
+          catalogItem: {
+            sourceEntries: {
+              some: {
+                OR: refs.map(({ source, externalId }) => ({ externalId, source: { key: source } })),
+              },
             },
           },
         },
-      },
-      include: libraryEntryInclude,
-    });
-    return entries.map((entry) => this.present(entry));
+        include: libraryEntryInclude,
+      }),
+      this.sourcePreferences(userId),
+    ]);
+    return entries.map((entry) => this.present(entry, preferences));
   }
 
   async create(userId: string, input: CreateLibraryEntryDto) {
@@ -149,7 +156,7 @@ export class LibraryService {
         })
       );
     });
-    return this.present(entry);
+    return this.present(entry, await this.sourcePreferences(userId));
   }
 
   async update(userId: string, id: string, input: UpdateLibraryEntryDto) {
@@ -239,7 +246,7 @@ export class LibraryService {
       },
       include: libraryEntryInclude,
     });
-    return this.present(entry);
+    return this.present(entry, await this.sourcePreferences(userId));
   }
 
   async remove(userId: string, id: string) {
@@ -258,6 +265,24 @@ export class LibraryService {
     if (!result.count) {
       throw new NotFoundException('Imported source not found');
     }
+  }
+
+  private async sourcePreferences(userId: string): Promise<SourcePreferences> {
+    const usable = { enabled: true, userSettings: { none: { userId, enabled: false } } };
+    const [global, categories] = await Promise.all([
+      this.prisma.globalSourcePreference.findFirst({
+        where: { userId, source: usable },
+        select: { sourceId: true },
+      }),
+      this.prisma.categorySourcePreference.findMany({
+        where: { userId, source: usable },
+        select: { category: true, sourceId: true },
+      }),
+    ]);
+    return {
+      global: global?.sourceId ?? null,
+      categories: new Map(categories.map(({ category, sourceId }) => [category, sourceId])),
+    };
   }
 
   private async preferredSourceId(catalogItemId: string, key: string) {
@@ -326,6 +351,7 @@ export class LibraryService {
     entry: Prisma.LibraryEntryGetPayload<{
       include: typeof libraryEntryInclude;
     }>,
+    preferences: SourcePreferences,
   ) {
     return {
       id: entry.id,
@@ -341,6 +367,13 @@ export class LibraryService {
         platforms: entry.platforms,
       },
       preferredSource: entry.preferredSource?.key ?? null,
+      effectiveSource:
+        effectiveSourceEntry(
+          entry.catalogItem.sourceEntries,
+          entry.preferredSourceId,
+          entry.catalogItem.category,
+          preferences,
+        )?.source.key ?? null,
       importedSources: entry.importedSources.map((reference) => ({
         id: reference.id,
         name: reference.sourceName,

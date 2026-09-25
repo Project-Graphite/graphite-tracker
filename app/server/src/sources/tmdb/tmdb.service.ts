@@ -104,9 +104,8 @@ export class TmdbService {
   }
 
   async movieDetails(externalId: string) {
-    const movie = await this.request<TmdbMovieResult>(
+    const movie = await this.title<TmdbMovieResult>(
       `/movie/${encodeURIComponent(externalId)}`,
-      {},
     );
     return {
       ...this.normalizeMovie(movie),
@@ -249,7 +248,7 @@ export class TmdbService {
     if (category === 'tv') {
       return {
         ...this.normalizeTv(
-          await this.request<TmdbTvResult>(`/tv/${encodeURIComponent(externalId)}`, {}),
+          await this.title<TmdbTvResult>(`/tv/${encodeURIComponent(externalId)}`),
           'tv',
         ),
         attribution: this.descriptor.attribution,
@@ -262,14 +261,8 @@ export class TmdbService {
       }
       const record =
         mediaType === 'movie'
-          ? await this.request<TmdbMovieResult>(
-              `/movie/${encodeURIComponent(id)}`,
-              {},
-            )
-          : await this.request<TmdbTvResult>(
-              `/tv/${encodeURIComponent(id)}`,
-              {},
-            );
+          ? await this.title<TmdbMovieResult>(`/movie/${encodeURIComponent(id)}`)
+          : await this.title<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`);
       if (
         !this.isAnime(
           record.original_language,
@@ -301,8 +294,8 @@ export class TmdbService {
     const mediaType = match[1] === 'movie' ? 'movie' : 'tv';
     const record =
       mediaType === 'movie'
-        ? await this.request<TmdbMovieResult>(`/movie/${match[2]}`, {})
-        : await this.request<TmdbTvResult>(`/tv/${match[2]}`, {});
+        ? await this.title<TmdbMovieResult>(`/movie/${match[2]}`)
+        : await this.title<TmdbTvResult>(`/tv/${match[2]}`);
     const anime = this.isAnime(
       record.original_language,
       record.genre_ids ?? record.genres?.map((genre) => genre.id),
@@ -578,6 +571,14 @@ export class TmdbService {
       include_adult: 'false',
       ...(filters.year ? { first_air_date_year: String(filters.year) } : {}),
     });
+  }
+
+  private async title<T extends TmdbMovieResult | TmdbTvResult>(path: string) {
+    const record = await this.request<T>(path, {});
+    if (record.adult) {
+      throw new NotFoundException('TMDB title is not available');
+    }
+    return record;
   }
 
   private request<T>(path: string, parameters: Record<string, string>) {

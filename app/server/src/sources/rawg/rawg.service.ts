@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -40,7 +41,11 @@ interface RawgGame {
   playtime?: number;
   genres?: RawgNamed[];
   platforms?: RawgPlatform[];
+  esrb_rating?: RawgNamed | null;
+  tags?: RawgNamed[];
 }
+
+const adultTags = new Set(['nsfw', 'sexual-content', 'hentai']);
 
 interface RawgPage {
   count: number;
@@ -103,6 +108,9 @@ export class RawgService {
       `/games/${encodeURIComponent(identifier)}`,
       {},
     );
+    if (this.adult(game)) {
+      throw new NotFoundException('RAWG game not found');
+    }
     const [additions, series] = await Promise.all([
       this.request<RawgPage>(
         `/games/${encodeURIComponent(String(game.id))}/additions`,
@@ -162,7 +170,9 @@ export class RawgService {
       page,
       totalPages: Math.max(1, Math.ceil(response.count / 20)),
       totalResults: response.count,
-      results: response.results.map((game) => this.normalize(game)),
+      results: response.results
+        .filter((game) => !this.adult(game))
+        .map((game) => this.normalize(game)),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
@@ -217,6 +227,13 @@ export class RawgService {
         supportsReleaseNotifications: true,
       },
     };
+  }
+
+  private adult(game: RawgGame) {
+    return (
+      game.esrb_rating?.slug === 'adults-only' ||
+      (game.tags ?? []).some((tag) => adultTags.has(tag.slug))
+    );
   }
 
   private ordering(value: string) {

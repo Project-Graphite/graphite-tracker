@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
@@ -16,6 +16,7 @@ const manhwa = {
     altTitles: [{ ko: '탑 이야기' }],
     description: { en: 'A climber enters a mysterious tower.' },
     originalLanguage: 'ko',
+    contentRating: 'safe',
     year: 2020,
     status: 'ongoing',
     lastVolume: '3',
@@ -313,5 +314,91 @@ describe('Source connectors', () => {
     await expect(
       service.search('manga', 'tower', 1, { genre: 'Long Strip' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('keeps adult titles out of lists, details and pasted links', async () => {
+    const json = (body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    const cache = {
+      getOrLoad: vi.fn().mockResolvedValue({
+        value: { access_token: 'token', expires_in: 3600 },
+        stale: false,
+      }),
+    };
+    const config = new ConfigService({
+      TMDB_READ_ACCESS_TOKEN: 'tmdb-token',
+      IGDB_CLIENT_ID: 'client',
+      IGDB_CLIENT_SECRET: 'secret',
+      RAWG_API_KEY: 'rawg-key',
+    });
+    const http = new ConnectorHttpService();
+    const igdbGames = [
+      { id: 1, name: 'Safe Quest', themes: [1] },
+      { id: 2, name: 'Adult Quest', themes: [1, 42] },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: URL, init?: RequestInit) =>
+        Promise.resolve(
+          json(
+            input.hostname === 'api.themoviedb.org'
+              ? { id: 7, title: 'Adult Film', adult: true }
+              : input.hostname === 'api.mangadex.org'
+                ? { data: { ...manhwa, attributes: { ...manhwa.attributes, contentRating: 'erotica' } } }
+                : input.hostname === 'api.igdb.com'
+                  ? String(init?.body).includes('id = 2')
+                    ? [igdbGames[1]]
+                    : igdbGames
+                  : {
+                      count: 2,
+                      next: null,
+                      previous: null,
+                      results: [
+                        { id: 1, slug: 'safe', name: 'Safe Game' },
+                        { id: 2, slug: 'adult', name: 'Adult Game', esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
+                      ],
+                    },
+          ),
+        ),
+      ),
+    );
+
+    await expect(new TmdbService(config, http).details('movie', '7')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    await expect(
+      new MangaDexService(cache as never, http).details('manhwa', mangaId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    const igdb = new IgdbService(config, cache as never, http);
+    expect((await igdb.search('game', 'quest', 1, {})).results.map(({ title }) => title)).toEqual([
+      'Safe Quest',
+    ]);
+    await expect(igdb.details('game', '2')).rejects.toBeInstanceOf(NotFoundException);
+    expect(
+      (await new RawgService(config, http).search('game', 'game', 1, {})).results.map(
+        ({ title }) => title,
+      ),
+    ).toEqual(['Safe Game']);
+  });
+
+  it('disables connectors named in DISABLED_SOURCES without removing them', () => {
+    const config = new ConfigService({ DISABLED_SOURCES: ' MangaDex ,unknown' });
+    const cache = { getOrLoad: vi.fn() };
+    const http = new ConnectorHttpService();
+    const registry = new ConnectorRegistryService(
+      config,
+      new TmdbService(config, http),
+      new MangaDexService(cache as never, http),
+      new IgdbService(config, cache as never, http),
+      new RawgService(config, http),
+      cache as never,
+    );
+
+    expect(registry.list('manga')).toMatchObject([{ key: 'mangadex', enabled: false }]);
+    expect(() => registry.resolve('manga')).toThrow(NotFoundException);
+    expect(registry.resolve('movie').descriptor.key).toBe('tmdb');
   });
 });

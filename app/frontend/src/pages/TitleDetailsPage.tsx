@@ -231,6 +231,13 @@ export function TitleDetailsPage() {
                 {link.label}
               </a>
             ))}
+            {entry?.item.sources
+              .filter((source) => source.key !== item.source && source.url)
+              .map((source) => (
+                <a className="secondary-button" href={source.url ?? undefined} key={source.key} rel="noreferrer" target="_blank">
+                  View on {source.name}
+                </a>
+              ))}
             <Attribution source={item} />
           </div>
           <TitleReviews entry={entry} item={item} />

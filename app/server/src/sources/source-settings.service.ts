@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { MediaCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,11 +30,15 @@ export function sourceRecordData(descriptor: ConnectorDescriptor) {
 }
 
 @Injectable()
-export class SourceSettingsService {
+export class SourceSettingsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: ConnectorRegistryService,
   ) {}
+
+  onModuleInit() {
+    return this.sync();
+  }
 
   async list(userId: string) {
     await this.sync();

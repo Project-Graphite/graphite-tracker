@@ -103,7 +103,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
 
   async detail(userId: string, id: string) {
     const batch = await this.owned(userId, id);
-    const [matches, outcomes, undecided, earlier] = await Promise.all([
+    const [matches, outcomes, undecided, earlier, conflicts] = await Promise.all([
       this.prisma.importCandidate.groupBy({
         by: ['match'],
         where: { batchId: id },
@@ -127,6 +127,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         orderBy: { appliedAt: 'desc' },
         select: { appliedAt: true },
       }),
+      batch.state === ImportState.READY ? this.conflictIds(userId, id) : [],
     ]);
     return {
       id: batch.id,
@@ -139,6 +140,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
       expiresAt: batch.expiresAt,
       previouslyAppliedAt: earlier?.appliedAt ?? null,
       undecided,
+      conflicts: conflicts.length,
       matches: Object.fromEntries(
         matches.map((group) => [group.match.toLowerCase(), group._count]),
       ),
@@ -148,9 +150,12 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async candidates(userId: string, id: string, match: ImportMatch, page: number) {
+  async candidates(userId: string, id: string, match: ImportMatch | 'CONFLICT', page: number) {
     await this.owned(userId, id);
-    const where = { batchId: id, match };
+    const where =
+      match === 'CONFLICT'
+        ? { id: { in: await this.conflictIds(userId, id) } }
+        : { batchId: id, match };
     const [total, candidates] = await this.prisma.$transaction([
       this.prisma.importCandidate.count({ where }),
       this.prisma.importCandidate.findMany({
@@ -568,6 +573,25 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return 'updated';
+  }
+
+  private async conflictIds(userId: string, batchId: string) {
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT candidate.id
+      FROM import_candidates candidate
+      JOIN source_records source
+        ON source.key = candidate.options -> candidate.choice -> 'item' ->> 'source'
+      JOIN source_entries entry
+        ON entry.source_id = source.id
+        AND entry.external_id = candidate.options -> candidate.choice -> 'item' ->> 'externalId'
+      JOIN library_entries library
+        ON library.catalog_item_id = entry.catalog_item_id
+        AND library.user_id = ${userId}::uuid
+      WHERE candidate.batch_id = ${batchId}::uuid
+        AND candidate.match IN ('exact', 'suggested')
+        AND candidate.decision IS DISTINCT FROM 'skip'
+      ORDER BY candidate.position`;
+    return rows.map(({ id }) => id);
   }
 
   private options(candidate: Candidate) {

@@ -35,6 +35,14 @@ export class ConnectorRegistryService {
     rawg.descriptor.enabled =
       gameSource === 'rawg' && rawg.descriptor.enabled;
     this.connectors = [tmdb, mangadex, igdb, rawg];
+    const disabled = new Set(
+      (config.get<string>('DISABLED_SOURCES') ?? '')
+        .split(',')
+        .map((key) => key.trim().toLowerCase()),
+    );
+    for (const { descriptor } of this.connectors) {
+      descriptor.enabled = descriptor.enabled && !disabled.has(descriptor.key);
+    }
   }
 
   list(category?: CatalogCategory) {

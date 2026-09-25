@@ -13,6 +13,7 @@ services:
       IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       RAWG_API_KEY: ${RAWG_API_KEY:-}
+      DISABLED_SOURCES: ${DISABLED_SOURCES:-}
     depends_on:
       postgres:
         condition: service_healthy

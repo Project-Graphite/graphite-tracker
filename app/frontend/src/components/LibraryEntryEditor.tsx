@@ -123,7 +123,7 @@ export function LibraryEntryEditor({
   const auth = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const activeSources = entry.item.sources.filter((source) => source.active);
+  const unavailableSources = entry.item.sources.filter((source) => !source.active);
   const finished = entry.state === 'completed' || entry.state === 'dropped';
   const needsPlatform =
     entry.item.category === 'game' && entry.progress.platforms.length === 0;
@@ -186,7 +186,7 @@ export function LibraryEntryEditor({
             ))}
           </select>
         </label>
-        {activeSources.length > 1 && (
+        {entry.item.sources.length > 1 && (
           <label className="field-label">
             Preferred source
             <select
@@ -195,9 +195,9 @@ export function LibraryEntryEditor({
               value={entry.preferredSource ?? ''}
             >
               <option value="">Automatic</option>
-              {activeSources.map((source) => (
-                <option key={source.key} value={source.key}>
-                  {source.name}
+              {entry.item.sources.map((source) => (
+                <option disabled={!source.active} key={source.key} value={source.key}>
+                  {source.active ? source.name : `${source.name} (unavailable)`}
                 </option>
               ))}
             </select>
@@ -205,6 +205,12 @@ export function LibraryEntryEditor({
         )}
         <ProgressFields busy={busy} entry={entry} onUpdate={update} />
       </div>
+      {unavailableSources.length > 0 && (
+        <p className="mono-sm m-0 text-faint">
+          {unavailableSources.map((source) => source.name).join(', ')} unavailable right now. Your
+          list and progress are kept.
+        </p>
+      )}
       <div>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input

@@ -31,6 +31,7 @@ export interface LibraryEntry {
     platforms: string[];
   };
   preferredSource: string | null;
+  effectiveSource: string | null;
   importedSources: Array<{ id: string; name: string; url: string }>;
   item: {
     id: string;
@@ -57,10 +58,7 @@ export const libraryStateLabels: Record<LibraryState, string> = {
 };
 
 export function entryHref(entry: LibraryEntry) {
-  const source =
-    entry.item.sources.find(
-      (item) => item.active && item.key === entry.preferredSource,
-    ) ?? entry.item.sources.find((item) => item.active);
+  const source = entry.item.sources.find((item) => item.key === entry.effectiveSource);
   return (
     source &&
     titleHref({

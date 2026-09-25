@@ -1,5 +1,6 @@
 export interface TmdbMovieResult {
   id: number;
+  adult?: boolean;
   title: string;
   original_title: string;
   overview: string;
@@ -18,6 +19,7 @@ export interface TmdbMovieResult {
 
 export interface TmdbTvResult {
   id: number;
+  adult?: boolean;
   name: string;
   original_name: string;
   overview: string;

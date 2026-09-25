@@ -17,9 +17,10 @@ import {
 import { progressSummary, stateLabel } from '../library';
 import { useResource } from '../useResource';
 
-const tabs: Array<{ match: ImportMatch; label: string }> = [
+const tabs: Array<{ match: ImportMatch | 'conflict'; label: string }> = [
   { match: 'suggested', label: 'Suggested' },
   { match: 'exact', label: 'Exact' },
+  { match: 'conflict', label: 'Already in library' },
   { match: 'unmatched', label: 'Unmatched' },
   { match: 'duplicate', label: 'Duplicates' },
   { match: 'unsupported', label: 'Unsupported' },
@@ -139,8 +140,8 @@ export function ImportBatchPage() {
   const state = batch.data?.state;
   const working = state === 'parsing' || state === 'matching' || state === 'applying';
   const match =
-    (searchParams.get('match') as ImportMatch | null) ??
-    tabs.find((tab) => batch.data?.matches[tab.match])?.match ??
+    (searchParams.get('match') as ImportMatch | 'conflict' | null) ??
+    tabs.find((tab) => tab.match !== 'conflict' && batch.data?.matches[tab.match])?.match ??
     'suggested';
   const page = Number(searchParams.get('page')) || 1;
   const candidates = useResource<Page<ImportCandidate>>(
@@ -288,7 +289,7 @@ export function ImportBatchPage() {
       {(detail.state === 'ready' || detail.state === 'applied') && (
         <>
           <nav aria-label="Import entries" className="mt-10 flex gap-2 overflow-x-auto border-b border-line">
-            {tabs.map((tab) => (
+            {tabs.filter((tab) => tab.match !== 'conflict' || detail.state === 'ready').map((tab) => (
               <button
                 aria-current={match === tab.match ? 'page' : undefined}
                 className={`border-0 border-b-2 bg-transparent px-4 py-3 text-sm font-semibold whitespace-nowrap ${
@@ -298,7 +299,10 @@ export function ImportBatchPage() {
                 onClick={() => setSearchParams({ match: tab.match })}
                 type="button"
               >
-                {tab.label} <span className="mono-sm text-faint">{detail.matches[tab.match] ?? 0}</span>
+                {tab.label}{' '}
+                <span className="mono-sm text-faint">
+                  {tab.match === 'conflict' ? detail.conflicts : (detail.matches[tab.match] ?? 0)}
+                </span>
               </button>
             ))}
           </nav>

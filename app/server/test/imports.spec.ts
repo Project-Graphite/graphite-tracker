@@ -206,6 +206,56 @@ describe('ImportsService', () => {
     expect(match).toHaveBeenCalledTimes(1);
   });
 
+  it('deletes expired previews at startup and every hour, except batches still working', async () => {
+    vi.useFakeTimers();
+    const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const imports = service({
+      importBatch: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findMany: vi.fn().mockResolvedValue([]),
+        deleteMany,
+      },
+    });
+
+    try {
+      await imports.onModuleInit();
+      expect(deleteMany).toHaveBeenCalledWith({
+        where: {
+          expiresAt: { lt: expect.any(Date) },
+          state: { notIn: [ImportState.PARSING, ImportState.MATCHING, ImportState.APPLYING] },
+        },
+      });
+      await vi.advanceTimersByTimeAsync(3_600_000);
+      expect(deleteMany).toHaveBeenCalledTimes(2);
+    } finally {
+      imports.onModuleDestroy();
+      vi.useRealTimers();
+    }
+  });
+
+  it('lists titles already in the library as conflicts in position order', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const imports = service(
+      {
+        importBatch: { findFirst: vi.fn().mockResolvedValue({ id: 'batch-id' }) },
+        $queryRaw: vi.fn().mockResolvedValue([{ id: 'second' }, { id: 'fifth' }]),
+        $transaction: (queries: Array<Promise<unknown>>) => Promise.all(queries),
+        importCandidate: { count: vi.fn().mockResolvedValue(2), findMany },
+      },
+      { bySources: vi.fn().mockResolvedValue([]) },
+    );
+
+    await expect(imports.candidates('user-id', 'batch-id', 'CONFLICT', 1)).resolves.toMatchObject({
+      totalResults: 2,
+    });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ['second', 'fifth'] } },
+        orderBy: { position: 'asc' },
+      }),
+    );
+  });
+
   it('does not touch the library while suggestions are undecided', async () => {
     const updateMany = vi.fn();
     const imports = service({

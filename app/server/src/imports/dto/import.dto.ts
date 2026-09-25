@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, Max, Min } from 'class-validator';
+import { IsEnum, IsIn, IsInt, Max, Min } from 'class-validator';
 import { ImportConflictPolicy, ImportDecision, ImportMatch } from '@prisma/client';
 import { IsOptionalNotNull } from '../../validation/is-optional-not-null.decorator';
 
@@ -8,8 +8,8 @@ const upper = ({ value }: { value: unknown }) =>
 
 export class ListCandidatesDto {
   @Transform(upper)
-  @IsEnum(ImportMatch)
-  match!: ImportMatch;
+  @IsIn([...Object.values(ImportMatch), 'CONFLICT'])
+  match!: ImportMatch | 'CONFLICT';
 
   @Type(() => Number)
   @IsInt()

@@ -19,6 +19,7 @@ export interface ImportDetail extends ImportSummary {
   expiresAt: string;
   previouslyAppliedAt: string | null;
   undecided: number;
+  conflicts: number;
   matches: Partial<Record<ImportMatch, number>>;
   outcomes: Partial<Record<'added' | 'updated' | 'kept' | 'duplicate' | 'skipped', number>>;
 }

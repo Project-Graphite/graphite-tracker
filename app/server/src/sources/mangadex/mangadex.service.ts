@@ -28,6 +28,7 @@ interface MangaDexManga {
     altTitles: Array<Record<string, string>>;
     description: Record<string, string>;
     originalLanguage: string;
+    contentRating: string;
     year: number | null;
     status: string;
     lastVolume: string | null;
@@ -58,6 +59,8 @@ interface MangaDexTags {
     attributes: { name: Record<string, string>; group: string };
   }>;
 }
+
+const allowedContentRatings = ['safe', 'suggestive'];
 
 @Injectable()
 export class MangaDexService {
@@ -115,6 +118,9 @@ export class MangaDexService {
         { 'translatedLanguage[]': ['en'] },
       ).catch(() => null),
     ]);
+    if (!allowedContentRatings.includes(response.data.attributes.contentRating)) {
+      throw new NotFoundException('MangaDex title is not available');
+    }
     const item = this.normalize(response.data);
     if (item.category !== category) {
       throw new NotFoundException('MangaDex title does not match this category');
@@ -197,7 +203,7 @@ export class MangaDexService {
         ? { 'originalLanguage[]': ['ko'] }
         : { 'excludedOriginalLanguage[]': ['ko'] }),
       'includes[]': ['cover_art'],
-      'contentRating[]': ['safe', 'suggestive'],
+      'contentRating[]': allowedContentRatings,
       [`order[${selectedOrder}]`]: 'desc',
     });
     return {

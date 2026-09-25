@@ -49,8 +49,11 @@ interface IgdbGame {
   expansions?: IgdbNamed[];
   standalone_expansions?: IgdbNamed[];
   release_dates?: IgdbReleaseDate[];
+  themes?: number[];
   url?: string;
 }
+
+const eroticTheme = 42;
 
 interface TwitchToken {
   access_token: string;
@@ -116,7 +119,7 @@ export class IgdbService {
       `${this.fields()} where ${selector}; limit 1;`,
     );
     const game = games[0];
-    if (!game) {
+    if (!game || game.themes?.includes(eroticTheme)) {
       throw new NotFoundException('IGDB game not found');
     }
     return {
@@ -154,6 +157,7 @@ export class IgdbService {
       `${this.fields()} ${fragment} ${where.length ? `where ${where.join(' & ')};` : ''} limit 20; offset ${offset};`,
     );
     const filtered = games
+      .filter((game) => !game.themes?.includes(eroticTheme))
       .map((game) => this.normalize(game))
       .filter(
         (game) =>
@@ -245,7 +249,7 @@ export class IgdbService {
   }
 
   private fields() {
-    return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,url;';
+    return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,themes,url;';
   }
 
   private escape(value: string) {

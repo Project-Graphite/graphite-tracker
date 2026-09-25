@@ -4,13 +4,18 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
 import { UpdateLibraryEntryDto } from '../src/library/dto/update-library-entry.dto';
+import { effectiveSourceEntry } from '../src/library/effective-source';
 import { LibraryService } from '../src/library/library.service';
 
 describe('LibraryService', () => {
   it('looks up the current user entries by source external IDs', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const service = new LibraryService(
-      { libraryEntry: { findMany } } as never,
+      {
+        libraryEntry: { findMany },
+        globalSourcePreference: { findFirst: vi.fn().mockResolvedValue(null) },
+        categorySourcePreference: { findMany: vi.fn().mockResolvedValue([]) },
+      } as never,
       {} as never,
       {} as never,
     );
@@ -126,6 +131,30 @@ describe('LibraryService', () => {
       service.update('user-id', 'entry-id', { notificationsEnabled: true }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it('resolves the source by title, category and global preference before the default', () => {
+    const entries = ['tmdb', 'rawg', 'igdb', 'retired'].map((sourceId) => ({
+      sourceId,
+      source: { enabled: sourceId !== 'retired' },
+    }));
+    const preferences = {
+      global: 'igdb',
+      categories: new Map([[MediaCategory.GAME, 'rawg']]),
+    };
+    const resolve = (titlePreference: string | null, category: MediaCategory) =>
+      effectiveSourceEntry(entries, titlePreference, category, preferences)?.sourceId;
+
+    expect(resolve('igdb', MediaCategory.GAME)).toBe('igdb');
+    expect(resolve('retired', MediaCategory.GAME)).toBe('rawg');
+    expect(resolve(null, MediaCategory.MOVIE)).toBe('igdb');
+    expect(
+      effectiveSourceEntry(entries, null, MediaCategory.MOVIE, {
+        global: null,
+        categories: new Map(),
+      })?.sourceId,
+    ).toBe('tmdb');
+    expect(effectiveSourceEntry([entries[3]!], null, MediaCategory.GAME, preferences)).toBeUndefined();
   });
 
   it('rejects null for the list, platforms and notifications while null still clears progress', async () => {
