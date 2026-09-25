@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!session) return;
     const timer = window.setTimeout(
-      () => void restoreSession().then(applySession),
+      () => void restoreSession().then((renewed) => renewed && applySession(renewed)),
       13 * 60 * 1000,
     );
     return () => window.clearTimeout(timer);
