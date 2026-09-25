@@ -57,7 +57,7 @@ describe('ConnectorHttpService', () => {
 
   it('fails fast while the circuit is open after repeated failures', async () => {
     const request = vi.fn().mockImplementation(() =>
-      Promise.resolve(new Response(null, { status: 400 })),
+      Promise.resolve(new Response(null, { status: 503, headers: { 'Retry-After': '60' } })),
     );
     vi.stubGlobal('fetch', request);
     const http = new ConnectorHttpService();
@@ -70,6 +70,20 @@ describe('ConnectorHttpService', () => {
       ServiceUnavailableException,
     );
     expect(request).toHaveBeenCalledTimes(5);
+  });
+
+  it('keeps the circuit closed when the upstream rejects a request', async () => {
+    const request = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(null, { status: 400 })),
+    );
+    vi.stubGlobal('fetch', request);
+    const http = new ConnectorHttpService();
+    const url = new URL('https://api.example.org/items/not-an-id');
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await expect(http.json(descriptor, url)).rejects.toBeInstanceOf(BadGatewayException);
+    }
+    expect(request).toHaveBeenCalledTimes(6);
   });
 
   it('refuses hosts the connector does not declare', async () => {

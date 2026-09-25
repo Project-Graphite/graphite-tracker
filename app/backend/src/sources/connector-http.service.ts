@@ -94,12 +94,10 @@ export class ConnectorHttpService {
           await delay(wait);
           continue;
         }
-        throw this.failed(
-          state,
-          new BadGatewayException(
-            `${connector.displayName} returned ${response.status}`,
-          ),
+        const error = new BadGatewayException(
+          `${connector.displayName} returned ${response.status}`,
         );
+        throw retryableStatuses.has(response.status) ? this.failed(state, error) : error;
       }
       const body = await this.read(response, connector);
       state.failures = 0;
