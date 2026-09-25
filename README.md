@@ -54,11 +54,11 @@ Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
 cp .env.example .env
 ```
 
-Start the stack and apply the committed database migrations:
+Start the stack. The `migrate` service applies the committed database migrations before `backend`
+starts:
 
 ```sh
-docker compose up -d --build --renew-anon-volumes
-docker compose exec web npm run prisma:migrate:deploy
+docker compose up -d --build --renew-anon-volumes --remove-orphans
 ```
 
 Open:
@@ -76,7 +76,7 @@ the default local authentication secret before using the application outside a l
 Grant administrator access once, to an account that is registered, verified and active:
 
 ```sh
-docker compose exec web npm run admin:grant --workspace backend -- you@example.com
+docker compose exec backend npm run admin:grant --workspace backend -- you@example.com
 ```
 
 The command matches the email address case-insensitively, prints `<handle> is now the
