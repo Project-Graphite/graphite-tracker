@@ -14,6 +14,7 @@ interface ModeratedReview {
   title: string | null;
   body: string | null;
   containsSpoilers: boolean;
+  visibility: 'public' | 'private';
   hidden: boolean;
   openReports: number;
   updatedAt: string;
@@ -69,6 +70,7 @@ function ReviewBlock({ review }: { review: ModeratedReview }) {
         </Link>{' '}
         on {href ? <Link className="rule-link" to={href}>{review.item.title}</Link> : review.item.title}
         {review.rating !== null && ` · ${review.rating}/10`}
+        {review.visibility === 'private' && ' · private'}
         {review.containsSpoilers && ' · marked as spoilers'}
         {review.hidden && ' · hidden'}
       </p>

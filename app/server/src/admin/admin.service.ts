@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationState, Prisma, ReportResolution, ReviewVisibility } from '@prisma/client';
+import { NotificationState, Prisma, ReportResolution } from '@prisma/client';
 import {
   catalogItemSummary,
   catalogItemSummaryInclude,
@@ -9,7 +9,6 @@ import { PrismaService } from '../prisma/prisma.service';
 const pageSize = 20;
 
 const moderatedReviewWhere = {
-  visibility: ReviewVisibility.PUBLIC,
   body: { not: null },
 } satisfies Prisma.ReviewWhereInput;
 
@@ -38,6 +37,7 @@ function presentReview(
     title: review.title,
     body: review.body,
     containsSpoilers: review.containsSpoilers,
+    visibility: review.visibility.toLowerCase(),
     hidden: review.hiddenAt !== null,
     openReports: review._count.reports,
     updatedAt: review.updatedAt,

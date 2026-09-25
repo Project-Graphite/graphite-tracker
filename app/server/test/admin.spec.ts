@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { ReportResolution, ReviewVisibility } from '@prisma/client';
+import { ReportResolution } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminGuard } from '../src/admin/admin.guard';
 import { AdminService } from '../src/admin/admin.service';
@@ -52,20 +52,26 @@ describe('Administration', () => {
     expect(prisma.reviewReport.update).not.toHaveBeenCalled();
   });
 
-  it('lists reports only for reviews that are still public', async () => {
-    const count = vi.fn();
-    const findMany = vi.fn();
-    await new AdminService({
-      reviewReport: { count, findMany },
+  it('lists public and private reviews that still have text, with their reports', async () => {
+    const reportCount = vi.fn();
+    const reportFindMany = vi.fn();
+    const reviewCount = vi.fn();
+    const reviewFindMany = vi.fn();
+    const service = new AdminService({
+      reviewReport: { count: reportCount, findMany: reportFindMany },
+      review: { count: reviewCount, findMany: reviewFindMany },
       $transaction: () => Promise.resolve([0, []]),
-    } as never).reports('open', 1);
+    } as never);
 
-    const where = {
-      resolution: null,
-      review: { visibility: ReviewVisibility.PUBLIC, body: { not: null } },
-    };
-    expect(count).toHaveBeenCalledWith({ where });
-    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+    await service.reports('open', 1);
+    await service.reviews('visible', 1);
+
+    const reportWhere = { resolution: null, review: { body: { not: null } } };
+    expect(reportCount).toHaveBeenCalledWith({ where: reportWhere });
+    expect(reportFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: reportWhere }));
+    const reviewWhere = { body: { not: null }, hiddenAt: null };
+    expect(reviewCount).toHaveBeenCalledWith({ where: reviewWhere });
+    expect(reviewFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: reviewWhere }));
   });
 
   it('dismisses a report without touching the review', async () => {
