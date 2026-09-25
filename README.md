@@ -54,8 +54,7 @@ Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
 cp .env.example .env
 ```
 
-Start the stack. The `migrate` service applies the committed database migrations before `backend`
-starts:
+Start the stack. The server applies the committed database migrations before it starts:
 
 ```sh
 docker compose up -d --build --renew-anon-volumes --remove-orphans
@@ -76,7 +75,7 @@ the default local authentication secret before using the application outside a l
 Grant administrator access once, to an account that is registered, verified and active:
 
 ```sh
-docker compose exec backend npm run admin:grant --workspace backend -- you@example.com
+docker compose exec server npm run admin:grant --workspace server -- you@example.com
 ```
 
 The command matches the email address case-insensitively, prints `<handle> is now the
@@ -103,7 +102,7 @@ They do not publish an image or deploy the application.
 | Path | Purpose |
 | :--- | :--- |
 | `app/frontend/` | React browser application |
-| `app/backend/` | NestJS API, Prisma schema and migrations |
+| `app/server/` | NestJS API, Prisma schema and migrations |
 | `app/Dockerfile` | Development and production image targets |
 | `compose.yaml` | Shared local service definitions |
 | `compose.override.yaml` | Local hot-reload services and ports |

@@ -5,7 +5,7 @@ import { grantAdmin } from './grant-admin';
 
 async function run(email: string | undefined) {
   if (!email) {
-    throw new Error('Usage: npm run admin:grant --workspace backend -- <email>');
+    throw new Error('Usage: npm run admin:grant --workspace server -- <email>');
   }
   const context = await NestFactory.createApplicationContext(PrismaModule, { logger: false });
   try {

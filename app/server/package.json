@@ -1,5 +1,5 @@
 {
-  "name": "graphite-tracker-backend",
+  "name": "graphite-tracker-server",
   "private": true,
   "version": "0.1.0",
   "scripts": {

@@ -1,15 +1,8 @@
 services:
-  migrate:
+  server:
     build:
       target: development
-    volumes:
-      - ./app:/app
-      - /app/node_modules
-
-  backend:
-    build:
-      target: development
-    command: npm run dev
+    command: [sh, -c, 'npm run prisma:migrate:deploy && exec npm run dev']
     volumes:
       - ./app:/app
       - /app/node_modules
@@ -22,11 +15,11 @@ services:
       target: development
     command: npm run dev --workspace frontend -- --host 0.0.0.0
     environment:
-      VITE_API_ORIGIN: http://backend:3000
+      VITE_API_ORIGIN: http://server:3000
     ports:
       - '4004:5173'
     volumes:
       - ./app:/app
       - /app/node_modules
     depends_on:
-      - backend
+      - server

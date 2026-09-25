@@ -1,21 +1,10 @@
 name: graphite-tracker
 
 services:
-  migrate:
+  server:
     build:
       context: ./app
-      target: web
-    command: [npm, run, prisma:migrate:deploy]
-    environment:
-      DATABASE_URL: postgresql://graphite:graphite@postgres:5432/graphite_tracker
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  backend:
-    build:
-      context: ./app
-      target: web
+      target: server
     environment:
       DATABASE_URL: postgresql://graphite:graphite@postgres:5432/graphite_tracker
       REDIS_URL: redis://redis:6379
@@ -27,8 +16,8 @@ services:
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       RAWG_API_KEY: ${RAWG_API_KEY:-}
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     ports:

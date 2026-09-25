@@ -2,7 +2,7 @@ FROM node:24-alpine AS manifests
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY backend/package.json ./backend/
+COPY server/package.json ./server/
 COPY frontend/package.json ./frontend/
 
 FROM manifests AS development
@@ -15,18 +15,18 @@ RUN npm run build
 FROM manifests AS production-dependencies
 RUN npm ci --omit=dev
 
-FROM node:24-alpine AS web
+FROM node:24-alpine AS server
 
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/backend/dist ./backend/dist
+COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/frontend/dist ./frontend/dist
 COPY package.json ./
-COPY backend/package.json ./backend/
-COPY backend/prisma.config.ts ./backend/
-COPY backend/prisma ./backend/prisma
+COPY server/package.json ./server/
+COPY server/prisma.config.ts ./server/
+COPY server/prisma ./server/prisma
 USER node
 EXPOSE 3000
-CMD ["node", "backend/dist/main.js"]
+CMD ["sh", "-c", "npm run prisma:migrate:deploy && exec node server/dist/main.js"]
