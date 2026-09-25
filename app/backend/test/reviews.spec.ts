@@ -108,6 +108,21 @@ describe('ReviewsService', () => {
     expect(activity.createMany).not.toHaveBeenCalled();
   });
 
+  it('drops the review activity when the review text is removed', async () => {
+    const { activity, service } = serviceFor(
+      LibraryState.COMPLETED,
+      review({ rating: 8, body: 'Worth it.' }),
+    );
+
+    await service.save('user-id', itemId, input({ rating: 8, body: null }));
+
+    expect(activity.deleteMany).toHaveBeenCalledTimes(1);
+    expect(activity.deleteMany).toHaveBeenCalledWith({
+      where: { reviewId: 'review-id', kind: ActivityKind.REVIEWED },
+    });
+    expect(activity.createMany).not.toHaveBeenCalled();
+  });
+
   it('stores review text exactly as written and never as markup', async () => {
     const body = '<script>alert(1)</script><img src=x onerror=alert(2)> & "quotes"';
     const { service } = serviceFor(LibraryState.COMPLETED);

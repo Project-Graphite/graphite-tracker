@@ -153,6 +153,11 @@ export class ReviewsService {
           where: { reviewId: saved.id, kind: ActivityKind.RATED },
         });
       }
+      if (body === null && existing?.body) {
+        await transaction.activityEvent.deleteMany({
+          where: { reviewId: saved.id, kind: ActivityKind.REVIEWED },
+        });
+      }
       if (kinds.length > 0) {
         await transaction.activityEvent.createMany({
           data: kinds.map((kind) => ({ userId, catalogItemId, reviewId: saved.id, kind })),
