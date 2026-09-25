@@ -42,14 +42,16 @@ export class RateLimitGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();
     const key = `rate:${rule.bucket}:${request.user?.id ?? request.ip}`;
-    const count =
+    const count = Math.max(
+      this.countInMemory(key, rule.windowSeconds),
       (await this.redis.run(async (client) => {
         const current = await client.incr(key);
         if (current === 1) {
           await client.expire(key, rule.windowSeconds);
         }
         return current;
-      })) ?? this.countInMemory(key, rule.windowSeconds);
+      })) ?? 0,
+    );
     if (count > rule.limit) {
       throw new HttpException(
         'Too many requests. Try again later.',

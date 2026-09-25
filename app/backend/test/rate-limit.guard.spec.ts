@@ -28,6 +28,21 @@ describe('RateLimitGuard', () => {
     ).resolves.toBe(true);
   });
 
+  it('keeps the limit when Redis evicts a counter inside its window', async () => {
+    const reflector = { get: () => ({ bucket: 'login', limit: 2, windowSeconds: 900 }) };
+    const guard = new RateLimitGuard(reflector as unknown as Reflector, {
+      run: (operation: (client: object) => Promise<number>) =>
+        operation({ incr: () => Promise.resolve(1), expire: () => Promise.resolve(true) }),
+    } as never);
+    const request = { ip: '203.0.113.9' };
+
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+    await expect(guard.canActivate(contextFor(request))).rejects.toBeInstanceOf(
+      HttpException,
+    );
+  });
+
   it('keys authenticated requests by user', async () => {
     const keys: string[] = [];
     const reflector = { get: () => ({ bucket: 'reviews', limit: 5, windowSeconds: 60 }) };
