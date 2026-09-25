@@ -27,10 +27,13 @@ jobs:
 
   images:
     name: Images
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: docker build --target server app
+    needs: [services, checks]
+    permissions:
+      contents: read
+      packages: write
+    uses: project-graphite/actions/.github/workflows/reusable-docker-build-push.yml@main
+    with:
+      services: ${{ needs.services.outputs.services }}
 
   secrets:
     name: Secrets
