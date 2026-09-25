@@ -34,7 +34,18 @@ jobs:
     uses: project-graphite/actions/.github/workflows/reusable-docker-build-push.yml@main
     with:
       services: ${{ needs.services.outputs.services }}
-
+  deploy:
+    name: Deploy to Coolify
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deployment
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+        run: |
+          curl --fail --show-error --silent --request POST "$COOLIFY_WEBHOOK" \
+            --header "Authorization: Bearer $COOLIFY_TOKEN"
   secrets:
     name: Secrets
     uses: project-graphite/actions/.github/workflows/reusable-gitleaks.yml@main
