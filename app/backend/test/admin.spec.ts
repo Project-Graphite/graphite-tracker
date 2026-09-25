@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { ReportResolution } from '@prisma/client';
+import { ReportResolution, ReviewVisibility } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminGuard } from '../src/admin/admin.guard';
 import { AdminService } from '../src/admin/admin.service';
@@ -50,6 +50,22 @@ describe('Administration', () => {
       },
     });
     expect(prisma.reviewReport.update).not.toHaveBeenCalled();
+  });
+
+  it('lists reports only for reviews that are still public', async () => {
+    const count = vi.fn();
+    const findMany = vi.fn();
+    await new AdminService({
+      reviewReport: { count, findMany },
+      $transaction: () => Promise.resolve([0, []]),
+    } as never).reports('open', 1);
+
+    const where = {
+      resolution: null,
+      review: { visibility: ReviewVisibility.PUBLIC, body: { not: null } },
+    };
+    expect(count).toHaveBeenCalledWith({ where });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
   });
 
   it('dismisses a report without touching the review', async () => {

@@ -8,6 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const pageSize = 20;
 
+const moderatedReviewWhere = {
+  visibility: ReviewVisibility.PUBLIC,
+  body: { not: null },
+} satisfies Prisma.ReviewWhereInput;
+
 const moderatedReviewInclude = Prisma.validator<Prisma.ReviewInclude>()({
   user: { select: { handle: true, displayName: true } },
   catalogItem: { include: catalogItemSummaryInclude },
@@ -45,7 +50,10 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async reports(status: 'open' | 'resolved', page: number) {
-    const where = { resolution: status === 'open' ? null : { not: null } };
+    const where = {
+      resolution: status === 'open' ? null : { not: null },
+      review: moderatedReviewWhere,
+    };
     const [total, reports] = await this.prisma.$transaction([
       this.prisma.reviewReport.count({ where }),
       this.prisma.reviewReport.findMany({
@@ -95,8 +103,7 @@ export class AdminService {
 
   async reviews(status: 'visible' | 'hidden', page: number) {
     const where: Prisma.ReviewWhereInput = {
-      visibility: ReviewVisibility.PUBLIC,
-      body: { not: null },
+      ...moderatedReviewWhere,
       hiddenAt: status === 'hidden' ? { not: null } : null,
     };
     const [total, reviews] = await this.prisma.$transaction([
