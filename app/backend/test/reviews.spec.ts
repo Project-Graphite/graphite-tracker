@@ -32,7 +32,7 @@ function review(overrides: Record<string, unknown> = {}) {
 
 function serviceFor(state: LibraryState | null, existing: object | null = null) {
   const activity = { createMany: vi.fn(), deleteMany: vi.fn() };
-  const upsert = vi.fn().mockImplementation(({ create }: { create: object }) =>
+  const upsert = vi.fn().mockImplementation(({ create }: { create: Record<string, unknown> }) =>
     Promise.resolve(review(create)),
   );
   const prisma = {
