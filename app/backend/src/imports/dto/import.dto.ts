@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, Max, Min } from 'class-validator';
 import { ImportConflictPolicy, ImportDecision, ImportMatch } from '@prisma/client';
+import { IsOptionalNotNull } from '../../validation/is-optional-not-null.decorator';
 
 const upper = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.toUpperCase() : value;
@@ -22,7 +23,7 @@ export class DecideCandidateDto {
   @IsEnum(ImportDecision)
   decision!: ImportDecision;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsInt()
   @Min(0)
   @Max(2)

@@ -2,9 +2,10 @@ import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 import { CatalogCategory, catalogCategories } from '../../sources/source.types';
 import { LibraryStateInput } from '../../library/dto/create-library-entry.dto';
+import { IsOptionalNotNull } from '../../validation/is-optional-not-null.decorator';
 
 export class UpdateProfileDto {
-  @IsOptional()
+  @IsOptionalNotNull()
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @Length(1, 80)
@@ -20,27 +21,27 @@ export class UpdateProfileDto {
 }
 
 export class UpdatePrivacyDto {
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   isPublic?: boolean;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   showLibrary?: boolean;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   showActivity?: boolean;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   showRatings?: boolean;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   showReviews?: boolean;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   showStatistics?: boolean;
 }

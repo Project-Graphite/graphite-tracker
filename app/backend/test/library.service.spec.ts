@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { LibraryState, MediaCategory } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
+import { UpdateLibraryEntryDto } from '../src/library/dto/update-library-entry.dto';
 import { LibraryService } from '../src/library/library.service';
 
 describe('LibraryService', () => {
@@ -123,5 +126,18 @@ describe('LibraryService', () => {
       service.update('user-id', 'entry-id', { notificationsEnabled: true }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it('rejects null for the list, platforms and notifications while null still clears progress', async () => {
+    const errors = async (value: object) =>
+      (await validate(plainToInstance(UpdateLibraryEntryDto, value))).map(
+        ({ property }) => property,
+      );
+
+    await expect(errors({})).resolves.toEqual([]);
+    await expect(errors({ progressEpisode: null, preferredSource: null })).resolves.toEqual([]);
+    await expect(
+      errors({ state: null, platforms: null, notificationsEnabled: null }),
+    ).resolves.toEqual(['state', 'platforms', 'notificationsEnabled']);
   });
 });

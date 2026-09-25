@@ -6,7 +6,10 @@ import {
   LibraryState,
   Prisma,
 } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
+import { DecideCandidateDto } from '../src/imports/dto/import.dto';
 import { ImportMatcherService, titleSimilarity } from '../src/imports/import-matcher.service';
 import { ImportsService } from '../src/imports/imports.service';
 import { CatalogCandidate } from '../src/sources/source.types';
@@ -351,5 +354,16 @@ describe('ImportsService', () => {
       await expect(outcome).resolves.toBe('kept');
       expect(transaction.libraryEntry.update).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('Import decisions', () => {
+  it('lets the suggested title be left out but never sent as null', async () => {
+    const errors = async (value: object) =>
+      (await validate(plainToInstance(DecideCandidateDto, value))).map(({ property }) => property);
+
+    await expect(errors({ decision: 'accept' })).resolves.toEqual([]);
+    await expect(errors({ decision: 'accept', choice: 1 })).resolves.toEqual([]);
+    await expect(errors({ decision: 'accept', choice: null })).resolves.toEqual(['choice']);
   });
 });

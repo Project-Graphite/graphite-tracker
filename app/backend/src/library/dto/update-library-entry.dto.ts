@@ -12,10 +12,11 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { IsOptionalNotNull } from '../../validation/is-optional-not-null.decorator';
 import { LibraryStateInput } from './create-library-entry.dto';
 
 export class UpdateLibraryEntryDto {
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsEnum(LibraryStateInput)
   state?: LibraryStateInput;
 
@@ -61,14 +62,14 @@ export class UpdateLibraryEntryDto {
   @Max(100)
   completionPercentage?: number | null;
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsArray()
   @ArrayMaxSize(50)
   @IsString({ each: true })
   @Length(1, 80, { each: true })
   platforms?: string[];
 
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsBoolean()
   notificationsEnabled?: boolean;
 

@@ -1,6 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { ActivityKind } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
+import { UpdatePrivacyDto, UpdateProfileDto } from '../src/users/dto/users.dto';
 import { ProfilesService } from '../src/users/profiles.service';
 
 const hidden = {
@@ -108,5 +111,23 @@ describe('ProfilesService privacy', () => {
       statistics: { total: 0, ratings: null },
     });
     expect(prisma.review.aggregate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Profile settings input', () => {
+  const errors = async (type: new () => object, value: object) =>
+    (await validate(plainToInstance(type, value))).map(({ property }) => property);
+
+  it('rejects a null display name but still clears the bio with null', async () => {
+    await expect(errors(UpdateProfileDto, {})).resolves.toEqual([]);
+    await expect(errors(UpdateProfileDto, { bio: null })).resolves.toEqual([]);
+    await expect(errors(UpdateProfileDto, { displayName: null })).resolves.toEqual(['displayName']);
+  });
+
+  it('rejects null for every privacy switch that is sent', async () => {
+    await expect(errors(UpdatePrivacyDto, {})).resolves.toEqual([]);
+    await expect(
+      errors(UpdatePrivacyDto, Object.fromEntries(Object.keys(hidden).map((key) => [key, null]))),
+    ).resolves.toEqual(Object.keys(hidden));
   });
 });
