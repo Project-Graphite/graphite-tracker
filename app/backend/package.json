@@ -28,6 +28,7 @@
     "cookie-parser": "1.4.7",
     "passport": "0.7.0",
     "passport-jwt": "4.0.1",
+    "prisma": "7.10.0",
     "protobufjs": "8.8.0",
     "redis": "6.2.1",
     "reflect-metadata": "0.2.2",
@@ -39,7 +40,6 @@
     "@types/cookie-parser": "1.4.10",
     "@types/node": "24.13.6",
     "@types/passport-jwt": "4.0.1",
-    "prisma": "7.10.0",
     "typescript": "6.0.2",
     "vitest": "5.0.1"
   }
