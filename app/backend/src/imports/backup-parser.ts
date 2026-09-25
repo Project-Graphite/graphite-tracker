@@ -4,6 +4,7 @@ import { parse } from 'protobufjs';
 export const maxBackupBytes = 50 * 1024 * 1024;
 const maxDecompressedBytes = 200 * 1024 * 1024;
 const maxEntries = 10_000;
+const maxTextLength = 300;
 
 export type ImportedState = 'planned' | 'in_progress' | 'completed' | 'dropped';
 
@@ -207,20 +208,25 @@ function entry(
   const isMangaDex =
     kind === 'manga' &&
     (/mangadex/i.test(sourceName ?? '') || /mangadex\.org/i.test(title.url));
+  const name = bounded(title.title.trim());
   return {
     kind,
-    title: title.title.trim(),
+    title: name,
     trackerTitles: [
       ...new Set(
         title.tracking
-          .map((tracking) => tracking.title.trim())
-          .filter((trackerTitle) => trackerTitle && trackerTitle !== title.title.trim()),
+          .map((tracking) => bounded(tracking.title.trim()))
+          .filter((trackerTitle) => trackerTitle && trackerTitle !== name),
       ),
     ],
-    sourceName: sourceName ?? null,
-    sourceUrl: title.url || null,
+    sourceName: bounded(sourceName ?? '') || null,
+    sourceUrl: bounded(title.url) || null,
     mangadexId: isMangaDex ? (title.url.match(uuid)?.[0].toLowerCase() ?? null) : null,
     progress: progress > 0 ? Math.min(Math.round(progress * 100) / 100, 99_999_999) : null,
     state: trackedState ?? (progress > 0 ? 'in_progress' : 'planned'),
   };
+}
+
+function bounded(value: string) {
+  return value.length > maxTextLength ? '' : value;
 }

@@ -110,6 +110,38 @@ describe('parseBackup', () => {
     expect(legacy.entries[0]).toMatchObject({ progress: 2, state: 'dropped' });
   });
 
+  it('drops titles and source details longer than 300 characters', () => {
+    const long = 'x'.repeat(301);
+    const backup = parseBackup(
+      backupFile({
+        backupSources: [
+          { name: long, sourceId: '7' },
+          { name: 'Local reader', sourceId: '8' },
+        ],
+        backupManga: [
+          {
+            source: '7',
+            url: `/${long}`,
+            title: 'Tower Story',
+            favorite: true,
+            tracking: [{ syncId: 2, title: long }, { syncId: 2, title: 'Tower Story (Anilist)' }],
+          },
+          { source: '8', url: '/manga/1', title: long, favorite: true },
+        ],
+      }),
+    );
+
+    expect(backup.entries).toEqual([
+      expect.objectContaining({
+        title: 'Tower Story',
+        trackerTitles: ['Tower Story (Anilist)'],
+        sourceName: null,
+        sourceUrl: null,
+      }),
+      expect.objectContaining({ title: '', sourceName: 'Local reader', sourceUrl: '/manga/1' }),
+    ]);
+  });
+
   it.each([
     ['a file that is not gzipped', Buffer.from('not a backup')],
     ['a corrupt protobuf payload', gzipSync(Buffer.from([0x0a, 0xff, 0xff, 0xff, 0xff, 0x0f]))],
