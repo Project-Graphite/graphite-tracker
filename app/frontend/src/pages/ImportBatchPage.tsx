@@ -134,6 +134,7 @@ export function ImportBatchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [policy, setPolicy] = useState<ConflictPolicy>('add_missing');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const batch = useResource<ImportDetail>(`/imports/${id}`, true);
   const state = batch.data?.state;
   const working = state === 'parsing' || state === 'matching' || state === 'applying';
@@ -160,6 +161,7 @@ export function ImportBatchPage() {
   }, [reloadCandidates, state]);
 
   async function send(path: string, init: RequestInit, fallback: string) {
+    setBusy(true);
     setError('');
     try {
       const next = await auth.request<ImportDetail>(path, init);
@@ -167,6 +169,8 @@ export function ImportBatchPage() {
       reloadCandidates();
     } catch (reason) {
       setError(errorMessage(reason, fallback));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -248,7 +252,7 @@ export function ImportBatchPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               className="primary-button"
-              disabled={detail.undecided > 0}
+              disabled={busy || detail.undecided > 0}
               onClick={() =>
                 void send(
                   `/imports/${id}/apply`,
@@ -268,6 +272,7 @@ export function ImportBatchPage() {
                 </span>
                 <button
                   className="secondary-button px-3 py-2 text-sm"
+                  disabled={busy}
                   onClick={() =>
                     void send(`/imports/${id}/accept-suggestions`, { method: 'POST' }, 'Could not accept suggestions')
                   }
