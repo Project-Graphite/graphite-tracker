@@ -364,6 +364,26 @@ describe('DigestService', () => {
     expect(warn.mock.calls.flat().join(' ')).not.toContain('reader@example.com');
   });
 
+  it('keeps sending to other readers when one address is refused', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { digests, mail, prisma } = digestWith({ pending: ['user-1', 'user-2', 'user-3'] });
+    mail.send
+      .mockRejectedValueOnce(Object.assign(new Error('Invalid recipient'), { code: 'EENVELOPE' }))
+      .mockRejectedValueOnce(
+        Object.assign(new Error('450 mailbox busy'), { code: 'EENVELOPE', responseCode: 450 }),
+      )
+      .mockResolvedValueOnce(undefined);
+
+    await digests.sendDue(now);
+
+    expect(mail.send).toHaveBeenCalledTimes(3);
+    expect(prisma.notificationPreference.update).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      data: { deliveryFailures: 1, suspendedAt: null },
+    });
+    expect(prisma.notificationPreference.update).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps releases queued and stops the run while SMTP is unreachable', async () => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { digests, mail, prisma } = digestWith({ pending: ['user-1', 'user-2'] });

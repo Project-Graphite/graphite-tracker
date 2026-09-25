@@ -16,11 +16,14 @@ const digestEventInclude = Prisma.validator<Prisma.NotificationEventInclude>()({
 
 type DigestEvent = Prisma.NotificationEventGetPayload<{ include: typeof digestEventInclude }>;
 
-function smtpRejection(error: unknown) {
+function recipientFailure(error: unknown) {
   const { code, responseCode } = (error ?? {}) as { code?: unknown; responseCode?: unknown };
-  return code === 'EENVELOPE' && typeof responseCode === 'number' && responseCode >= 500
-    ? responseCode
-    : null;
+  if (code !== 'EENVELOPE') {
+    return null;
+  }
+  return typeof responseCode === 'number'
+    ? { permanent: responseCode >= 500, reason: `SMTP ${responseCode}` }
+    : { permanent: true, reason: 'Recipient address refused' };
 }
 
 @Injectable()
@@ -95,33 +98,34 @@ export class DigestService {
     try {
       await this.mail.send(this.message(user, wanted));
     } catch (error) {
-      const rejection = smtpRejection(error);
+      const refused = recipientFailure(error);
       const failures = preference.deliveryFailures + 1;
-      const suspend = rejection !== null && failures >= maxDeliveryFailures;
+      const suspend = refused?.permanent === true && failures >= maxDeliveryFailures;
       await this.prisma.$transaction([
         this.prisma.notificationEvent.updateMany({
           where: { id: { in: wantedIds } },
-          data: suspend
-            ? { state: NotificationState.FAILED, sentAt: null, error: `SMTP ${rejection}` }
-            : { state: NotificationState.QUEUED, sentAt: null },
+          data:
+            suspend && refused
+              ? { state: NotificationState.FAILED, sentAt: null, error: refused.reason }
+              : { state: NotificationState.QUEUED, sentAt: null },
         }),
-        ...(rejection === null
-          ? []
-          : [
+        ...(refused?.permanent
+          ? [
               this.prisma.notificationPreference.update({
                 where: { userId },
                 data: { deliveryFailures: failures, suspendedAt: suspend ? now : null },
               }),
-            ]),
+            ]
+          : []),
       ]);
-      if (rejection === null) {
+      if (!refused) {
         this.logger.warn(
           `Digest delivery is unavailable (${(error as { code?: string }).code ?? 'unknown error'}); retrying on the next run`,
         );
         return false;
       }
       this.logger.warn(
-        `Digest for user ${userId} was rejected with SMTP ${rejection}${suspend ? '; email notifications suspended' : ''}`,
+        `Digest for user ${userId} was refused (${refused.reason})${suspend ? '; email notifications suspended' : ''}`,
       );
       return true;
     }
