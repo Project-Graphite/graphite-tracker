@@ -1,9 +1,31 @@
 # Graphite Tracker
 
-Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, manhwa and games. It
-includes account registration, local email verification, sign-in, per-category search with recent
-and popular views (search only for games), title details, per-user source settings and persistent
-library states.
+Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, manhwa and games.
+
+## Features
+
+- **Accounts:** registration, local email verification and sign-in with rotating refresh sessions.
+- **Catalogue:** per-category Discover pages with recent and popular views and genre, year, status
+  and sort filters; games are search only, on `/games`; title details with source links.
+- **Library:** planned, in progress, completed and dropped lists with per-category progress
+  (seasons and episodes, chapters and volumes, or hours, completion and platforms), searchable and
+  paginated.
+- **Imports:** Mihon and AniYomi backups (`.tachibk` or `.proto.gz`, up to 50 MiB) on `/import`.
+  MangaDex entries match exactly; other titles get suggested matches to accept or skip. Applying
+  either adds missing titles only or also raises lower progress on existing entries, and other
+  reader sources are kept as inactive source references on the entry. Import previews are kept
+  for seven days.
+- **Ratings and reviews:** once a title is completed or dropped, rate it from 1 to 10 and write a
+  public or private review with an optional title and a spoiler warning. Ratings feed each title's
+  average, and signed-in readers can report public reviews.
+- **Profiles:** `/users/<handle>` is private by default. Settings make the profile public and choose
+  which of its statistics, library, activity, ratings and reviews sections are shown.
+- **Settings:** profile and privacy on `/settings`; enabled sources and global or per-category
+  source preferences on `/settings/sources`.
+- **Moderation:** the administrator's `/admin` page resolves reports by dismissing them or hiding
+  the review, hides and restores public reviews, and deactivates accounts, which also signs them
+  out. Administrator accounts cannot be deactivated there.
+- Privacy, terms and credits pages.
 
 ## Stack
 
@@ -47,6 +69,18 @@ Open:
 
 The local verification-token response is enabled only by the development Compose override. Replace
 the default local authentication secret before using the application outside a local machine.
+
+## Administrator
+
+Grant administrator access once, to an account that is registered, verified and active:
+
+```sh
+docker compose exec web npm run admin:grant --workspace backend -- you@example.com
+```
+
+The command matches the email address case-insensitively, prints `<handle> is now the
+administrator` and refuses to run once any administrator exists. Reload the application to see the
+admin page.
 
 ## Checks
 
