@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useParams, type Location } from '
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
+import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { DiscoverPage } from './pages/DiscoverPage';
 import { HomePage } from './pages/HomePage';
@@ -11,6 +12,7 @@ import { ImportPage } from './pages/ImportPage';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/LegalPages';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProfileSettingsPage, SettingsLayout } from './pages/SettingsPage';
@@ -69,6 +71,7 @@ export function App() {
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
         <Route path="settings" element={<Protected><SettingsLayout /></Protected>}>
           <Route index element={<ProfileSettingsPage />} />
+          <Route path="account" element={<AccountSettingsPage />} />
           <Route path="sources" element={<SourcesPage />} />
         </Route>
         <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
@@ -79,6 +82,8 @@ export function App() {
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify" element={<VerifyPage />} />
         <Route path="login" element={<SignedOutLogin />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Route>
     </Routes>

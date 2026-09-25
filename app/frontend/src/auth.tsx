@@ -23,11 +23,6 @@ interface Session {
   user: User;
 }
 
-interface Registration {
-  user: User;
-  verificationToken?: string;
-}
-
 interface AuthContextValue {
   user?: User;
   ready: boolean;
@@ -37,10 +32,12 @@ interface AuthContextValue {
     handle: string;
     displayName: string;
     password: string;
-  }): Promise<Registration>;
+  }): Promise<void>;
   verify(token: string): Promise<void>;
   login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
+  deleteAccount(password: string): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,11 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user,
       ready,
       request,
-      register: (input) =>
-        apiRequest<Registration>('/auth/register', {
+      register: async (input) => {
+        await apiRequest('/auth/register', {
           method: 'POST',
           body: JSON.stringify(input),
-        }),
+        });
+      },
       verify: async (token) => {
         await apiRequest('/auth/verify-email', {
           method: 'POST',
@@ -137,6 +135,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       logout: async () => {
         await apiRequest('/auth/logout', { method: 'POST' });
+        applySession(undefined);
+      },
+      changePassword: async (currentPassword, newPassword) => {
+        applySession(
+          await request<Session>('/auth/password', {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword, newPassword }),
+          }),
+        );
+      },
+      deleteAccount: async (password) => {
+        await request('/me', { method: 'DELETE', body: JSON.stringify({ password }) });
         applySession(undefined);
       },
     }),

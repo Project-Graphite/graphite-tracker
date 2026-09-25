@@ -14,6 +14,12 @@ services:
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       RAWG_API_KEY: ${RAWG_API_KEY:-}
       DISABLED_SOURCES: ${DISABLED_SOURCES:-}
+      APP_URL: https://graphite-tracker.project-graphite.com
+      EMAIL_HOST: ${EMAIL_HOST:?}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:?}
     depends_on:
       postgres:
         condition: service_healthy

@@ -24,6 +24,7 @@ function serviceWith(session: Record<string, unknown> | null, rotated = 1) {
     { refreshSession } as never,
     new JwtService(),
     new ConfigService({ AUTH_ACCESS_TOKEN_SECRET: 'test-secret' }),
+    {} as never,
   );
   return { refreshSession, service };
 }

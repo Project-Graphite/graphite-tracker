@@ -2,12 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { ResendVerification } from '../components/ResendVerification';
 
 export function RegisterPage() {
   const auth = useAuth();
   const [error, setError] = useState('');
-  const [token, setToken] = useState('');
-  const [created, setCreated] = useState(false);
+  const [createdEmail, setCreatedEmail] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -15,15 +15,15 @@ export function RegisterPage() {
     setBusy(true);
     setError('');
     const form = new FormData(event.currentTarget);
+    const email = String(form.get('email')).trim();
     try {
-      const result = await auth.register({
-        email: String(form.get('email')),
+      await auth.register({
+        email,
         handle: String(form.get('handle')),
         displayName: String(form.get('displayName')),
         password: String(form.get('password')),
       });
-      setToken(result.verificationToken ?? '');
-      setCreated(true);
+      setCreatedEmail(email);
     } catch (reason) {
       setError(errorMessage(reason, 'Registration failed'));
     } finally {
@@ -31,23 +31,16 @@ export function RegisterPage() {
     }
   }
 
-  if (created) {
+  if (createdEmail) {
     return (
       <section className="form-panel page-enter">
         <p className="eyebrow">Account created</p>
-        <h1 className="page-title">Verify your email</h1>
-        {token ? (
-          <>
-            <p className="mt-5 text-muted">
-              Email delivery is not configured on this server. Use this one-time link to verify the account.
-            </p>
-            <Link className="primary-button mt-6 inline-flex" to={`/verify?token=${token}`}>
-              Verify account
-            </Link>
-          </>
-        ) : (
-          <p className="mt-6 text-muted">Email delivery is not configured on this server, so no verification link was sent.</p>
-        )}
+        <h1 className="page-title">Check your inbox</h1>
+        <p className="mt-5 text-muted">
+          We sent a verification link to {createdEmail}. Open it within 24 hours to finish setting
+          up your account.
+        </p>
+        <ResendVerification email={createdEmail} />
       </section>
     );
   }

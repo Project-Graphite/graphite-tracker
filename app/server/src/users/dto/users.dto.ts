@@ -1,5 +1,17 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsTimeZone,
+  Length,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { CatalogCategory, catalogCategories } from '../../sources/source.types';
 import { LibraryStateInput } from '../../library/dto/create-library-entry.dto';
 import { IsOptionalNotNull } from '../../validation/is-optional-not-null.decorator';
@@ -18,6 +30,12 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(500)
   bio?: string | null;
+
+  @IsOptionalNotNull()
+  @IsString()
+  @MaxLength(64)
+  @IsTimeZone()
+  timeZone?: string;
 }
 
 export class UpdatePrivacyDto {

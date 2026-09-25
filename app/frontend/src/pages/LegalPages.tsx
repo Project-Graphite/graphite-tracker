@@ -29,11 +29,15 @@ export function PrivacyPage() {
       <section>
         <h2>What is stored</h2>
         <p>
-          Your email address, handle, display name, optional bio and a salted hash of your password;
-          the titles in your library with their list, progress, platforms, source preferences and
-          notification choices; your ratings, reviews and reports; and a record of library and
-          review activity. Each signed-in device holds a sign-in cookie that scripts cannot read;
-          the server keeps only a hash of it, and it stops working after 30 days.
+          Your email address, handle, display name, optional bio, time zone and a salted hash of your
+          password; the titles in your library with their list, progress, platforms, source
+          preferences and notification choices; your ratings, reviews and reports; and a record of
+          library and review activity. Each signed-in device holds a sign-in cookie that scripts
+          cannot read; the server keeps only a hash of it, and it stops working after 30 days.
+        </p>
+        <p>
+          Your email address receives verification links and password resets. Those links expire,
+          and the server keeps only a hash of each.
         </p>
         <p>
           A Mihon or AniYomi backup is read once and discarded. Only the titles, progress and
@@ -70,9 +74,10 @@ export function PrivacyPage() {
         <h2>Your control</h2>
         <p>
           You can edit or remove any library entry, rating or review at any time, except that a review
-          hidden by a moderator can be edited but not removed. To have your
-          account deleted, ask through the <External href={`${repository}/issues`}>issue tracker</External>{' '}
-          with your handle only; never post your email address or other personal details there.
+          hidden by a moderator can be edited but not removed. In{' '}
+          <Link className="rule-link" to="/settings/account">account settings</Link> you can download
+          everything stored about you as a file, and delete your account, which removes your library,
+          ratings, reviews, reports and activity for good.
         </p>
       </section>
     </LegalPage>

@@ -1,18 +1,24 @@
 import {
   Body,
   Controller,
+  HttpCode,
   Post,
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { RateLimit } from '../redis/rate-limit.guard';
 import { AuthService, refreshLifetimeMs } from './auth.service';
+import type { AuthenticatedUser } from './auth.types';
+import { CurrentUser } from './current-user.decorator';
+import { ChangePasswordDto, EmailDto, ResetPasswordDto } from './dto/account.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 const refreshCookie = 'graphite_refresh';
 
@@ -35,6 +41,27 @@ export class AuthController {
     return this.auth.verifyEmail(input.token);
   }
 
+  @Post('resend-verification')
+  @HttpCode(204)
+  @RateLimit('resend-verification', 5, 3_600)
+  async resendVerification(@Body() input: EmailDto) {
+    await this.auth.resendVerification(input.email);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(204)
+  @RateLimit('forgot-password', 5, 3_600)
+  async forgotPassword(@Body() input: EmailDto) {
+    await this.auth.requestPasswordReset(input.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(204)
+  @RateLimit('reset-password', 10, 3_600)
+  async resetPassword(@Body() input: ResetPasswordDto) {
+    await this.auth.resetPassword(input.token, input.password);
+  }
+
   @Post('login')
   @RateLimit('login', 10, 900)
   async login(
@@ -42,6 +69,25 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const session = await this.auth.login(input);
+    this.setRefreshCookie(response, session.refreshToken);
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Post('password')
+  @UseGuards(JwtAuthGuard)
+  @RateLimit('change-password', 10, 3_600)
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: ChangePasswordDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.assertTrustedOrigin(request);
+    const session = await this.auth.changePassword(
+      user.id,
+      input.currentPassword,
+      input.newPassword,
+    );
     this.setRefreshCookie(response, session.refreshToken);
     return { accessToken: session.accessToken, user: session.user };
   }

@@ -4,11 +4,12 @@ import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { useResource } from '../useResource';
 
-interface Me {
+export interface Me {
   handle: string;
   email: string;
   displayName: string;
   bio: string | null;
+  timeZone: string;
   privacy: Record<PrivacySetting, boolean>;
 }
 
@@ -29,7 +30,7 @@ const sections: Array<[Exclude<PrivacySetting, 'isPublic'>, string, string]> = [
 ];
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
-  `border-b-2 px-4 py-3 text-sm font-semibold no-underline ${
+  `border-b-2 px-4 py-3 text-sm font-semibold whitespace-nowrap no-underline ${
     isActive ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
   }`;
 
@@ -38,9 +39,12 @@ export function SettingsLayout() {
     <div className="page-enter">
       <p className="eyebrow">Your account</p>
       <h1 className="page-title">Settings</h1>
-      <nav aria-label="Settings" className="mt-7 flex gap-2 border-b border-line">
+      <nav aria-label="Settings" className="mt-7 flex gap-2 overflow-x-auto border-b border-line">
         <NavLink className={tabClass} end to="/settings">
           Profile and privacy
+        </NavLink>
+        <NavLink className={tabClass} to="/settings/account">
+          Account
         </NavLink>
         <NavLink className={tabClass} to="/settings/sources">
           Sources

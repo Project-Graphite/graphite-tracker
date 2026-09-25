@@ -2,10 +2,14 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { ResendVerification } from '../components/ResendVerification';
+
+const unverified = 'Verify your email before signing in';
 
 export function LoginPage() {
   const auth = useAuth();
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -13,8 +17,10 @@ export function LoginPage() {
     setBusy(true);
     setError('');
     const form = new FormData(event.currentTarget);
+    const submitted = String(form.get('email')).trim();
+    setEmail(submitted);
     try {
-      await auth.login(String(form.get('email')), String(form.get('password')));
+      await auth.login(submitted, String(form.get('password')));
     } catch (reason) {
       setError(errorMessage(reason, 'Sign in failed'));
       setBusy(false);
@@ -39,7 +45,11 @@ export function LoginPage() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      {error === unverified && <ResendVerification email={email} key={email} />}
       <p className="mt-6 text-sm text-muted">
+        <Link className="rule-link" to="/forgot-password">Forgot your password?</Link>
+      </p>
+      <p className="mt-2 text-sm text-muted">
         New here? <Link className="rule-link" to="/register">Create an account</Link>
       </p>
     </section>

@@ -29,8 +29,12 @@ export function VerifyPage() {
     return (
       <section className="form-panel page-enter">
         <p className="eyebrow">Email verified</p>
-        <h1 className="page-title">Your account is ready.</h1>
-        <Link className="primary-button mt-7 inline-flex" to="/login">Sign in</Link>
+        <h1 className="page-title">Your email address is confirmed.</h1>
+        {auth.user ? (
+          <Link className="primary-button mt-7 inline-flex" to="/settings/account">Back to settings</Link>
+        ) : (
+          <Link className="primary-button mt-7 inline-flex" to="/login">Sign in</Link>
+        )}
       </section>
     );
   }
