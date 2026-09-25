@@ -37,7 +37,10 @@ export function PrivacyPage() {
         </p>
         <p>
           Your email address receives verification links and password resets. Those links expire,
-          and the server keeps only a hash of each.
+          and the server keeps only a hash of each. Release emails are sent only after you turn them
+          on in <Link className="rule-link" to="/settings/notifications">notification settings</Link>,
+          at most once a day, and each has a link that stops them without signing in. Records of sent
+          release notifications are deleted after 90 days.
         </p>
         <p>
           A Mihon or AniYomi backup is read once and discarded. Only the titles, progress and

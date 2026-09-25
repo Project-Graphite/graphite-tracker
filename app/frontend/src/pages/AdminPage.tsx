@@ -42,7 +42,21 @@ interface Account {
   createdAt: string;
 }
 
-const tabs = { reports: 'Reports', reviews: 'Reviews', users: 'Users' } as const;
+interface FailedNotification {
+  id: string;
+  user: { handle: string; displayName: string };
+  release: string;
+  error: string | null;
+  createdAt: string;
+  item: ItemSummary;
+}
+
+const tabs = {
+  reports: 'Reports',
+  reviews: 'Reviews',
+  users: 'Users',
+  notifications: 'Notifications',
+} as const;
 type Tab = keyof typeof tabs;
 
 function ReviewBlock({ review }: { review: ModeratedReview }) {
@@ -115,10 +129,13 @@ export function AdminPage() {
   const path =
     tab === 'users'
       ? `/admin/users?page=${page}${query ? `&query=${encodeURIComponent(query)}` : ''}`
-      : `/admin/${tab}?status=${status}&page=${page}`;
+      : tab === 'notifications'
+        ? `/admin/notifications?page=${page}`
+        : `/admin/${tab}?status=${status}&page=${page}`;
   const reports = useResource<Page<Report>>(tab === 'reports' ? path : null, true);
   const reviews = useResource<Page<ModeratedReview>>(tab === 'reviews' ? path : null, true);
   const users = useResource<Page<Account>>(tab === 'users' ? path : null, true);
+  const notifications = useResource<Page<FailedNotification>>(tab === 'notifications' ? path : null, true);
   const pageHref = (next: number) => {
     const parameters = new URLSearchParams(searchParams);
     parameters.set('page', String(next));
@@ -145,11 +162,11 @@ export function AdminPage() {
     <div className="page-enter">
       <p className="eyebrow">Moderation</p>
       <h1 className="page-title">Admin</h1>
-      <nav aria-label="Admin sections" className="mt-7 mb-6 flex gap-2 border-b border-line">
+      <nav aria-label="Admin sections" className="mt-7 mb-6 flex gap-2 overflow-x-auto border-b border-line">
         {(Object.entries(tabs) as Array<[Tab, string]>).map(([key, label]) => (
           <Link
             aria-current={key === tab ? 'page' : undefined}
-            className={`border-b-2 px-4 py-3 text-sm font-semibold no-underline ${
+            className={`border-b-2 px-4 py-3 text-sm font-semibold whitespace-nowrap no-underline ${
               key === tab ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
             }`}
             key={key}
@@ -262,6 +279,33 @@ export function AdminPage() {
                   )}
                 </li>
               ))
+            }
+          </Listing>
+        </>
+      )}
+      {tab === 'notifications' && (
+        <>
+          <p className="mt-0 mb-5 max-w-3xl text-sm text-muted">
+            Digests the mail server rejected three times in a row. Email notifications for those readers
+            stay suspended until they turn them back on.
+          </p>
+          <Listing pageHref={pageHref} resource={notifications}>
+            {(results) =>
+              results.map((event) => {
+                const href = itemHref(event.item);
+                return (
+                  <li className="grid list-none gap-1 border-b border-line-soft py-4" key={event.id}>
+                    <p className="m-0 text-sm">
+                      {href ? <Link className="rule-link" to={href}>{event.item.title}</Link> : event.item.title} ·{' '}
+                      {event.release}
+                    </p>
+                    <p className="mono-sm m-0 text-faint">
+                      @{event.user.handle} · {event.error ?? 'delivery failed'} ·{' '}
+                      {new Date(event.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                );
+              })
             }
           </Listing>
         </>

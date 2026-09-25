@@ -46,6 +46,9 @@ export function SettingsLayout() {
         <NavLink className={tabClass} to="/settings/account">
           Account
         </NavLink>
+        <NavLink className={tabClass} to="/settings/notifications">
+          Notifications
+        </NavLink>
         <NavLink className={tabClass} to="/settings/sources">
           Sources
         </NavLink>

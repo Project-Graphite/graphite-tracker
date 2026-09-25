@@ -12,6 +12,7 @@ import { ImportPage } from './pages/ImportPage';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/LegalPages';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -19,6 +20,7 @@ import { ProfileSettingsPage, SettingsLayout } from './pages/SettingsPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { TitleDetailsPage } from './pages/TitleDetailsPage';
 import { TrackGamesPage } from './pages/TrackGamesPage';
+import { UnsubscribePage } from './pages/UnsubscribePage';
 import { VerifyPage } from './pages/VerifyPage';
 
 function Protected({ admin = false, children }: { admin?: boolean; children: ReactNode }) {
@@ -72,6 +74,7 @@ export function App() {
         <Route path="settings" element={<Protected><SettingsLayout /></Protected>}>
           <Route index element={<ProfileSettingsPage />} />
           <Route path="account" element={<AccountSettingsPage />} />
+          <Route path="notifications" element={<NotificationSettingsPage />} />
           <Route path="sources" element={<SourcesPage />} />
         </Route>
         <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
@@ -84,6 +87,7 @@ export function App() {
         <Route path="login" element={<SignedOutLogin />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
+        <Route path="unsubscribe" element={<UnsubscribePage />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Route>
     </Routes>

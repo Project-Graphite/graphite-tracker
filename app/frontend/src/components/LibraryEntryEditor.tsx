@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { categoryLabels } from '../catalog';
 import {
   libraryStates,
   stateLabel,
   type LibraryEntry,
   type LibraryState,
 } from '../library';
+import type { NotificationPreferences } from '../notifications';
+import { useResource } from '../useResource';
 
 type EntryUpdate = Record<string, unknown>;
 
@@ -127,6 +131,15 @@ export function LibraryEntryEditor({
   const finished = entry.state === 'completed' || entry.state === 'dropped';
   const needsPlatform =
     entry.item.category === 'game' && entry.progress.platforms.length === 0;
+  const preferences = useResource<NotificationPreferences>(
+    entry.notificationsEnabled ? '/me/notification-preferences' : null,
+    true,
+  ).data;
+  const emailsOff =
+    preferences &&
+    (!preferences.enabled ||
+      preferences.suspended ||
+      !preferences.categories.includes(entry.item.category));
 
   async function send(run: () => Promise<void>, fallback: string) {
     setBusy(true);
@@ -226,6 +239,12 @@ export function LibraryEntryEditor({
             {finished
               ? 'Available while a title is planned or in progress.'
               : 'Choose a platform first.'}
+          </p>
+        )}
+        {entry.notificationsEnabled && emailsOff && (
+          <p className="mono-sm mt-1 mb-0 text-faint">
+            Emails for {categoryLabels[entry.item.category].toLowerCase()} are off in{' '}
+            <Link className="rule-link" to="/settings/notifications">notification settings</Link>.
           </p>
         )}
       </div>
