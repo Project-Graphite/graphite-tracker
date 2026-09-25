@@ -158,7 +158,7 @@ export function ReviewEditor({
         <button className="text-button text-sm" disabled={busy} onClick={onClose} type="button">
           Cancel
         </button>
-        {review && (
+        {review && !review.hidden && (
           <button className="text-button ml-auto text-sm" disabled={busy} onClick={remove} type="button">
             Delete review
           </button>

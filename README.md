@@ -24,7 +24,8 @@ Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, 
   source preferences on `/settings/sources`.
 - **Moderation:** the administrator's `/admin` page resolves reports by dismissing them or hiding
   the review, hides and restores public reviews, and deactivates accounts, which also signs them
-  out. Administrator accounts cannot be deactivated there.
+  out. Administrator accounts cannot be deactivated there. A hidden review stays hidden when its
+  author edits it, and its author cannot delete it.
 - Privacy, terms and credits pages.
 
 ## Stack

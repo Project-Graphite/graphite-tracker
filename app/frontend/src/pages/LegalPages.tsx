@@ -69,7 +69,8 @@ export function PrivacyPage() {
       <section>
         <h2>Your control</h2>
         <p>
-          You can edit or remove any library entry, rating or review at any time. To have your
+          You can edit or remove any library entry, rating or review at any time, except that a review
+          hidden by a moderator can be edited but not removed. To have your
           account deleted, ask through the <External href={`${repository}/issues`}>issue tracker</External>{' '}
           with your handle only; never post your email address or other personal details there.
         </p>

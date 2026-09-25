@@ -169,10 +169,14 @@ export class ReviewsService {
   }
 
   async remove(userId: string, catalogItemId: string) {
-    const result = await this.prisma.review.deleteMany({ where: { userId, catalogItemId } });
-    if (result.count === 0) {
-      throw new NotFoundException('Review not found');
+    const result = await this.prisma.review.deleteMany({
+      where: { userId, catalogItemId, hiddenAt: null },
+    });
+    if (result.count > 0) return;
+    if (await this.prisma.review.count({ where: { userId, catalogItemId } })) {
+      throw new ForbiddenException('A review hidden by a moderator can be edited but not deleted');
     }
+    throw new NotFoundException('Review not found');
   }
 
   async report(userId: string, reviewId: string, reason: ReportReason) {

@@ -155,6 +155,48 @@ describe('ReviewsService', () => {
     await expect(errors({ rating: 5, visibility: 'friends' })).resolves.toEqual(['visibility']);
   });
 
+  it('keeps a hidden review hidden when its author rewrites it', async () => {
+    const { service, upsert } = serviceFor(
+      LibraryState.COMPLETED,
+      review({ body: 'Abusive text.', visibility: ReviewVisibility.PUBLIC, hiddenAt: new Date() }),
+    );
+
+    await service.save('user-id', itemId, input({ body: 'Rewritten text.' }));
+
+    expect(upsert.mock.calls[0]?.[0].update).not.toHaveProperty('hiddenAt');
+  });
+
+  describe('removing', () => {
+    function removeService(deleted: number, remaining: number) {
+      const deleteMany = vi.fn().mockResolvedValue({ count: deleted });
+      const service = new ReviewsService({
+        review: { count: vi.fn().mockResolvedValue(remaining), deleteMany },
+      } as never);
+      return { deleteMany, service };
+    }
+
+    it('deletes only a review a moderator has not hidden', async () => {
+      const { deleteMany, service } = removeService(1, 0);
+
+      await expect(service.remove('user-id', itemId)).resolves.toBeUndefined();
+      expect(deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-id', catalogItemId: itemId, hiddenAt: null },
+      });
+    });
+
+    it('keeps a hidden review and its reports so it cannot be deleted and written again', async () => {
+      await expect(removeService(0, 1).service.remove('user-id', itemId)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('reports a missing review', async () => {
+      await expect(removeService(0, 0).service.remove('user-id', itemId)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('reports', () => {
     function reportService(found: object | null, create = vi.fn()) {
       return new ReviewsService({
