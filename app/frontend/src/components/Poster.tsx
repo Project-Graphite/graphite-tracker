@@ -19,6 +19,7 @@ export function Poster({
       alt={`Poster for ${title}`}
       className="h-full w-full object-cover"
       loading="lazy"
+      referrerPolicy="no-referrer"
       src={posterUrl}
     />
   ) : (
