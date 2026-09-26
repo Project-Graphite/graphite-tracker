@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { loadSourcePreferences, SourcePreferences } from '../library/effective-source';
 import { PrismaService } from '../prisma/prisma.service';
 import { withLowPriority } from '../sources/connector-http.service';
@@ -87,30 +88,41 @@ export class ReleaseMonitorService {
       where: { sourceEntryId: entry.id },
       select: { key: true, kind: true, ordinal: true },
     });
-    const [markers] = await this.prisma.$transaction([
-      this.prisma.releaseMarker.createManyAndReturn({
-        data: newSignals(signals, existing).map((signal) => ({
-          sourceEntryId: entry.id,
-          key: signal.key,
-          kind: releaseKinds[signal.kind],
-          label: signal.label,
-          platform: signal.platform,
-          ordinal: signal.ordinal,
-          occurredAt: new Date(`${signal.occurredAt}T00:00:00.000Z`),
-        })),
-        skipDuplicates: true,
-      }),
-      this.prisma.sourceEntry.update({
-        where: { id: entry.id },
-        data: { releasesCheckedAt: now },
-      }),
-    ]);
-    if (!baseline && markers.length > 0) {
-      await this.queue(entry.catalogItemId, markers);
+    const markers = newSignals(signals, existing).map((signal) => ({
+      id: randomUUID(),
+      sourceEntryId: entry.id,
+      key: signal.key,
+      kind: releaseKinds[signal.kind],
+      label: signal.label,
+      platform: signal.platform ?? null,
+      ordinal: signal.ordinal,
+      occurredAt: new Date(`${signal.occurredAt}T00:00:00.000Z`),
+    }));
+    const { inbox, events } =
+      !baseline && markers.length > 0
+        ? await this.recipients(entry.catalogItemId, markers)
+        : { inbox: [], events: [] };
+    try {
+      await this.prisma.$transaction([
+        this.prisma.releaseMarker.createMany({ data: markers }),
+        this.prisma.sourceEntry.update({
+          where: { id: entry.id },
+          data: { releasesCheckedAt: now },
+        }),
+        this.prisma.inboxNotification.createMany({ data: inbox, skipDuplicates: true }),
+        this.prisma.notificationEvent.createMany({ data: events, skipDuplicates: true }),
+      ]);
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) {
+        throw error;
+      }
+      this.logger.warn(
+        `Releases for ${entry.source.key}:${entry.externalId} were recorded by another run`,
+      );
     }
   }
 
-  private async queue(
+  private async recipients(
     catalogItemId: string,
     markers: Array<{ id: string; sourceEntryId: string; platform: string | null }>,
   ) {
@@ -143,13 +155,9 @@ export class ReleaseMonitorService {
       }
       return rows;
     };
-    await this.prisma.inboxNotification.createMany({
-      data: await releasesFor(followers, followsRelease),
-      skipDuplicates: true,
-    });
-    await this.prisma.notificationEvent.createMany({
-      data: await releasesFor(subscribers, wantsRelease),
-      skipDuplicates: true,
-    });
+    return {
+      inbox: await releasesFor(followers, followsRelease),
+      events: await releasesFor(subscribers, wantsRelease),
+    };
   }
 }

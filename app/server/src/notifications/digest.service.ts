@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MediaCategory, NotificationState, Prisma } from '@prisma/client';
 import { loadSourcePreferences } from '../library/effective-source';
-import { MailService } from '../mail/mail.service';
+import { MailDeliveryError, MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { categoryNames, digestDue, subscriptionInclude, wantsRelease } from './subscriptions';
 import { UnsubscribeTokensService } from './unsubscribe-tokens.service';
 
 const maxDeliveryFailures = 3;
 const retentionMs = 90 * 24 * 60 * 60 * 1000;
+const interruptedSendMs = 60 * 60 * 1000;
 
 const digestEventInclude = Prisma.validator<Prisma.NotificationEventInclude>()({
   releaseMarker: { include: { sourceEntry: { include: { source: true } } } },
@@ -16,14 +17,17 @@ const digestEventInclude = Prisma.validator<Prisma.NotificationEventInclude>()({
 
 type DigestEvent = Prisma.NotificationEventGetPayload<{ include: typeof digestEventInclude }>;
 
-function recipientFailure(error: unknown) {
-  const { code, responseCode } = (error ?? {}) as { code?: unknown; responseCode?: unknown };
-  if (code !== 'EENVELOPE') {
+function readerFailure(error: unknown) {
+  if (!(error instanceof MailDeliveryError)) {
     return null;
   }
-  return typeof responseCode === 'number'
-    ? { permanent: responseCode >= 500, reason: `SMTP ${responseCode}` }
-    : { permanent: true, reason: 'Recipient address refused' };
+  const refusedRecipient = error.code === 'EENVELOPE' && error.command === 'RCPT TO';
+  if (!refusedRecipient && error.code !== 'EMESSAGE') {
+    return null;
+  }
+  return error.responseCode === undefined
+    ? { permanent: true, reason: refusedRecipient ? 'Recipient address refused' : 'Message refused' }
+    : { permanent: error.responseCode >= 500, reason: `SMTP ${error.responseCode}` };
 }
 
 @Injectable()
@@ -40,6 +44,14 @@ export class DigestService {
     if (!this.mail.configured) {
       return;
     }
+    await this.prisma.$executeRaw`
+      UPDATE notification_events AS event
+      SET state = 'queued', sent_at = NULL
+      FROM notification_preferences AS preference
+      WHERE preference.user_id = event.user_id
+        AND event.state = 'sent'
+        AND event.sent_at < ${new Date(now.getTime() - interruptedSendMs)}
+        AND (preference.last_digest_at IS NULL OR preference.last_digest_at < event.sent_at)`;
     const pending = await this.prisma.notificationEvent.findMany({
       where: { state: NotificationState.QUEUED },
       distinct: ['userId'],
@@ -80,30 +92,39 @@ export class DigestService {
     const wanted = preferences
       ? events.filter((event) => wantsRelease(event.libraryEntry, event.releaseMarker, preferences))
       : [];
-    const wantedIds = wanted.map(({ id }) => id);
+    const wantedIds = new Set(wanted.map(({ id }) => id));
     await this.prisma.notificationEvent.updateMany({
-      where: { userId, state: NotificationState.QUEUED, id: { notIn: wantedIds } },
+      where: {
+        id: { in: events.filter(({ id }) => !wantedIds.has(id)).map(({ id }) => id) },
+        state: NotificationState.QUEUED,
+      },
       data: { state: NotificationState.SKIPPED },
     });
     if (!preference || wanted.length === 0) {
       return true;
     }
-    const claimed = await this.prisma.notificationEvent.updateMany({
-      where: { id: { in: wantedIds }, state: NotificationState.QUEUED },
-      data: { state: NotificationState.SENT, sentAt: now },
-    });
-    if (claimed.count !== wanted.length) {
+    const claimed = new Set(
+      (
+        await this.prisma.notificationEvent.updateManyAndReturn({
+          where: { id: { in: [...wantedIds] }, state: NotificationState.QUEUED },
+          data: { state: NotificationState.SENT, sentAt: now },
+          select: { id: true },
+        })
+      ).map(({ id }) => id),
+    );
+    const sending = wanted.filter(({ id }) => claimed.has(id));
+    if (sending.length === 0) {
       return true;
     }
     try {
-      await this.mail.send(this.message(user, wanted));
+      await this.mail.send(this.message(user, sending));
     } catch (error) {
-      const refused = recipientFailure(error);
+      const refused = readerFailure(error);
       const failures = preference.deliveryFailures + 1;
       const suspend = refused?.permanent === true && failures >= maxDeliveryFailures;
       await this.prisma.$transaction([
         this.prisma.notificationEvent.updateMany({
-          where: { id: { in: wantedIds } },
+          where: { id: { in: [...claimed] } },
           data:
             suspend && refused
               ? { state: NotificationState.FAILED, sentAt: null, error: refused.reason }
@@ -120,7 +141,7 @@ export class DigestService {
       ]);
       if (!refused) {
         this.logger.warn(
-          `Digest delivery is unavailable (${(error as { code?: string }).code ?? 'unknown error'}); retrying on the next run`,
+          `Digest delivery is unavailable (${error instanceof Error ? error.message : 'unknown error'}); retrying on the next run`,
         );
         return false;
       }

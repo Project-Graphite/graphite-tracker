@@ -3,6 +3,8 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,7 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Prisma, TokenPurpose, UserRole } from '@prisma/client';
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { MailService } from '../mail/mail.service';
+import { MailMessage, MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SiteSettingsService } from '../site/site-settings.service';
 import { LoginDto } from './dto/login.dto';
@@ -25,14 +27,22 @@ const tokenLifetimesMs: Record<TokenPurpose, number> = {
   RESET_PASSWORD: 60 * 60 * 1000,
 };
 
+const accountTokens = [TokenPurpose.CHANGE_EMAIL, TokenPurpose.RESET_PASSWORD];
+
 function alreadyRegistered(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
     ? new ConflictException('Email or handle is already registered')
     : error;
 }
 
+function emailUnavailable() {
+  return new ServiceUnavailableException('The email could not be sent. Try again later.');
+}
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -56,7 +66,11 @@ export class AuthService {
             },
             select: { id: true, email: true, handle: true, displayName: true },
           });
-          await this.sendVerification(transaction, user, TokenPurpose.VERIFY_EMAIL, user.email);
+          if (
+            !(await this.sendVerification(transaction, user, TokenPurpose.VERIFY_EMAIL, user.email))
+          ) {
+            throw emailUnavailable();
+          }
           return { user };
         },
         { timeout: 30_000 },
@@ -91,7 +105,10 @@ export class AuthService {
           data: { verifiedAt: new Date(), ...(record.email ? { email: record.email } : {}) },
         }),
         this.prisma.verificationToken.deleteMany({
-          where: { userId: record.userId, purpose: record.purpose },
+          where: {
+            userId: record.userId,
+            purpose: { in: record.email ? accountTokens : [record.purpose] },
+          },
         }),
       ]);
     } catch (error) {
@@ -167,7 +184,7 @@ export class AuthService {
       return;
     }
     const token = await this.createToken(this.prisma, user.id, TokenPurpose.RESET_PASSWORD);
-    await this.mail.send({
+    await this.deliver({
       to: user.email,
       subject: 'Reset your Graphite Tracker password',
       text: [
@@ -204,7 +221,7 @@ export class AuthService {
         },
       }),
       this.prisma.verificationToken.deleteMany({
-        where: { userId: record.userId, purpose: TokenPurpose.RESET_PASSWORD },
+        where: { userId: record.userId, purpose: { in: accountTokens } },
       }),
       this.prisma.refreshSession.updateMany({
         where: { userId: record.userId, revokedAt: null },
@@ -221,7 +238,7 @@ export class AuthService {
         data: { passwordHash: await this.hashPassword(newPassword) },
       }),
       this.prisma.verificationToken.deleteMany({
-        where: { userId, purpose: TokenPurpose.RESET_PASSWORD },
+        where: { userId, purpose: { in: accountTokens } },
       }),
       this.prisma.refreshSession.updateMany({
         where: { userId, revokedAt: null },
@@ -239,7 +256,22 @@ export class AuthService {
     if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) {
       throw new ConflictException('Email or handle is already registered');
     }
-    await this.sendVerification(this.prisma, user, TokenPurpose.CHANGE_EMAIL, email);
+    if (!(await this.sendVerification(this.prisma, user, TokenPurpose.CHANGE_EMAIL, email))) {
+      throw emailUnavailable();
+    }
+    await this.deliver({
+      to: user.email,
+      subject: 'Your Graphite Tracker email is being changed',
+      text: [
+        `Hi ${user.displayName},`,
+        '',
+        'Someone asked to move your Graphite Tracker account to another email address. Nothing changes until that address is confirmed.',
+        '',
+        'If this was not you, reset your password now. That cancels the change:',
+        '',
+        this.mail.link('/forgot-password'),
+      ].join('\n'),
+    });
   }
 
   async confirmPassword(userId: string, password: string) {
@@ -306,7 +338,7 @@ export class AuthService {
   ) {
     const changing = purpose === TokenPurpose.CHANGE_EMAIL;
     const token = await this.createToken(client, user.id, purpose, changing ? to : null);
-    await this.mail.send({
+    return this.deliver({
       to,
       subject: changing
         ? 'Confirm your new Graphite Tracker email'
@@ -323,6 +355,18 @@ export class AuthService {
         'The link works for 24 hours. If you did not ask for this, ignore this email.',
       ].join('\n'),
     });
+  }
+
+  private async deliver(message: MailMessage) {
+    try {
+      await this.mail.send(message);
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `"${message.subject}" was not sent: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return false;
+    }
   }
 
   private async createToken(

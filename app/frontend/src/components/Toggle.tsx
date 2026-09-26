@@ -8,7 +8,7 @@ export function Toggle({
   onChange,
 }: {
   checked: boolean;
-  description: string;
+  description?: string;
   disabled?: boolean;
   label: string;
   onChange: (checked: boolean) => void;
@@ -22,7 +22,7 @@ export function Toggle({
         <span className="block font-medium" id={labelId}>
           {label}
         </span>
-        <span className="text-sm text-muted">{description}</span>
+        {description && <span className="text-sm text-muted">{description}</span>}
       </span>
       <button
         aria-checked={checked}

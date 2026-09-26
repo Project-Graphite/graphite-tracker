@@ -9,6 +9,26 @@ export interface MailMessage {
   headers?: Record<string, string>;
 }
 
+export class MailDeliveryError extends Error {
+  readonly code?: string;
+  readonly responseCode?: number;
+  readonly command?: string;
+
+  constructor(cause: unknown) {
+    const { code, responseCode, command } = (cause ?? {}) as Record<string, unknown>;
+    const details = [
+      typeof code === 'string' ? code : undefined,
+      typeof responseCode === 'number' ? `SMTP ${responseCode}` : undefined,
+      typeof command === 'string' ? command : undefined,
+    ].filter((detail) => detail !== undefined);
+    super(`Email delivery failed (${details.join(', ') || 'unknown error'})`);
+    this.name = 'MailDeliveryError';
+    this.code = typeof code === 'string' ? code : undefined;
+    this.responseCode = typeof responseCode === 'number' ? responseCode : undefined;
+    this.command = typeof command === 'string' ? command : undefined;
+  }
+}
+
 @Injectable()
 export class MailService {
   private transport?: Transporter;
@@ -28,10 +48,14 @@ export class MailService {
       throw new ServiceUnavailableException('Email delivery is not configured');
     }
     this.transport ??= this.createTransport();
-    await this.transport.sendMail({
-      from: this.config.getOrThrow<string>('DEFAULT_FROM_EMAIL'),
-      ...message,
-    });
+    try {
+      await this.transport.sendMail({
+        from: this.config.getOrThrow<string>('DEFAULT_FROM_EMAIL'),
+        ...message,
+      });
+    } catch (error) {
+      throw new MailDeliveryError(error);
+    }
   }
 
   private createTransport() {

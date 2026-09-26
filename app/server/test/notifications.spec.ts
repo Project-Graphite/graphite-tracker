@@ -6,11 +6,13 @@ import {
   LibraryState,
   MediaCategory,
   NotificationState,
+  Prisma,
   ReleaseKind,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
+import { MailDeliveryError } from '../src/mail/mail.service';
 import { DigestService } from '../src/notifications/digest.service';
 import { UpdateNotificationPreferencesDto } from '../src/notifications/dto/notifications.dto';
 import { NotificationsService } from '../src/notifications/notifications.service';
@@ -97,6 +99,12 @@ describe('Release subscriptions', () => {
     ).toEqual(['episode:2x8', 'release:Switch']);
   });
 
+  it('keeps a release listed twice in one check only once', () => {
+    const chapter = { key: 'chapter:12', kind: 'chapter' as const, label: 'Chapter 12', occurredAt: '2026-09-20' };
+
+    expect(newSignals([chapter, { ...chapter, label: 'Chapter 12 (another group)' }], [])).toEqual([chapter]);
+  });
+
   it('honours the category, title, list, platform and source switches', () => {
     const marker = { sourceEntryId: 'tmdb-entry', platform: null as string | null };
     const wants = (overrides: Record<string, unknown>, releaseMarker = marker) =>
@@ -111,6 +119,30 @@ describe('Release subscriptions', () => {
       false,
     );
     expect(wants({ platforms: ['PC'] }, { sourceEntryId: 'tmdb-entry', platform: 'PC' })).toBe(true);
+  });
+
+  it('never moves a title to another source when its chosen source is switched off', () => {
+    const offline = subscriber({
+      preferredSourceId: 'other',
+      catalogItem: {
+        ...subscriber().catalogItem,
+        sourceEntries: [
+          { id: 'tmdb-entry', sourceId: 'tmdb', source: { enabled: true } },
+          { id: 'other-entry', sourceId: 'other', source: { enabled: false } },
+        ],
+      },
+    });
+
+    expect(
+      wantsRelease(offline as never, { sourceEntryId: 'tmdb-entry', platform: null }, noPreferences),
+    ).toBe(false);
+    expect(
+      wantsRelease(
+        subscriber({ catalogItem: offline.catalogItem }) as never,
+        { sourceEntryId: 'tmdb-entry', platform: null },
+        noPreferences,
+      ),
+    ).toBe(true);
   });
 
   it('accepts only known categories and cadences in preferences', async () => {
@@ -151,13 +183,11 @@ describe('ReleaseMonitorService', () => {
       },
       releaseMarker: {
         findMany: vi.fn().mockResolvedValue(options.markers ?? []),
-        createManyAndReturn: vi.fn(({ data }: { data: Array<Record<string, unknown>> }) =>
-          data.map((marker, index) => ({ id: `marker-${index}`, platform: null, ...marker })),
-        ),
+        createMany: vi.fn().mockReturnValue('marker-insert'),
       },
       libraryEntry: { findMany: vi.fn().mockResolvedValue(options.subscribers ?? []) },
-      notificationEvent: { createMany: vi.fn() },
-      inboxNotification: { createMany: vi.fn() },
+      notificationEvent: { createMany: vi.fn().mockReturnValue('event-insert') },
+      inboxNotification: { createMany: vi.fn().mockReturnValue('inbox-insert') },
       $transaction: vi.fn((queries: unknown[]) => Promise.all(queries)),
     };
     const connectors = { releases: vi.fn().mockResolvedValue([episode(2, 7), episode(2, 8)]) };
@@ -174,15 +204,55 @@ describe('ReleaseMonitorService', () => {
     await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
 
     expect(connectors.releases).toHaveBeenCalledWith('tv', '1399', 'tmdb');
-    expect(prisma.releaseMarker.createManyAndReturn).toHaveBeenCalledWith(
-      expect.objectContaining({ skipDuplicates: true }),
-    );
-    expect(prisma.notificationEvent.createMany).not.toHaveBeenCalled();
-    expect(prisma.inboxNotification.createMany).not.toHaveBeenCalled();
+    expect(prisma.releaseMarker.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ key: 'episode:2x7' }),
+        expect.objectContaining({ key: 'episode:2x8' }),
+      ],
+    });
+    expect(prisma.notificationEvent.createMany).toHaveBeenCalledWith({ data: [], skipDuplicates: true });
+    expect(prisma.inboxNotification.createMany).toHaveBeenCalledWith({ data: [], skipDuplicates: true });
+    expect(prisma.libraryEntry.findMany).not.toHaveBeenCalled();
     expect(prisma.sourceEntry.update).toHaveBeenLastCalledWith({
       where: { id: 'tmdb-entry' },
       data: { releasesCheckedAt: expect.any(Date) },
     });
+  });
+
+  it('records new releases, the check and every notification in one transaction', async () => {
+    const { monitor, prisma } = monitorWith({
+      checkedAt: new Date('2026-09-26T06:00:00Z'),
+      markers: [{ key: 'episode:2x7', kind: ReleaseKind.EPISODE, ordinal: 20_007 }],
+      subscribers: [subscriber()],
+    });
+
+    await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).toHaveBeenCalledWith([
+      'marker-insert',
+      'entry-update',
+      'inbox-insert',
+      'event-insert',
+    ]);
+  });
+
+  it('leaves releases another run already recorded to that run', async () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { monitor, prisma } = monitorWith({
+      checkedAt: new Date('2026-09-26T06:00:00Z'),
+      subscribers: [subscriber()],
+    });
+    prisma.$transaction.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(monitor.refreshDue(new Date('2026-09-26T12:00:00Z'))).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('recorded by another run'));
+    warn.mockRestore();
   });
 
   it('queues one event per new release for each reader who wants it', async () => {
@@ -198,11 +268,14 @@ describe('ReleaseMonitorService', () => {
 
     await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
 
-    expect(prisma.releaseMarker.createManyAndReturn.mock.calls[0]?.[0].data).toEqual([
+    const [[{ data: markers }]] = prisma.releaseMarker.createMany.mock.calls as Array<
+      [{ data: Array<{ id: string }> }]
+    >;
+    expect(markers).toEqual([
       expect.objectContaining({ key: 'episode:2x8', kind: ReleaseKind.EPISODE, ordinal: 20_008 }),
     ]);
     expect(prisma.notificationEvent.createMany).toHaveBeenCalledWith({
-      data: [{ userId: 'user-1', libraryEntryId: 'entry-1', releaseMarkerId: 'marker-0' }],
+      data: [{ userId: 'user-1', libraryEntryId: 'entry-1', releaseMarkerId: markers[0]!.id }],
       skipDuplicates: true,
     });
   });
@@ -220,10 +293,13 @@ describe('ReleaseMonitorService', () => {
 
     await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
 
+    const [[{ data: markers }]] = prisma.releaseMarker.createMany.mock.calls as Array<
+      [{ data: Array<{ id: string }> }]
+    >;
     expect(prisma.inboxNotification.createMany).toHaveBeenCalledWith({
       data: [
-        { userId: 'user-1', libraryEntryId: 'entry-1', releaseMarkerId: 'marker-0' },
-        { userId: 'user-3', libraryEntryId: 'entry-3', releaseMarkerId: 'marker-0' },
+        { userId: 'user-1', libraryEntryId: 'entry-1', releaseMarkerId: markers[0]!.id },
+        { userId: 'user-3', libraryEntryId: 'entry-3', releaseMarkerId: markers[0]!.id },
       ],
       skipDuplicates: true,
     });
@@ -237,8 +313,8 @@ describe('ReleaseMonitorService', () => {
 
     await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
 
-    expect(prisma.notificationEvent.createMany).not.toHaveBeenCalled();
-    expect(prisma.inboxNotification.createMany).not.toHaveBeenCalled();
+    expect(prisma.notificationEvent.createMany).toHaveBeenCalledWith({ data: [], skipDuplicates: true });
+    expect(prisma.inboxNotification.createMany).toHaveBeenCalledWith({ data: [], skipDuplicates: true });
   });
 
   it('leaves a title for the next run when its source fails', async () => {
@@ -253,7 +329,7 @@ describe('ReleaseMonitorService', () => {
       where: { id: 'tmdb-entry' },
       data: { releasesAttemptedAt: expect.any(Date) },
     });
-    expect(prisma.releaseMarker.createManyAndReturn).not.toHaveBeenCalled();
+    expect(prisma.releaseMarker.createMany).not.toHaveBeenCalled();
   });
 
   async function monitorWithDue(count: number) {
@@ -336,8 +412,12 @@ describe('DigestService', () => {
           .mockResolvedValueOnce((options.pending ?? ['user-1']).map((userId) => ({ userId })))
           .mockResolvedValue(events),
         updateMany: vi.fn().mockResolvedValue({ count: events.length }),
+        updateManyAndReturn: vi.fn(({ where }: { where: { id: { in: string[] } } }) =>
+          Promise.resolve(where.id.in.map((id) => ({ id }))),
+        ),
       },
       notificationPreference: { update: vi.fn().mockReturnValue('preference-update') },
+      $executeRaw: vi.fn().mockResolvedValue(0),
       $transaction: vi.fn((queries: unknown[]) => Promise.all(queries)),
     };
     const mail = {
@@ -362,10 +442,12 @@ describe('DigestService', () => {
       'List-Unsubscribe': expect.stringMatching(/^<https:\/\/tracker\.example\/api\/v1\/notifications\/unsubscribe\?token=/),
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     });
-    const claim = prisma.notificationEvent.updateMany.mock.calls.findIndex(
-      ([args]) => (args as { data: { state: string } }).data.state === NotificationState.SENT,
-    );
-    expect(prisma.notificationEvent.updateMany.mock.invocationCallOrder[claim]).toBeLessThan(
+    expect(prisma.notificationEvent.updateManyAndReturn).toHaveBeenCalledWith({
+      where: { id: { in: ['event-1', 'event-2'] }, state: NotificationState.QUEUED },
+      data: { state: NotificationState.SENT, sentAt: now },
+      select: { id: true },
+    });
+    expect(prisma.notificationEvent.updateManyAndReturn.mock.invocationCallOrder[0]).toBeLessThan(
       mail.send.mock.invocationCallOrder[0]!,
     );
     expect(prisma.notificationPreference.update).toHaveBeenCalledWith({
@@ -374,13 +456,35 @@ describe('DigestService', () => {
     });
   });
 
-  it('never sends a release another run has already claimed', async () => {
+  it('sends only the releases this run claimed and never one another run has claimed', async () => {
     const { digests, mail, prisma } = digestWith({});
-    prisma.notificationEvent.updateMany.mockResolvedValue({ count: 1 });
+    prisma.notificationEvent.updateManyAndReturn.mockResolvedValueOnce([{ id: 'event-2' }]);
 
     await digests.sendDue(now);
 
-    expect(mail.send).not.toHaveBeenCalled();
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    const [{ text }] = mail.send.mock.calls[0] as [{ text: string }];
+    expect(text).toContain('Season 2, episode 9');
+    expect(text).not.toContain('Season 2, episode 8');
+
+    const other = digestWith({});
+    other.prisma.notificationEvent.updateManyAndReturn.mockResolvedValueOnce([]);
+    await other.digests.sendDue(now);
+    expect(other.mail.send).not.toHaveBeenCalled();
+  });
+
+  it('puts back releases whose digest was interrupted more than an hour ago', async () => {
+    const { digests, prisma } = digestWith({});
+
+    await digests.sendDue(now);
+
+    const [[sql, cutoff]] = prisma.$executeRaw.mock.calls as Array<[TemplateStringsArray, Date]>;
+    expect(sql.join('?')).toMatch(/SET state = 'queued', sent_at = NULL/);
+    expect(sql.join('?')).toMatch(/last_digest_at < event\.sent_at/);
+    expect(cutoff).toEqual(new Date(now.getTime() - 60 * 60 * 1000));
+    expect(prisma.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.notificationEvent.findMany.mock.invocationCallOrder[0]!,
+    );
   });
 
   it('waits for the digest hour and skips releases nobody wants any more', async () => {
@@ -393,7 +497,7 @@ describe('DigestService', () => {
     await unsubscribed.digests.sendDue(now);
     expect(unsubscribed.mail.send).not.toHaveBeenCalled();
     expect(unsubscribed.prisma.notificationEvent.updateMany).toHaveBeenCalledWith({
-      where: { userId: 'user-1', state: NotificationState.QUEUED, id: { notIn: [] } },
+      where: { id: { in: ['event-1', 'event-2'] }, state: NotificationState.QUEUED },
       data: { state: NotificationState.SKIPPED },
     });
 
@@ -408,10 +512,7 @@ describe('DigestService', () => {
     const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { digests, mail, prisma } = digestWith({ user: reader({ deliveryFailures: 2 }) });
     mail.send.mockRejectedValue(
-      Object.assign(new Error('550 5.1.1 <reader@example.com> unknown'), {
-        code: 'EENVELOPE',
-        responseCode: 550,
-      }),
+      new MailDeliveryError({ code: 'EENVELOPE', responseCode: 550, command: 'RCPT TO' }),
     );
 
     await digests.sendDue(now);
@@ -429,22 +530,42 @@ describe('DigestService', () => {
 
   it('keeps sending to other readers when one address is refused', async () => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    const { digests, mail, prisma } = digestWith({ pending: ['user-1', 'user-2', 'user-3'] });
+    const { digests, mail, prisma } = digestWith({ pending: ['user-1', 'user-2', 'user-3', 'user-4'] });
     mail.send
-      .mockRejectedValueOnce(Object.assign(new Error('Invalid recipient'), { code: 'EENVELOPE' }))
-      .mockRejectedValueOnce(
-        Object.assign(new Error('450 mailbox busy'), { code: 'EENVELOPE', responseCode: 450 }),
-      )
+      .mockRejectedValueOnce(new MailDeliveryError({ code: 'EENVELOPE', responseCode: 550, command: 'RCPT TO' }))
+      .mockRejectedValueOnce(new MailDeliveryError({ code: 'EENVELOPE', responseCode: 450, command: 'RCPT TO' }))
+      .mockRejectedValueOnce(new MailDeliveryError({ code: 'EMESSAGE', responseCode: 554, command: 'DATA' }))
       .mockResolvedValueOnce(undefined);
 
     await digests.sendDue(now);
 
-    expect(mail.send).toHaveBeenCalledTimes(3);
+    expect(mail.send).toHaveBeenCalledTimes(4);
     expect(prisma.notificationPreference.update).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       data: { deliveryFailures: 1, suspendedAt: null },
     });
-    expect(prisma.notificationPreference.update).toHaveBeenCalledTimes(2);
+    expect(prisma.notificationPreference.update).toHaveBeenCalledWith({
+      where: { userId: 'user-3' },
+      data: { deliveryFailures: 1, suspendedAt: null },
+    });
+    expect(prisma.notificationPreference.update).toHaveBeenCalledTimes(3);
+  });
+
+  it('treats a refused sender as an outage instead of blaming the reader', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { digests, mail, prisma } = digestWith({ pending: ['user-1', 'user-2'] });
+    mail.send.mockRejectedValue(
+      new MailDeliveryError({ code: 'EENVELOPE', responseCode: 553, command: 'MAIL FROM' }),
+    );
+
+    await digests.sendDue(now);
+
+    expect(prisma.notificationEvent.updateMany).toHaveBeenLastCalledWith({
+      where: { id: { in: ['event-1', 'event-2'] } },
+      data: { state: NotificationState.QUEUED, sentAt: null },
+    });
+    expect(prisma.notificationPreference.update).not.toHaveBeenCalled();
+    expect(mail.send).toHaveBeenCalledTimes(1);
   });
 
   it('keeps releases queued and stops the run while SMTP is unreachable', async () => {
@@ -469,6 +590,7 @@ describe('DigestService', () => {
     const link = (label: string) =>
       new URL(new RegExp(`${label}: (\\S+)`).exec(text)?.[1] ?? '').searchParams.get('token') ?? '';
     const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue({ id: 'user-1' }) },
       libraryEntry: {
         updateMany: vi.fn(),
         findFirst: vi.fn().mockResolvedValue({ catalogItem: { canonicalTitle: 'Tower Chronicles' } }),
@@ -503,6 +625,23 @@ describe('DigestService', () => {
       where: { userId: 'user-1' },
       data: { enabled: false },
     });
+  });
+
+  it('confirms an unsubscribe from a deleted account without writing anything', async () => {
+    const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue(null) },
+      notificationPreference: { upsert: vi.fn(), update: vi.fn() },
+    };
+    const notifications = new NotificationsService(prisma as never, tokens);
+
+    await expect(notifications.unsubscribe(tokens.sign('gone', { scope: 'all' }))).resolves.toEqual({
+      scope: 'all',
+    });
+    await expect(
+      notifications.unsubscribe(tokens.sign('gone', { scope: 'category', category: MediaCategory.TV })),
+    ).resolves.toEqual({ scope: 'category', category: 'tv' });
+    expect(prisma.notificationPreference.upsert).not.toHaveBeenCalled();
+    expect(prisma.notificationPreference.update).not.toHaveBeenCalled();
   });
 });
 

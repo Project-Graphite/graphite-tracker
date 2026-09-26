@@ -40,3 +40,14 @@ export function effectiveSourceEntry<T extends { sourceId: string; source: { ena
       .find((entry) => entry !== undefined) ?? active[0]
   );
 }
+
+export function releaseSourceEntry<T extends { sourceId: string; source: { enabled: boolean } }>(
+  sourceEntries: T[],
+  preferredSourceId: string | null,
+  category: MediaCategory,
+  preferences: SourcePreferences,
+) {
+  return preferredSourceId
+    ? sourceEntries.find((entry) => entry.sourceId === preferredSourceId && entry.source.enabled)
+    : effectiveSourceEntry(sourceEntries, null, category, preferences);
+}

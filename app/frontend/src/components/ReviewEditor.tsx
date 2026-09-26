@@ -4,15 +4,14 @@ import { useAuth } from '../auth';
 import { reviewBodyLimit, type OwnReview } from '../reviews';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ReviewCard } from './ReviewCard';
+import { Toggle } from './Toggle';
 
 export function ReviewEditor({
-  defaultVisibility,
   itemId,
   onClose,
   onSaved,
   review,
 }: {
-  defaultVisibility: OwnReview['visibility'];
   itemId: string;
   onClose: () => void;
   onSaved: (review: OwnReview | null) => void;
@@ -23,7 +22,7 @@ export function ReviewEditor({
   const [title, setTitle] = useState(review?.title ?? '');
   const [body, setBody] = useState(review?.body ?? '');
   const [containsSpoilers, setContainsSpoilers] = useState(review?.containsSpoilers ?? false);
-  const [visibility, setVisibility] = useState(review?.visibility ?? defaultVisibility);
+  const [visibility, setVisibility] = useState<OwnReview['visibility']>(review?.visibility ?? 'public');
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -98,18 +97,13 @@ export function ReviewEditor({
           </span>
         )}
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="field-label">
-          Visibility
-          <select
-            onChange={(event) => setVisibility(event.target.value as OwnReview['visibility'])}
-            value={visibility}
-          >
-            <option value="public">Public</option>
-            <option value="private">Private, only you and administrators</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2 self-end pb-3 text-sm text-muted">
+      <div className="grid items-center gap-4 sm:grid-cols-2">
+        <Toggle
+          checked={visibility === 'private'}
+          label="Private"
+          onChange={(checked) => setVisibility(checked ? 'private' : 'public')}
+        />
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input
             checked={containsSpoilers}
             onChange={(event) => setContainsSpoilers(event.target.checked)}
