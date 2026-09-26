@@ -2,7 +2,8 @@ import { CatalogPage } from './source.types';
 
 const explicit =
   /(?:^|[^a-z0-9])(hentai|porn|porno|pornographic|nsfw|r-?18|18\+|eroge|nukige)(?![a-z0-9])/i;
-const explicitTitle = /(?:^|[^a-z0-9])(erotic|erotica|sex sim(?:ulator)?)(?![a-z0-9])/i;
+const explicitTitle =
+  /(?:^|[^a-z0-9])(erotic|erotica|sex sim(?:ulator)?|ecchi|lewd|smut|yaoi)(?![a-z0-9])/i;
 const adultTag =
   /^(adult|adults? only|adult content|erotic|erotica|hentai|nsfw|porn|pornographic|sexual content)$/i;
 

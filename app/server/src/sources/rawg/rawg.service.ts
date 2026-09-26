@@ -41,6 +41,7 @@ interface RawgGame {
   background_image_additional?: string | null;
   rating?: number;
   ratings_count?: number;
+  added?: number;
   playtime?: number;
   genres?: RawgNamed[];
   platforms?: RawgPlatform[];
@@ -53,11 +54,28 @@ interface RawgGame {
 const adultTags = new Set([
   'nsfw',
   'sexual-content',
+  'seksualnyi-kontent',
   'hentai',
+  'khentai',
   'adult',
   'erotic',
+  'eroge',
+  'nukige',
   'porn',
+  'porno',
   'pornographic',
+  'sex',
+  'sexy',
+  'smut',
+  'lewd',
+  'ecchi',
+  'yaoi',
+  'bl',
+  'boys-love',
+  'boys-love-2',
+  'shounen-ai',
+  'bxb',
+  'bara',
 ]);
 
 interface RawgMovies {
@@ -269,14 +287,13 @@ export class RawgService {
   }
 
   private adult(game: RawgGame) {
+    const tags = game.tags ?? [];
     return (
       game.esrb_rating?.slug === 'adults-only' ||
-      (game.tags ?? []).some((tag) => adultTags.has(tag.slug)) ||
-      looksAdult(
-        [game.name, game.name_original ?? ''],
-        game.description_raw ?? '',
-        (game.tags ?? []).map((tag) => tag.name),
-      )
+      looksAdult([game.name, game.name_original ?? ''], game.description_raw ?? '', []) ||
+      ((game.added ?? 0) < 1_500 &&
+        (tags.some((tag) => adultTags.has(tag.slug)) ||
+          looksAdult([], '', tags.map((tag) => tag.name))))
     );
   }
 

@@ -42,7 +42,13 @@ const json = (body: unknown) =>
 
 const genreCache = () => ({
   getOrLoad: vi.fn().mockResolvedValue({
-    value: [{ genre: 'Romance' }, { genre: 'Action' }, { genre: 'Smut' }, { genre: 'Hentai' }],
+    value: [
+      { genre: 'Romance' },
+      { genre: 'Action' },
+      { genre: 'Smut' },
+      { genre: 'Hentai' },
+      { genre: 'Yaoi' },
+    ],
     stale: false,
   }),
 });
@@ -79,7 +85,15 @@ describe('MangaUpdatesService', () => {
       perpage: 25,
       type: ['Manhwa'],
       orderby: 'list_reading',
-      exclude_genre: ['Adult', 'Hentai', 'Lolicon', 'Shotacon', 'Smut'],
+      exclude_genre: [
+        'Adult',
+        'Hentai',
+        'Lolicon',
+        'Shotacon',
+        'Shounen Ai',
+        'Smut',
+        'Yaoi',
+      ],
     });
     expect(body(request, 1)).toMatchObject({
       page: 2,
@@ -131,6 +145,64 @@ describe('MangaUpdatesService', () => {
     });
     expect(result.results[0]).toMatchObject({ adult: true, alternateTitles: [] });
     await expect(service.genres()).resolves.toEqual(['Action', 'Romance']);
+  });
+
+  it('lists series that have no year or genres', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          json({
+            ...searchResponse,
+            results: [{ record: { ...record, year: null, genres: null }, hit_title: record.title }],
+          }),
+        ),
+      ),
+    );
+    const service = new MangaUpdatesService(genreCache() as never, new ConnectorHttpService());
+
+    const result = await service.search('manhwa', 'omniscient', 1, {});
+
+    expect(result.results[0]).toMatchObject({
+      title: 'Omniscient Reader',
+      releaseDate: null,
+      genres: [],
+      adult: false,
+    });
+  });
+
+  it('treats yaoi and shounen ai as adult genres only opted-in readers can pick', async () => {
+    const request = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        json({
+          ...searchResponse,
+          results: [
+            { record: { ...record, genres: [{ genre: 'Shounen Ai' }] }, hit_title: record.title },
+          ],
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', request);
+    const service = new MangaUpdatesService(genreCache() as never, new ConnectorHttpService());
+
+    await expect(
+      service.browse('manhwa', 'popular', 1, { genre: 'yaoi' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    const result = await service.search('manhwa', 'omniscient', 1, {
+      genre: 'yaoi',
+      adult: true,
+    });
+
+    expect(body(request)).toMatchObject({ genre: ['Yaoi'] });
+    expect(body(request)).not.toHaveProperty('exclude_genre');
+    expect(result.results[0]).toMatchObject({ adult: true });
+    await expect(service.genres('manhwa', true)).resolves.toEqual([
+      'Action',
+      'Hentai',
+      'Romance',
+      'Smut',
+      'Yaoi',
+    ]);
   });
 
   it.each([

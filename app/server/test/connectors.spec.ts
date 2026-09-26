@@ -126,7 +126,11 @@ describe('Source connectors', () => {
     );
     vi.stubGlobal('fetch', request);
 
-    const result = await new MangaDexService({} as never, new ConnectorHttpService()).browse(
+    const cache = {
+      getOrLoad: vi.fn().mockResolvedValue({ value: { data: [] }, stale: false }),
+    };
+
+    const result = await new MangaDexService(cache as never, new ConnectorHttpService()).browse(
       'manhwa',
       'recent',
       1,
@@ -335,6 +339,65 @@ describe('Source connectors', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('keeps boys love and other adult MangaDex tags away from readers who did not opt in', async () => {
+    const request = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        json({
+          data: [
+            {
+              ...manhwa,
+              attributes: {
+                ...manhwa.attributes,
+                tags: [{ attributes: { name: { en: "Boys' Love" } } }],
+              },
+            },
+          ],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', request);
+    const cache = {
+      getOrLoad: vi.fn().mockResolvedValue({
+        value: {
+          data: [
+            { id: 'tag-romance', attributes: { name: { en: 'Romance' }, group: 'genre' } },
+            { id: 'tag-bl', attributes: { name: { en: "Boys' Love" }, group: 'genre' } },
+            { id: 'tag-loli', attributes: { name: { en: 'Loli' }, group: 'theme' } },
+            {
+              id: 'tag-sexual-violence',
+              attributes: { name: { en: 'Sexual Violence' }, group: 'content' },
+            },
+          ],
+        },
+        stale: false,
+      }),
+    };
+    const service = new MangaDexService(cache as never, new ConnectorHttpService());
+
+    const page = await service.browse('manhwa', 'popular', 1, {});
+
+    expect((request.mock.calls[0] as [URL])[0].searchParams.getAll('excludedTags[]')).toEqual([
+      'tag-bl',
+      'tag-loli',
+      'tag-sexual-violence',
+    ]);
+    expect(page.results[0]).toMatchObject({ genres: ["Boys' Love"], adult: true });
+    await expect(service.genres()).resolves.toEqual(['Romance']);
+    await expect(
+      service.search('manhwa', 'tower', 1, { genre: "boys' love" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await service.search('manhwa', 'tower', 1, { genre: "boys' love", adult: true });
+
+    const [adultUrl] = request.mock.calls.at(-1) as [URL];
+    expect(adultUrl.searchParams.getAll('includedTags[]')).toEqual(['tag-bl']);
+    expect(adultUrl.searchParams.getAll('excludedTags[]')).toEqual([]);
+    await expect(service.genres('manhwa', true)).resolves.toEqual(["Boys' Love", 'Romance']);
+  });
+
   it('keeps adult titles out of lists unless the reader opted in, and asks the sources to do it', async () => {
     const config = new ConfigService({
       TMDB_READ_ACCESS_TOKEN: 'tmdb-token',
@@ -352,19 +415,24 @@ describe('Source connectors', () => {
         json(
           input.hostname === 'api.themoviedb.org'
             ? { page: 1, total_pages: 1, total_results: 1, results: [{ id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true }] }
-            : input.hostname === 'api.mangadex.org'
-              ? { data: [{ ...manhwa, attributes: { ...manhwa.attributes, contentRating: 'erotica' } }], total: 1, limit: 20, offset: 0 }
-              : input.hostname === 'api.igdb.com'
-                ? igdbGames
-                : {
-                    count: 2,
-                    next: null,
-                    previous: null,
-                    results: [
-                      { id: 1, slug: 'safe', name: 'Safe Game' },
-                      { id: 2, slug: 'adult', name: 'Adult Game', esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
-                    ],
-                  },
+            : input.hostname === 'api.mangadex.org' && input.pathname === '/manga/tag'
+              ? { data: [] }
+              : input.hostname === 'api.mangadex.org'
+                ? { data: [{ ...manhwa, attributes: { ...manhwa.attributes, contentRating: 'erotica' } }], total: 1, limit: 20, offset: 0 }
+                : input.hostname === 'api.igdb.com'
+                  ? igdbGames
+                  : {
+                      count: 5,
+                      next: null,
+                      previous: null,
+                      results: [
+                        { id: 1, slug: 'safe', name: 'Safe Game' },
+                        { id: 2, slug: 'adult', name: 'Adult Game', esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
+                        { id: 3, slug: 'tender', name: 'Tender Hearts', tags: [{ id: 9, name: 'Boys Love', slug: 'boys-love-2' }] },
+                        { id: 4, slug: 'hit', name: 'Hit Game', added: 20_000, tags: [{ id: 10, name: 'Sexual Content', slug: 'sexual-content' }] },
+                        { id: 5, slug: 'popular-adult', name: 'Popular Adult Game', added: 20_000, esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
+                      ],
+                    },
         ),
       ),
     );
@@ -393,8 +461,11 @@ describe('Source connectors', () => {
     expect(rawgPage.results.map(({ title, adult }) => `${title}:${adult}`)).toEqual([
       'Safe Game:false',
       'Adult Game:true',
+      'Hit Game:false',
+      'Popular Adult Game:true',
+      'Tender Hearts:true',
     ]);
-    expect(rawgPage.totalResults).toBe(2);
+    expect(rawgPage.totalResults).toBe(5);
     expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('page_size')).toBe('40');
 
     await tmdb.search('movie', 'film', 1, {});

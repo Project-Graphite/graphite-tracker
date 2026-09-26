@@ -121,7 +121,7 @@ export class ConnectorRegistryService {
     return { ...result.value, stale: result.stale };
   }
 
-  async genres(category: CatalogCategory, source?: string) {
+  async genres(category: CatalogCategory, source?: string, adult = false) {
     const connector = this.resolve(category, source);
     const genres = connector.genres?.bind(connector);
     if (!genres) {
@@ -129,10 +129,10 @@ export class ConnectorRegistryService {
     }
     const result = await this.cached(
       connector,
-      ['genres', category],
+      ['genres', category, adult],
       86_400,
       604_800,
-      () => genres(category),
+      () => genres(category, adult),
     );
     return result.value;
   }

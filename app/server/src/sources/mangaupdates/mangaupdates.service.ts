@@ -22,10 +22,10 @@ interface MangaUpdatesSeries {
   description: string | null;
   image: { url: { original: string | null } };
   type: string;
-  year: string;
+  year: string | null;
   bayesian_rating: number | null;
   rating_votes: number;
-  genres: Array<{ genre: string }>;
+  genres: Array<{ genre: string }> | null;
   associated?: Array<{ title: string }>;
   latest_chapter?: number;
   status?: string | null;
@@ -38,7 +38,15 @@ interface MangaUpdatesSearch {
   results: Array<{ record: MangaUpdatesSeries; hit_title: string }>;
 }
 
-const adultGenres = ['Adult', 'Hentai', 'Lolicon', 'Shotacon', 'Smut'];
+const adultGenres = [
+  'Adult',
+  'Hentai',
+  'Lolicon',
+  'Shotacon',
+  'Shounen Ai',
+  'Smut',
+  'Yaoi',
+];
 
 @Injectable()
 export class MangaUpdatesService {
@@ -119,7 +127,7 @@ export class MangaUpdatesService {
       : [];
   }
 
-  async genres() {
+  async genres(category?: CatalogCategory, adult = false) {
     const { value } = await this.cache.getOrLoad(
       'connector:mangaupdates:genres',
       604_800,
@@ -128,7 +136,7 @@ export class MangaUpdatesService {
     );
     return value
       .map(({ genre }) => genre)
-      .filter((genre) => !adultGenres.includes(genre))
+      .filter((genre) => adult || !adultGenres.includes(genre))
       .sort((left, right) => left.localeCompare(right));
   }
 
@@ -166,7 +174,7 @@ export class MangaUpdatesService {
       throw new BadRequestException('MangaUpdates does not filter by status');
     }
     const genre = filters.genre
-      ? (await this.genres()).find(
+      ? (await this.genres(category, filters.adult)).find(
           (name) => name.toLowerCase() === filters.genre?.toLowerCase(),
         )
       : undefined;
@@ -196,12 +204,12 @@ export class MangaUpdatesService {
   }
 
   private normalize(series: MangaUpdatesSeries, alternates: string[]): CatalogCandidate {
-    const genres = series.genres.map(({ genre }) => genre);
+    const genres = (series.genres ?? []).map(({ genre }) => genre);
     const alternateTitles = [...new Set(alternates)].filter(
       (alternate) => alternate && alternate !== series.title,
     );
     const synopsis = series.description ?? '';
-    const year = series.year.match(/^\d{4}/)?.[0];
+    const year = series.year?.match(/^\d{4}/)?.[0];
     return {
       source: 'mangaupdates',
       externalId: String(series.series_id),

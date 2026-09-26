@@ -133,6 +133,18 @@ describe('TmdbService', () => {
                     vote_average: 9,
                     vote_count: 1,
                   },
+                  {
+                    id: 3,
+                    name: 'New drama',
+                    original_name: 'New drama',
+                    overview: '',
+                    original_language: 'en',
+                    origin_country: ['US'],
+                    genre_ids: [18],
+                    first_air_date: '2026-08-01',
+                    vote_average: 7,
+                    vote_count: 1,
+                  },
                 ],
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -168,7 +180,7 @@ describe('TmdbService', () => {
     expect(animeTvUrl.searchParams.get('first_air_date.lte')).toBeTruthy();
   });
 
-  it('browses scripted TV above a vote floor without Chinese-origin titles', async () => {
+  it('browses scripted TV above a vote floor without anime or Chinese-origin titles', async () => {
     const show = (name: string, original_language: string, origin_country: string[]) => ({
       id: name.length,
       name,
@@ -187,6 +199,7 @@ describe('TmdbService', () => {
         show('Mandarin', 'zh', ['TW']),
         show('Cantonese', 'cn', ['HK']),
         show('Co-production', 'ko', ['KR', 'CN']),
+        { ...show('Anime', 'ja', ['JP']), genre_ids: [16] },
       ],
     };
     const fetchMock = vi.fn().mockImplementation(() =>
@@ -208,9 +221,11 @@ describe('TmdbService', () => {
 
     expect(popular.results.map(({ title }) => title)).toEqual(['Kept']);
     expect(searched.results).toHaveLength(4);
+    expect(searched.results.map(({ title }) => title)).not.toContain('Anime');
     const [url] = fetchMock.mock.calls[0] as [URL];
     expect(url.pathname).toBe('/3/discover/tv');
     expect(url.searchParams.get('sort_by')).toBe('popularity.desc');
+    expect(url.searchParams.get('without_keywords')).toBe('210024');
     expect(url.searchParams.get('with_type')).toBe('2|4');
     expect(url.searchParams.get('vote_count.gte')).toBe('100');
     expect(url.searchParams.get('first_air_date.gte')).toBeNull();

@@ -128,7 +128,7 @@ export interface SourceConnector {
     filters: CatalogFilters,
   ): Promise<CatalogPage>;
   details(category: CatalogCategory, externalId: string): Promise<CatalogDetails>;
-  genres?(category: CatalogCategory): Promise<string[]>;
+  genres?(category: CatalogCategory, adult?: boolean): Promise<string[]>;
   releases?(category: CatalogCategory, externalId: string): Promise<ReleaseSignal[]>;
   recognize(
     url: URL,

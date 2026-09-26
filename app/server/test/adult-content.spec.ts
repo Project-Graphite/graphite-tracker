@@ -43,6 +43,9 @@ describe('looksAdult', () => {
     expect(looksAdult(['Puzzle Nights'], '', ['Sexual Content'])).toBe(true);
     expect(looksAdult(['Erotica'], '', [])).toBe(true);
     expect(looksAdult(['Quiet Streets (R18)'], '', [])).toBe(true);
+    expect(looksAdult(['Nippon Ecchi Jigsaw'], '', [])).toBe(true);
+    expect(looksAdult(["Dimitrescu's Lewd Castle"], '', [])).toBe(true);
+    expect(looksAdult(['Yaoi Fetch-Quest'], '', [])).toBe(true);
   });
 
   it('leaves mainstream titles alone', () => {

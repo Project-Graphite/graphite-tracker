@@ -76,8 +76,16 @@ export class CatalogController {
   }
 
   @Get(':category/genres')
-  genres(@Param('category') category: string, @Query('source') source?: string) {
-    return this.connectors.genres(this.category(category), source);
+  genres(
+    @Param('category') category: string,
+    @Query('source') source?: string,
+    @CurrentUser() viewer?: AuthenticatedUser,
+  ) {
+    return this.connectors.genres(
+      this.category(category),
+      source,
+      showsAdultContent(viewer),
+    );
   }
 
   @Get(':category/:externalId')

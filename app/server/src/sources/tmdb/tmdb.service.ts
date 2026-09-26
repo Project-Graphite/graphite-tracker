@@ -550,7 +550,11 @@ export class TmdbService {
       page: response.page,
       totalPages: response.total_pages,
       totalResults: response.total_results,
-      results: response.results.map((show) => this.normalizeTv(show)),
+      results: response.results
+        .filter(
+          (show) => !this.isAnime(show.original_language, show.genre_ids, show.origin_country),
+        )
+        .map((show) => this.normalizeTv(show)),
       attribution: this.descriptor.attribution,
     };
   }
@@ -671,6 +675,7 @@ export class TmdbService {
         }[filters.status.toLowerCase()] ?? filters.status;
     }
     if (category === 'tv') {
+      parameters.without_keywords = '210024';
       if (!filters.genre) {
         parameters.with_type = '2|4';
       }

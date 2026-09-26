@@ -66,6 +66,7 @@ interface MangaDexTags {
 
 const safeContentRatings = ['safe', 'suggestive'];
 const allContentRatings = [...safeContentRatings, 'erotica', 'pornographic'];
+const adultTags = ["Boys' Love", 'Incest', 'Loli', 'Sexual Violence', 'Shota'];
 
 @Injectable()
 export class MangaDexService {
@@ -175,8 +176,8 @@ export class MangaDexService {
         ];
   }
 
-  async genres() {
-    return [...(await this.tags()).values()]
+  async genres(category?: CatalogCategory, adult = false) {
+    return [...(await this.tags(adult)).genres.values()]
       .map(({ name }) => name)
       .sort((left, right) => left.localeCompare(right));
   }
@@ -218,9 +219,8 @@ export class MangaDexService {
     ) {
       throw new BadRequestException('Sort does not match this media category');
     }
-    const tag = filters.genre
-      ? (await this.tags()).get(filters.genre.toLowerCase())
-      : undefined;
+    const tags = await this.tags(filters.adult);
+    const tag = filters.genre ? tags.genres.get(filters.genre.toLowerCase()) : undefined;
     if (filters.genre && !tag) {
       throw new BadRequestException('Genre does not match this media category');
     }
@@ -231,6 +231,7 @@ export class MangaDexService {
       ...(filters.year ? { year: String(filters.year) } : {}),
       ...(filters.status ? { 'status[]': [filters.status] } : {}),
       ...(tag ? { 'includedTags[]': [tag.id] } : {}),
+      'excludedTags[]': tags.excluded,
       ...(category === 'manhwa'
         ? { 'originalLanguage[]': ['ko'] }
         : { 'excludedOriginalLanguage[]': ['ko'] }),
@@ -248,21 +249,28 @@ export class MangaDexService {
     };
   }
 
-  private async tags() {
+  private async tags(adult: boolean | undefined) {
     const { value } = await this.cache.getOrLoad(
       'connector:mangadex:tags',
       604_800,
       2_592_000,
       () => this.request<MangaDexTags>('/manga/tag', {}),
     );
-    return new Map(
-      value.data
-        .filter(({ attributes }) => attributes.group === 'genre')
-        .map(({ id, attributes }) => {
-          const name = this.localized(attributes.name);
-          return [name.toLowerCase(), { id, name }] as const;
-        }),
-    );
+    const tags = value.data.map(({ id, attributes }) => ({
+      id,
+      name: this.localized(attributes.name),
+      group: attributes.group,
+    }));
+    return {
+      genres: new Map(
+        tags
+          .filter(({ name, group }) => group === 'genre' && (adult || !adultTags.includes(name)))
+          .map((tag) => [tag.name.toLowerCase(), tag] as const),
+      ),
+      excluded: adult
+        ? []
+        : tags.filter(({ name }) => adultTags.includes(name)).map(({ id }) => id),
+    };
   }
 
   private normalize(manga: MangaDexManga): CatalogCandidate {
@@ -277,6 +285,9 @@ export class MangaDexService {
         Boolean(alternate && alternate !== title && alternates.indexOf(alternate) === index),
       );
     const synopsis = this.localized(manga.attributes.description);
+    const genres = manga.attributes.tags
+      .map((tag) => this.localized(tag.attributes.name))
+      .filter(Boolean);
     return {
       source: 'mangadex',
       externalId: manga.id,
@@ -291,9 +302,7 @@ export class MangaDexService {
       backdropUrl: null,
       releaseDate: manga.attributes.year ? `${manga.attributes.year}-01-01` : null,
       language: manga.attributes.originalLanguage,
-      genres: manga.attributes.tags
-        .map((tag) => this.localized(tag.attributes.name))
-        .filter(Boolean),
+      genres,
       runtimeMinutes: null,
       status: manga.attributes.status,
       tagline: null,
@@ -301,6 +310,7 @@ export class MangaDexService {
       ratingCount: 0,
       adult:
         !safeContentRatings.includes(manga.attributes.contentRating) ||
+        genres.some((genre) => adultTags.includes(genre)) ||
         looksAdult([title, ...alternateTitles], synopsis, []),
       chapterCount: manga.attributes.lastChapter
         ? Number(manga.attributes.lastChapter) || null
