@@ -41,6 +41,7 @@ export interface LibraryEntry {
     title: string;
     posterUrl: string | null;
     releaseDate: string | null;
+    releasing: boolean;
     metadata: CatalogMetadata;
     sources: Array<{
       key: string;

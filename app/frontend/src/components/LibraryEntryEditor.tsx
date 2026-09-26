@@ -239,30 +239,38 @@ export function LibraryEntryEditor({
           reviews and statistics for other people.
         </p>
       </div>
-      <div>
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input
-            checked={entry.notificationsEnabled}
-            disabled={busy || finished || needsPlatform}
-            onChange={(event) => update({ notificationsEnabled: event.target.checked })}
-            type="checkbox"
-          />
-          Release notifications
-        </label>
-        {(finished || needsPlatform) && (
-          <p className="mono-sm mt-1 mb-0 text-faint">
-            {finished
-              ? 'Available while a title is planned or in progress.'
-              : 'Choose a platform first.'}
-          </p>
-        )}
-        {entry.notificationsEnabled && emailsOff && (
-          <p className="mono-sm mt-1 mb-0 text-faint">
-            Emails for {categoryLabels[entry.item.category].toLowerCase()} are off in{' '}
-            <Link className="rule-link" to="/settings/notifications">notification settings</Link>.
-          </p>
-        )}
-      </div>
+      {(entry.item.releasing || entry.notificationsEnabled) && (
+        <div>
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              checked={entry.notificationsEnabled}
+              disabled={busy || finished || needsPlatform}
+              onChange={(event) => update({ notificationsEnabled: event.target.checked })}
+              type="checkbox"
+            />
+            Release notifications
+          </label>
+          {!entry.item.releasing ? (
+            <p className="mono-sm mt-1 mb-0 text-faint">
+              This title has finished coming out, so there is nothing new to announce.
+            </p>
+          ) : (
+            (finished || needsPlatform) && (
+              <p className="mono-sm mt-1 mb-0 text-faint">
+                {finished
+                  ? 'Available while a title is planned or in progress.'
+                  : 'Choose a platform first.'}
+              </p>
+            )
+          )}
+          {entry.notificationsEnabled && emailsOff && (
+            <p className="mono-sm mt-1 mb-0 text-faint">
+              Emails for {categoryLabels[entry.item.category].toLowerCase()} are off in{' '}
+              <Link className="rule-link" to="/settings/notifications">notification settings</Link>.
+            </p>
+          )}
+        </div>
+      )}
       {entry.importedSources.length > 0 && (
         <div>
           <p className="field-label m-0">Imported sources</p>

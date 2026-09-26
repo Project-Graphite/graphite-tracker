@@ -15,6 +15,7 @@ import {
 import { ListLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
 import { effectiveSourceEntry, loadSourcePreferences, SourcePreferences } from './effective-source';
+import { stillReleasing } from './release-window';
 
 export const libraryStates: Record<LibraryStateInput, LibraryState> = {
   planned: LibraryState.PLANNED,
@@ -202,6 +203,19 @@ export class LibraryService {
     }
     if (
       input.notificationsEnabled &&
+      !current.notificationsEnabled &&
+      !stillReleasing(
+        current.catalogItem.category,
+        current.catalogItem.metadata,
+        current.catalogItem.releaseDate,
+      )
+    ) {
+      throw new BadRequestException(
+        'Release notifications are only for titles that are still coming out',
+      );
+    }
+    if (
+      input.notificationsEnabled &&
       current.catalogItem.category === MediaCategory.GAME &&
       (input.platforms ?? current.platforms).length === 0
     ) {
@@ -372,6 +386,11 @@ export class LibraryService {
         title: entry.catalogItem.canonicalTitle,
         posterUrl: entry.catalogItem.posterPath,
         releaseDate: entry.catalogItem.releaseDate,
+        releasing: stillReleasing(
+          entry.catalogItem.category,
+          entry.catalogItem.metadata,
+          entry.catalogItem.releaseDate,
+        ),
         metadata: entry.catalogItem.metadata,
         sources: entry.catalogItem.sourceEntries.map((sourceEntry) => ({
           key: sourceEntry.source.key,
