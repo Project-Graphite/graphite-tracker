@@ -8,7 +8,11 @@ import {
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DecideCandidateDto } from '../src/imports/dto/import.dto';
 import { ImportMatcherService, titleSimilarity } from '../src/imports/import-matcher.service';
 import { ImportsService } from '../src/imports/imports.service';
@@ -132,6 +136,20 @@ describe('ImportMatcherService', () => {
 });
 
 describe('ImportsService', () => {
+  let uploads: string;
+
+  beforeAll(async () => {
+    uploads = await mkdtemp(join(tmpdir(), 'graphite-imports-'));
+  });
+
+  afterAll(() => rm(uploads, { recursive: true, force: true }));
+
+  async function upload(name: string, contents: string) {
+    const path = join(uploads, name);
+    await writeFile(path, contents);
+    return path;
+  }
+
   function service(prisma: object, library: object = {}) {
     return new ImportsService(
       prisma as never,
@@ -143,7 +161,7 @@ describe('ImportsService', () => {
     );
   }
 
-  it('flags duplicates and untitled entries while storing the preview', async () => {
+  it('flags duplicates and untitled entries while storing the preview, then removes the upload', async () => {
     const createMany = vi.fn();
     const prisma = {
       $transaction: (run: (transaction: object) => Promise<void>) =>
@@ -151,9 +169,9 @@ describe('ImportsService', () => {
     };
     const imports = service(prisma);
     const internals = imports as unknown as {
-      parse(file: Buffer): Promise<unknown>;
+      parse(path: string): Promise<unknown>;
       match(batchId: string): Promise<void>;
-      read(batchId: string, file: Buffer): Promise<void>;
+      read(batchId: string, path: string): Promise<void>;
     };
     const entry = {
       kind: 'manga',
@@ -172,7 +190,8 @@ describe('ImportsService', () => {
         { ...entry, title: '' },
       ],
     });
-    await expect(internals.read('batch-id', Buffer.from('backup'))).resolves.toBe(true);
+    const path = await upload('preview', 'backup');
+    await expect(internals.read('batch-id', path)).resolves.toBe(true);
 
     const rows = (createMany.mock.calls[0] as [{ data: Array<Record<string, unknown>> }])[0].data;
     expect(rows.map((row) => row.match)).toEqual([
@@ -181,30 +200,68 @@ describe('ImportsService', () => {
       ImportMatch.UNSUPPORTED,
     ]);
     expect(rows[0]).toMatchObject({ state: LibraryState.PLANNED, position: 0 });
+    await expect(access(path)).rejects.toThrow();
   });
 
   it('matches an upload once its preview is stored and never after a failed read', async () => {
-    const imports = service({
-      importBatch: {
-        create: vi
-          .fn()
-          .mockResolvedValueOnce({ id: 'unreadable-batch' })
-          .mockResolvedValueOnce({ id: 'stored-batch' }),
-      },
-    });
+    const create = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 'unreadable-batch' })
+      .mockResolvedValueOnce({ id: 'stored-batch' });
+    const imports = service({ importBatch: { create } });
     const internals = imports as unknown as {
       match(batchId: string): Promise<void>;
-      read(batchId: string, file: Buffer): Promise<boolean>;
+      read(batchId: string, path: string): Promise<boolean>;
     };
     vi.spyOn(internals, 'read').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     const match = vi.spyOn(internals, 'match').mockResolvedValue(undefined);
     vi.spyOn(imports, 'detail').mockResolvedValue({} as never);
 
-    await imports.create('user-id', Buffer.from('unreadable'));
-    await imports.create('user-id', Buffer.from('backup'));
+    await imports.create('user-id', await upload('unreadable', 'unreadable'));
+    await imports.create('user-id', await upload('stored', 'backup'));
 
     await vi.waitFor(() => expect(match).toHaveBeenCalledWith('stored-batch'));
     expect(match).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenLastCalledWith({
+      data: expect.objectContaining({
+        fileDigest: createHash('sha256').update('backup').digest('hex'),
+      }),
+    });
+  });
+
+  it('removes the upload when its batch cannot be created', async () => {
+    const imports = service({
+      importBatch: { create: vi.fn().mockRejectedValue(new Error('database unavailable')) },
+    });
+    const path = await upload('orphan', 'backup');
+
+    await expect(imports.create('user-id', path)).rejects.toThrow('database unavailable');
+    await expect(access(path)).rejects.toThrow();
+  });
+
+  it('reads one backup at a time, even after one fails', async () => {
+    const imports = service({});
+    const internals = imports as unknown as {
+      parse(path: string): Promise<unknown>;
+      parseInWorker(path: string): Promise<unknown>;
+    };
+    let failFirst: (error: Error) => void = () => undefined;
+    const parseInWorker = vi
+      .spyOn(internals, 'parseInWorker')
+      .mockImplementationOnce(
+        () => new Promise((_resolve, reject) => (failFirst = reject)),
+      )
+      .mockResolvedValueOnce({ app: 'mihon', entries: [] });
+
+    const first = internals.parse('first');
+    const second = internals.parse('second');
+    await vi.waitFor(() => expect(parseInWorker).toHaveBeenCalledWith('first'));
+    expect(parseInWorker).toHaveBeenCalledTimes(1);
+
+    failFirst(new Error('The backup could not be read'));
+    await expect(first).rejects.toThrow('The backup could not be read');
+    await expect(second).resolves.toEqual({ app: 'mihon', entries: [] });
+    expect(parseInWorker).toHaveBeenLastCalledWith('second');
   });
 
   it('deletes expired previews at startup and every hour, except batches still working', async () => {

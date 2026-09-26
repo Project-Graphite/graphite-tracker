@@ -24,6 +24,11 @@ async function bootstrap() {
     origin: process.env.AUTH_TRUSTED_ORIGINS?.split(',') ?? [],
   });
   const frontendRoot = join(__dirname, '..', '..', 'frontend', 'dist');
+  app.useStaticAssets(join(frontendRoot, 'assets'), {
+    prefix: '/assets',
+    immutable: true,
+    maxAge: '1y',
+  });
   app.useStaticAssets(frontendRoot);
   await app.init();
   app

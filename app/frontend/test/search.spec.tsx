@@ -100,4 +100,51 @@ describe('Source links in search', () => {
     );
     expect(container.querySelector('h1')?.textContent).toBe('Tower Story');
   });
+
+  it('searches each medium only once its section comes near the screen', async () => {
+    type Reveal = (entries: Array<{ isIntersecting: boolean }>) => void;
+    const sections: Reveal[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        private readonly reveal: Reveal;
+        constructor(reveal: Reveal) {
+          this.reveal = reveal;
+        }
+        observe() {
+          sections.push(this.reveal);
+        }
+        disconnect() {}
+      },
+    );
+    const fetchMock = vi.fn((input: string) =>
+      Promise.resolve(
+        String(input).includes('/catalog/')
+          ? json({ page: 1, totalPages: 1, totalResults: 0, results: [], attribution: 'Test' })
+          : new Response(null, { status: 401 }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const searches = () =>
+      fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/search?'));
+
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/search?q=tower']}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </MemoryRouter>,
+      ),
+    );
+    expect(sections).toHaveLength(6);
+    expect(searches()).toEqual([]);
+
+    await act(async () => {
+      sections[0]?.([{ isIntersecting: true }]);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(searches()).toEqual(['/api/v1/catalog/movie/search?query=tower&page=1']);
+  });
 });

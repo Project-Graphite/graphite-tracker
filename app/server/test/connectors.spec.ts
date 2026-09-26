@@ -453,6 +453,33 @@ describe('Source connectors', () => {
     });
   });
 
+  it('shares one cached search between spellings that differ only in case', async () => {
+    const config = new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'tmdb-token' });
+    const http = new ConnectorHttpService();
+    const request = vi.fn(() =>
+      Promise.resolve(json({ page: 1, total_pages: 1, total_results: 0, results: [] })),
+    );
+    vi.stubGlobal('fetch', request);
+    const cache = igdbCache();
+    const registry = new ConnectorRegistryService(
+      config,
+      new TmdbService(config, http),
+      new MangaDexService(igdbCache() as never, http),
+      new IgdbService(config, igdbCache() as never, http),
+      new RawgService(config, http),
+      cache as never,
+    );
+
+    await registry.search('movie', 'Fight Club', 1, {});
+    await registry.search('movie', 'fight club', 1, {});
+
+    const [first, second] = cache.getOrLoad.mock.calls;
+    expect(first?.[0]).toBe(second?.[0]);
+    expect((request.mock.calls[0] as unknown as [URL])[0].searchParams.get('query')).toBe(
+      'fight club',
+    );
+  });
+
   it('ranks game searches by relevance and popularity across a 100-result window', async () => {
     const config = new ConfigService({ IGDB_CLIENT_ID: 'client', IGDB_CLIENT_SECRET: 'secret' });
     const games = [

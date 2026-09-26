@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import {
   catalogCategories,
@@ -15,28 +15,46 @@ import { useResource } from '../useResource';
 import { searchQuery, useFormErrors } from '../validation';
 
 function CategoryResults({ category, query }: { category: CatalogCategory; query: string }) {
+  const section = useRef<HTMLDivElement>(null);
+  const [nearView, setNearView] = useState(false);
+
+  useEffect(() => {
+    const element = section.current;
+    if (!element || nearView) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNearView(true);
+      },
+      { rootMargin: '200px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [nearView]);
+
   const results = useResource<CatalogResponse>(
-    `/catalog/${category}/search?query=${encodeURIComponent(query)}&page=1`,
+    nearView ? `/catalog/${category}/search?query=${encodeURIComponent(query)}&page=1` : null,
   );
   const encoded = encodeURIComponent(query);
   return (
-    <CatalogRow
-      empty="No matches."
-      error={results.error}
-      eyebrow={
-        results.data
-          ? results.data.totalResults === null
-            ? 'results'
-            : countLabel(results.data.totalResults, 'result')
-          : <Skeleton className="inline-block h-3 w-16 align-middle" />
-      }
-      items={results.data?.results.slice(0, 10)}
-      link={{
-        href: category === 'game' ? `/games?q=${encoded}` : `/discover/${category}/search?q=${encoded}`,
-        label: 'View all',
-      }}
-      title={categoryLabels[category]}
-    />
+    <div ref={section}>
+      <CatalogRow
+        empty="No matches."
+        error={results.error}
+        eyebrow={
+          results.data
+            ? results.data.totalResults === null
+              ? 'results'
+              : countLabel(results.data.totalResults, 'result')
+            : <Skeleton className="inline-block h-3 w-16 align-middle" />
+        }
+        items={results.data?.results.slice(0, 10)}
+        link={{
+          href: category === 'game' ? `/games?q=${encoded}` : `/discover/${category}/search?q=${encoded}`,
+          label: 'View all',
+        }}
+        title={categoryLabels[category]}
+      />
+    </div>
   );
 }
 
@@ -79,7 +97,7 @@ export function SearchPage() {
       </form>
       {query.length >= 2 ? (
         catalogCategories.map((category) => (
-          <CategoryResults category={category} key={category} query={query} />
+          <CategoryResults category={category} key={`${category}|${query}`} query={query} />
         ))
       ) : (
         <div className="mt-10">

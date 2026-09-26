@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
 import { RedisService } from '../src/redis/redis.service';
@@ -43,5 +44,59 @@ describe('ConnectorCacheService', () => {
       value: { results: ['cached'] },
       stale: true,
     });
+  });
+
+  it('answers from the cache at once and refreshes an aging value in the background', async () => {
+    const service = new ConnectorCacheService(new RedisService(new ConfigService()));
+    const internals = service as unknown as {
+      read<T>(key: string): Promise<T | undefined>;
+      write<T>(key: string, value: T, staleSeconds: number): Promise<void>;
+    };
+    vi.spyOn(internals, 'read').mockResolvedValue({
+      fetchedAt: Date.now() - 120_000,
+      value: { results: ['cached'] },
+    });
+    const write = vi.spyOn(internals, 'write').mockResolvedValue(undefined);
+    let finish: (value: unknown) => void = () => undefined;
+    const load = vi.fn(() => new Promise((resolve) => (finish = resolve)));
+    const cached = { value: { results: ['cached'] }, stale: false };
+
+    await expect(
+      service.getOrLoad('key', 60, 300, load, { refreshInBackground: true }),
+    ).resolves.toEqual(cached);
+    await expect(
+      service.getOrLoad('key', 60, 300, load, { refreshInBackground: true }),
+    ).resolves.toEqual(cached);
+    expect(load).toHaveBeenCalledTimes(1);
+
+    finish({ results: ['fresh'] });
+    await vi.waitFor(() =>
+      expect(write).toHaveBeenCalledWith(
+        'key',
+        { fetchedAt: expect.any(Number), value: { results: ['fresh'] } },
+        300,
+      ),
+    );
+  });
+
+  it('keeps answering from the cache when a background refresh fails', async () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new ConnectorCacheService(new RedisService(new ConfigService()));
+    const internals = service as unknown as {
+      read<T>(key: string): Promise<T | undefined>;
+    };
+    vi.spyOn(internals, 'read').mockResolvedValue({
+      fetchedAt: Date.now() - 120_000,
+      value: { results: ['cached'] },
+    });
+
+    await expect(
+      service.getOrLoad('key', 60, 300, () => Promise.reject(new Error('source unavailable')), {
+        refreshInBackground: true,
+      }),
+    ).resolves.toEqual({ value: { results: ['cached'] }, stale: false });
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith('Refreshing key failed: source unavailable'),
+    );
   });
 });

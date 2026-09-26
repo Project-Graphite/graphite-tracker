@@ -4,7 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ConnectorHttpService } from '../src/sources/connector-http.service';
+import { ConnectorHttpService, withLowPriority } from '../src/sources/connector-http.service';
 import { ConnectorDescriptor } from '../src/sources/source.types';
 
 const descriptor: ConnectorDescriptor = {
@@ -84,6 +84,40 @@ describe('ConnectorHttpService', () => {
       await expect(http.json(descriptor, url)).rejects.toBeInstanceOf(BadGatewayException);
     }
     expect(request).toHaveBeenCalledTimes(6);
+  });
+
+  it('turns a user away instead of queueing them for more than five seconds', async () => {
+    const request = vi.fn(() => Promise.resolve(json({ ok: true })));
+    vi.stubGlobal('fetch', request);
+    const http = new ConnectorHttpService();
+    const slow = { ...descriptor, requestIntervalMs: 6_000 };
+    const url = new URL('https://api.example.org/items');
+
+    await expect(http.json(slow, url)).resolves.toEqual({ ok: true });
+    await expect(http.json(slow, url)).rejects.toThrow('Example is busy. Try again in a moment.');
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets user requests go ahead of low-priority work', async () => {
+    const order: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: URL) => {
+        order.push(url.pathname);
+        return Promise.resolve(json({}));
+      }),
+    );
+    const http = new ConnectorHttpService();
+    const paced = { ...descriptor, requestIntervalMs: 40 };
+    const at = (path: string) => new URL(`https://api.example.org${path}`);
+
+    await Promise.all([
+      http.json(paced, at('/first')),
+      withLowPriority(() => http.json(paced, at('/import'))),
+      http.json(paced, at('/second')),
+    ]);
+
+    expect(order).toEqual(['/first', '/second', '/import']);
   });
 
   it('refuses hosts the connector does not declare', async () => {

@@ -18,6 +18,7 @@ import {
   CatalogPage,
   CatalogSection,
   ConnectorDescriptor,
+  searchFreshSeconds,
 } from '../source.types';
 
 interface IgdbNamed {
@@ -107,7 +108,7 @@ export class IgdbService {
   ): Promise<CatalogPage> {
     const { value: games } = await this.cache.getOrLoad(
       `connector:igdb:search:${Buffer.from(JSON.stringify([query, filters])).toString('base64url')}`,
-      300,
+      searchFreshSeconds,
       86_400,
       () =>
         this.request<IgdbGame[]>(

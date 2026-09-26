@@ -15,12 +15,15 @@ import {
   Prisma,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { CatalogItemsService } from '../catalog/catalog-items.service';
 import { LibraryService } from '../library/library.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SiteSettingsService } from '../site/site-settings.service';
+import { withLowPriority } from '../sources/connector-http.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory } from '../sources/source.types';
 import type { ParsedBackup } from './backup-parser';
@@ -37,6 +40,7 @@ type Candidate = Prisma.ImportCandidateGetPayload<object>;
 export class ImportsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ImportsService.name);
   private readonly running = new Set<string>();
+  private parsing: Promise<unknown> = Promise.resolve();
   private cleanup?: NodeJS.Timeout;
 
   constructor(
@@ -74,16 +78,24 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     clearInterval(this.cleanup);
   }
 
-  async create(userId: string, file: Buffer) {
-    const batch = await this.prisma.importBatch.create({
-      data: {
-        userId,
-        fileDigest: createHash('sha256').update(file).digest('hex'),
-        expiresAt: new Date(Date.now() + retentionMs),
-      },
-    });
+  async create(userId: string, path: string) {
+    let batch;
+    try {
+      const digest = createHash('sha256');
+      for await (const chunk of createReadStream(path)) digest.update(chunk as Buffer);
+      batch = await this.prisma.importBatch.create({
+        data: {
+          userId,
+          fileDigest: digest.digest('hex'),
+          expiresAt: new Date(Date.now() + retentionMs),
+        },
+      });
+    } catch (error) {
+      await rm(path, { force: true });
+      throw error;
+    }
     this.inBackground(
-      this.read(batch.id, file).then((stored) => (stored ? this.match(batch.id) : undefined)),
+      this.read(batch.id, path).then((stored) => (stored ? this.match(batch.id) : undefined)),
     );
     return this.detail(userId, batch.id);
   }
@@ -275,9 +287,9 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     await this.prisma.importBatch.delete({ where: { id } });
   }
 
-  private async read(batchId: string, file: Buffer) {
+  private async read(batchId: string, path: string) {
     try {
-      const backup = await this.parse(file);
+      const backup = await this.parse(path);
       const seen = new Set<string>();
       const rows = backup.entries.map((entry, position) => {
         const key = `${entry.kind}:${entry.mangadexId ?? entry.title.toLowerCase()}`;
@@ -319,14 +331,22 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         },
       });
       return false;
+    } finally {
+      await rm(path, { force: true });
     }
     return true;
   }
 
-  private parse(file: Buffer) {
+  private parse(path: string) {
+    const turn = this.parsing.then(() => this.parseInWorker(path));
+    this.parsing = Promise.allSettled([turn]);
+    return turn;
+  }
+
+  private parseInWorker(path: string) {
     return new Promise<ParsedBackup>((resolve, reject) => {
       const worker = new Worker(join(__dirname, 'backup-parser.worker.js'), {
-        workerData: file,
+        workerData: path,
         resourceLimits: { maxOldGenerationSizeMb: 256 },
       });
       const timer = setTimeout(() => {
@@ -398,7 +418,10 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
       return { match: ImportMatch.UNSUPPORTED, issue: 'no_connector', options: [] };
     }
     try {
-      return { ...(await this.matcher.match(candidate, adult)), issue: null };
+      return {
+        ...(await withLowPriority(() => this.matcher.match(candidate, adult))),
+        issue: null,
+      };
     } catch {
       return { match: ImportMatch.UNMATCHED, issue: 'lookup_failed', options: [] };
     }

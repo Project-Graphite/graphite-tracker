@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConnectorDescriptor } from './source.types';
 
 const userAgent =
@@ -11,13 +12,16 @@ const userAgent =
 const maxAttempts = 3;
 const maxRetryDelayMs = 10_000;
 const maxResponseBytes = 5 * 1024 * 1024;
+const maxQueueWaitMs = 5_000;
 const circuitThreshold = 5;
 const circuitOpenMs = 30_000;
 const retryableStatuses = new Set([429, 500, 502, 503, 504]);
+const lowPriority = new AsyncLocalStorage<true>();
+
+export const withLowPriority = <T>(work: () => Promise<T>) => lowPriority.run(true, work);
 
 interface ConnectorState {
-  queue: Promise<void>;
-  lastRequestAt: number;
+  nextSlotAt: number;
   failures: number;
   openUntil: number;
 }
@@ -108,22 +112,27 @@ export class ConnectorHttpService {
   private state(key: string) {
     let state = this.states.get(key);
     if (!state) {
-      state = { queue: Promise.resolve(), lastRequestAt: 0, failures: 0, openUntil: 0 };
+      state = { nextSlotAt: 0, failures: 0, openUntil: 0 };
       this.states.set(key, state);
     }
     return state;
   }
 
   private async pace(connector: ConnectorDescriptor, state: ConnectorState) {
-    const turn = state.queue.then(async () => {
-      const wait = state.lastRequestAt + connector.requestIntervalMs - Date.now();
-      if (wait > 0) {
-        await delay(wait);
+    if (lowPriority.getStore()) {
+      while (state.nextSlotAt > Date.now()) {
+        await delay(state.nextSlotAt - Date.now());
       }
-      state.lastRequestAt = Date.now();
-    });
-    state.queue = turn;
-    await turn;
+    } else if (state.nextSlotAt - Date.now() > maxQueueWaitMs) {
+      throw new ServiceUnavailableException(
+        `${connector.displayName} is busy. Try again in a moment.`,
+      );
+    }
+    const slot = Math.max(Date.now(), state.nextSlotAt);
+    state.nextSlotAt = slot + connector.requestIntervalMs;
+    if (slot > Date.now()) {
+      await delay(slot - Date.now());
+    }
   }
 
   private failed(state: ConnectorState, error: Error) {

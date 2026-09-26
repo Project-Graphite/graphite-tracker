@@ -255,6 +255,44 @@ describe('ReleaseMonitorService', () => {
     });
     expect(prisma.releaseMarker.createManyAndReturn).not.toHaveBeenCalled();
   });
+
+  async function monitorWithDue(count: number) {
+    const monitored = monitorWith({ checkedAt: null });
+    const [entry] = (await monitored.prisma.sourceEntry.findMany()) as Array<Record<string, unknown>>;
+    monitored.prisma.sourceEntry.findMany.mockClear();
+    return {
+      ...monitored,
+      due: Array.from({ length: count }, (_, index) => ({ ...entry, id: `entry-${index}` })),
+    };
+  }
+
+  it('keeps checking due titles past one batch until none are left', async () => {
+    const { connectors, due, monitor, prisma } = await monitorWithDue(101);
+    prisma.sourceEntry.findMany
+      .mockResolvedValueOnce(due.slice(0, 100))
+      .mockResolvedValueOnce(due.slice(100));
+
+    await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
+
+    expect(prisma.sourceEntry.findMany).toHaveBeenCalledTimes(2);
+    expect(connectors.releases).toHaveBeenCalledTimes(101);
+  });
+
+  it('leaves the remaining titles for the next run once ten minutes are spent', async () => {
+    const { connectors, due, monitor, prisma } = await monitorWithDue(5);
+    prisma.sourceEntry.findMany.mockResolvedValue(due);
+    let clock = Date.now();
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    connectors.releases.mockImplementation(() => {
+      clock += 6 * 60 * 1000;
+      return Promise.resolve([]);
+    });
+
+    await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
+    now.mockRestore();
+
+    expect(connectors.releases).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('DigestService', () => {

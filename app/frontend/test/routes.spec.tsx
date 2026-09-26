@@ -77,6 +77,19 @@ describe('App routes', () => {
 
   it('shows one row per category on the search page', async () => {
     vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        private readonly reveal: (entries: Array<{ isIntersecting: boolean }>) => void;
+        constructor(reveal: (entries: Array<{ isIntersecting: boolean }>) => void) {
+          this.reveal = reveal;
+        }
+        observe() {
+          this.reveal([{ isIntersecting: true }]);
+        }
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal(
       'fetch',
       vi.fn((input: string) =>
         Promise.resolve(

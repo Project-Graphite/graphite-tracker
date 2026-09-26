@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { tmpdir } from 'node:os';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -36,16 +37,19 @@ export class ImportsController {
   @Post()
   @RateLimit('imports', 10, 3_600)
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: maxBackupBytes, files: 1 } }),
+    FileInterceptor('file', {
+      dest: tmpdir(),
+      limits: { fileSize: maxBackupBytes, files: 1 },
+    }),
   )
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @UploadedFile() file: { buffer: Buffer } | undefined,
+    @UploadedFile() file: { path: string } | undefined,
   ) {
     if (!file) {
       throw new BadRequestException('Choose a backup file');
     }
-    return this.imports.create(user.id, file.buffer);
+    return this.imports.create(user.id, file.path);
   }
 
   @Get(':id')

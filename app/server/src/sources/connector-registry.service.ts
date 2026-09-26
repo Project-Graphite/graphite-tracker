@@ -9,6 +9,7 @@ import {
   CatalogCategory,
   CatalogFilters,
   CatalogSection,
+  searchFreshSeconds,
   SourceConnector,
 } from './source.types';
 import { TmdbService } from './tmdb/tmdb.service';
@@ -60,15 +61,17 @@ export class ConnectorRegistryService {
     source?: string,
   ) {
     const connector = this.resolve(category, source);
+    const term = query.toLowerCase();
     const result = await this.cached(
       connector,
-      ['search', category, query, page, filters],
-      300,
+      ['search', category, term, page, filters],
+      searchFreshSeconds,
       86_400,
       () =>
         connector
-          .search(category, query, page, filters)
+          .search(category, term, page, filters)
           .then((result) => withoutAdult(result, filters.adult)),
+      { refreshInBackground: true },
     );
     return { ...result.value, stale: result.stale };
   }
@@ -177,12 +180,14 @@ export class ConnectorRegistryService {
     freshSeconds: number,
     staleSeconds: number,
     load: () => Promise<T>,
+    options?: { refreshInBackground: boolean },
   ) {
     return this.cache.getOrLoad(
       `connector:${connector.descriptor.key}:${Buffer.from(JSON.stringify(parts)).toString('base64url')}`,
       freshSeconds,
       staleSeconds,
       load,
+      options,
     );
   }
 }

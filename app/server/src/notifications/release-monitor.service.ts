@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { loadSourcePreferences, SourcePreferences } from '../library/effective-source';
 import { PrismaService } from '../prisma/prisma.service';
+import { withLowPriority } from '../sources/connector-http.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory } from '../sources/source.types';
 import {
@@ -17,6 +18,7 @@ import {
 const refreshIntervalMs = 6 * 60 * 60 * 1000;
 const baselineGapMs = 7 * 24 * 60 * 60 * 1000;
 const batchSize = 100;
+const runBudgetMs = 10 * 60 * 1000;
 
 const monitoredEntryInclude = Prisma.validator<Prisma.SourceEntryInclude>()({
   source: true,
@@ -33,21 +35,26 @@ export class ReleaseMonitorService {
   ) {}
 
   async refreshDue(now = new Date()) {
-    const due = await this.prisma.sourceEntry.findMany({
-      where: {
-        source: { enabled: true, capabilities: { has: 'RELEASES' } },
-        OR: [
-          { releasesAttemptedAt: null },
-          { releasesAttemptedAt: { lt: new Date(now.getTime() - refreshIntervalMs) } },
-        ],
-        catalogItem: { libraryEntries: { some: followedEntryWhere } },
-      },
-      include: monitoredEntryInclude,
-      orderBy: { releasesAttemptedAt: { sort: 'asc', nulls: 'first' } },
-      take: batchSize,
-    });
-    for (const entry of due) {
-      await this.refresh(entry, now);
+    const deadline = Date.now() + runBudgetMs;
+    for (;;) {
+      const due = await this.prisma.sourceEntry.findMany({
+        where: {
+          source: { enabled: true, capabilities: { has: 'RELEASES' } },
+          OR: [
+            { releasesAttemptedAt: null },
+            { releasesAttemptedAt: { lt: new Date(now.getTime() - refreshIntervalMs) } },
+          ],
+          catalogItem: { libraryEntries: { some: followedEntryWhere } },
+        },
+        include: monitoredEntryInclude,
+        orderBy: { releasesAttemptedAt: { sort: 'asc', nulls: 'first' } },
+        take: batchSize,
+      });
+      for (const entry of due) {
+        if (Date.now() >= deadline) return;
+        await this.refresh(entry, now);
+      }
+      if (due.length < batchSize) return;
     }
   }
 
@@ -61,10 +68,12 @@ export class ReleaseMonitorService {
     });
     let signals;
     try {
-      signals = await this.connectors.releases(
-        entry.catalogItem.category.toLowerCase() as CatalogCategory,
-        entry.externalId,
-        entry.source.key,
+      signals = await withLowPriority(() =>
+        this.connectors.releases(
+          entry.catalogItem.category.toLowerCase() as CatalogCategory,
+          entry.externalId,
+          entry.source.key,
+        ),
       );
     } catch (error) {
       this.logger.warn(
