@@ -250,10 +250,6 @@ export function LibraryEntryEditor({
           />
           Hide from my profile
         </label>
-        <p className="mono-sm mt-1 mb-0 text-faint">
-          Keeps this title, its progress, rating and review off your library, activity, ratings,
-          reviews and statistics for other people.
-        </p>
       </div>
       {(entry.item.releasing || entry.notificationsEnabled) && (
         <div>
@@ -271,11 +267,9 @@ export function LibraryEntryEditor({
               This title has finished coming out, so there is nothing new to announce.
             </p>
           ) : (
-            (finished || needsPlatform) && (
+            needsPlatform && (
               <p className="mono-sm mt-1 mb-0 text-faint">
-                {finished
-                  ? 'Available while a title is planned or in progress.'
-                  : 'Choose a platform first.'}
+                Choose a platform first.
               </p>
             )
           )}
