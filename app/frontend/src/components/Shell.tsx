@@ -50,7 +50,7 @@ export function Shell() {
                 <NavLink className={navClass} to="/settings">
                   settings
                 </NavLink>
-                {auth.user.isAdmin && (
+                {auth.user.role !== 'member' && (
                   <NavLink className={navClass} to="/admin">
                     admin
                   </NavLink>

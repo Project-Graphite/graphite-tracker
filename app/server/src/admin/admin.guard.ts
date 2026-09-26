@@ -10,3 +10,13 @@ export class AdminGuard implements CanActivate {
     return true;
   }
 }
+
+@Injectable()
+export class SystemManagerGuard implements CanActivate {
+  canActivate(context: ExecutionContext) {
+    if (!context.switchToHttp().getRequest<AuthenticatedRequest>().user.isSystemManager) {
+      throw new ForbiddenException('Only the system manager can do this');
+    }
+    return true;
+  }
+}

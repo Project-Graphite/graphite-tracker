@@ -10,12 +10,14 @@ import {
 } from 'react';
 import { ApiError, apiRequest } from './api';
 
+export type UserRole = 'member' | 'admin' | 'system_manager';
+
 interface User {
   id: string;
   email: string;
   handle: string;
   displayName: string;
-  isAdmin: boolean;
+  role: UserRole;
   showAdultContent: boolean;
   blurAdultContent: boolean;
 }

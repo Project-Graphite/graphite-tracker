@@ -1,5 +1,16 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationState, Prisma, ReportResolution, ReviewVisibility } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  NotificationState,
+  Prisma,
+  ReportResolution,
+  ReviewVisibility,
+  UserRole,
+} from '@prisma/client';
 import {
   catalogItemSummary,
   catalogItemSummaryInclude,
@@ -164,7 +175,7 @@ export class AdminService {
           displayName: true,
           verifiedAt: true,
           isActive: true,
-          isAdmin: true,
+          role: true,
           createdAt: true,
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
@@ -172,7 +183,11 @@ export class AdminService {
         take: pageSize,
       }),
     ]);
-    return paged(page, total, users);
+    return paged(
+      page,
+      total,
+      users.map((user) => ({ ...user, role: user.role.toLowerCase() })),
+    );
   }
 
   async failedNotifications(page: number) {
@@ -208,12 +223,12 @@ export class AdminService {
   async setUserActive(adminId: string, id: string, active: boolean) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, isAdmin: true },
+      select: { id: true, role: true },
     });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    if (user.id === adminId || user.isAdmin) {
+    if (user.id === adminId || user.role !== UserRole.MEMBER) {
       throw new ForbiddenException('Administrator accounts cannot be deactivated here');
     }
     await this.prisma.$transaction([
@@ -227,5 +242,25 @@ export class AdminService {
             }),
           ]),
     ]);
+  }
+
+  async setUserRole(managerId: string, id: string, role: 'admin' | 'member') {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, verifiedAt: true, isActive: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.id === managerId || user.role === UserRole.SYSTEM_MANAGER) {
+      throw new ForbiddenException('The system manager role changes only from the server');
+    }
+    if (role === 'admin' && (!user.verifiedAt || !user.isActive)) {
+      throw new BadRequestException('Only verified, active accounts can become administrators');
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: { role: role === 'admin' ? UserRole.ADMIN : UserRole.MEMBER },
+    });
   }
 }

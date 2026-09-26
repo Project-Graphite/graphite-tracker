@@ -24,7 +24,7 @@ export class UsersService {
       displayName: user.displayName,
       bio: user.bio,
       timeZone: user.timeZone,
-      isAdmin: user.isAdmin,
+      role: user.role.toLowerCase(),
       showAdultContent: user.showAdultContent,
       blurAdultContent: user.blurAdultContent,
       privacy,

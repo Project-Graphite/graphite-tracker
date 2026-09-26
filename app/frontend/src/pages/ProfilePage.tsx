@@ -318,8 +318,8 @@ export function ProfilePage() {
       {data.privateSections && (
         <p className="notice mt-5 max-w-3xl">
           {data.isPublic
-            ? 'You see every section because you are the administrator. Sections marked private are hidden from everyone else.'
-            : 'This profile is private. You see it because you are the administrator; everyone else sees only the display name.'}
+            ? 'You see every section because you are an administrator. Sections marked private are hidden from everyone else.'
+            : 'This profile is private. You see it because you are an administrator; everyone else sees only the display name.'}
         </p>
       )}
       {!data.isPublic && !data.privateSections ? (

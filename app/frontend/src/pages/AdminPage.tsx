@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { errorMessage, type Page } from '../api';
-import { useAuth } from '../auth';
+import { useAuth, type UserRole } from '../auth';
+import { Dialog } from '../components/Dialog';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { ListSkeleton } from '../components/Skeleton';
@@ -40,9 +41,15 @@ interface Account {
   displayName: string;
   verifiedAt: string | null;
   isActive: boolean;
-  isAdmin: boolean;
+  role: UserRole;
   createdAt: string;
 }
+
+const roleLabels: Record<UserRole, string | null> = {
+  member: null,
+  admin: 'administrator',
+  system_manager: 'system manager',
+};
 
 interface FailedNotification {
   id: string;
@@ -78,6 +85,72 @@ function ReviewBlock({ review }: { review: ModeratedReview }) {
       {review.title && <h3 className="m-0 text-base font-medium">{review.title}</h3>}
       <p className="m-0 max-w-3xl whitespace-pre-line text-sm text-muted">{review.body}</p>
     </div>
+  );
+}
+
+function RoleDialog({
+  account,
+  onClose,
+  onSaved,
+}: {
+  account: Account;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const auth = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const appointing = account.role === 'member';
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const password = String(new FormData(event.currentTarget).get('password'));
+    if (!password) {
+      setError('Enter your password to confirm.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await auth.request(`/admin/users/${account.id}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: appointing ? 'admin' : 'member', password }),
+      });
+      onSaved();
+      onClose();
+    } catch (reason) {
+      setError(errorMessage(reason, 'Could not change this role'));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      eyebrow="Administrators"
+      onClose={onClose}
+      title={appointing ? `Make ${account.displayName} an administrator?` : `Remove ${account.displayName} as administrator?`}
+    >
+      <form className="mt-6 grid gap-5" noValidate onSubmit={(event) => void save(event)}>
+        <p className="m-0 text-sm text-muted">
+          {appointing
+            ? 'Administrators handle reports, hide and restore reviews, deactivate members and see private profiles and reviews.'
+            : 'They keep their account, library and reviews, and lose access to the admin page straight away.'}
+        </p>
+        <label className="field-label">
+          Your password
+          <input autoComplete="current-password" name="password" type="password" />
+        </label>
+        {error && <p className="error-message m-0">{error}</p>}
+        <div className="flex justify-end gap-3">
+          <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" disabled={busy} type="submit">
+            {busy ? 'Saving…' : appointing ? 'Make administrator' : 'Remove administrator'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -124,6 +197,7 @@ export function AdminPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
+  const [changingRole, setChangingRole] = useState<Account>();
   const tab = (Object.keys(tabs) as Tab[]).find((key) => key === searchParams.get('tab')) ?? 'reports';
   const page = Number(searchParams.get('page')) || 1;
   const query = searchParams.get('query') ?? '';
@@ -261,7 +335,7 @@ export function AdminPage() {
                     <span className="mono-sm text-faint">
                       @{account.handle} · {account.email} ·{' '}
                       {[
-                        account.isAdmin && 'administrator',
+                        roleLabels[account.role],
                         !account.verifiedAt && 'unverified',
                         !account.isActive && 'deactivated',
                       ]
@@ -269,19 +343,39 @@ export function AdminPage() {
                         .join(' · ') || 'active'}
                     </span>
                   </span>
-                  {!account.isAdmin && (
-                    <button
-                      className="secondary-button px-3 py-2 text-sm"
-                      onClick={() => void act(`/admin/users/${account.id}`, { active: !account.isActive }, users.reload)}
-                      type="button"
-                    >
-                      {account.isActive ? 'Deactivate' : 'Reactivate'}
-                    </button>
-                  )}
+                  <span className="flex flex-wrap gap-2">
+                    {auth.user?.role === 'system_manager' &&
+                      account.role !== 'system_manager' &&
+                      (account.role === 'admin' || (account.verifiedAt && account.isActive)) && (
+                        <button
+                          className="secondary-button px-3 py-2 text-sm"
+                          onClick={() => setChangingRole(account)}
+                          type="button"
+                        >
+                          {account.role === 'admin' ? 'Remove administrator' : 'Make administrator'}
+                        </button>
+                      )}
+                    {account.role === 'member' && (
+                      <button
+                        className="secondary-button px-3 py-2 text-sm"
+                        onClick={() => void act(`/admin/users/${account.id}`, { active: !account.isActive }, users.reload)}
+                        type="button"
+                      >
+                        {account.isActive ? 'Deactivate' : 'Reactivate'}
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))
             }
           </Listing>
+          {changingRole && (
+            <RoleDialog
+              account={changingRole}
+              onClose={() => setChangingRole(undefined)}
+              onSaved={users.reload}
+            />
+          )}
         </>
       )}
       {tab === 'notifications' && (

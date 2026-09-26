@@ -3,6 +3,7 @@ import type { Request } from 'express';
 export interface AuthenticatedUser {
   id: string;
   isAdmin: boolean;
+  isSystemManager: boolean;
   showAdultContent: boolean;
 }
 

@@ -33,7 +33,7 @@ const user = {
   passwordHash: passwordHash('correct horse battery'),
   verifiedAt: new Date(),
   isActive: true,
-  isAdmin: false,
+  role: 'MEMBER',
 };
 
 function setup(overrides: Record<string, object> = {}) {

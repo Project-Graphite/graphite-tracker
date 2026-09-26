@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma, TokenPurpose } from '@prisma/client';
+import { Prisma, TokenPurpose, UserRole } from '@prisma/client';
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { MailService } from '../mail/mail.service';
@@ -240,6 +240,10 @@ export class AuthService {
     await this.sendVerification(this.prisma, user, TokenPurpose.CHANGE_EMAIL, email);
   }
 
+  async confirmPassword(userId: string, password: string) {
+    await this.userWithPassword(userId, password);
+  }
+
   async deleteAccount(userId: string, password: string) {
     await this.userWithPassword(userId, password);
     await this.prisma.user.delete({ where: { id: userId } });
@@ -250,7 +254,7 @@ export class AuthService {
     email: string;
     handle: string;
     displayName: string;
-    isAdmin: boolean;
+    role: UserRole;
     showAdultContent: boolean;
     blurAdultContent: boolean;
   }) {
@@ -277,7 +281,7 @@ export class AuthService {
         email: user.email,
         handle: user.handle,
         displayName: user.displayName,
-        isAdmin: user.isAdmin,
+        role: user.role.toLowerCase(),
         showAdultContent: user.showAdultContent,
         blurAdultContent: user.blurAdultContent,
       },

@@ -22,6 +22,12 @@ enum LibraryState {
   DROPPED     @map("dropped")
 }
 
+enum UserRole {
+  MEMBER         @map("member")
+  ADMIN          @map("admin")
+  SYSTEM_MANAGER @map("system_manager")
+}
+
 enum TokenPurpose {
   VERIFY_EMAIL   @map("verify_email")
   CHANGE_EMAIL   @map("change_email")
@@ -109,7 +115,7 @@ model User {
   verifiedAt         DateTime?           @map("verified_at")
   timeZone            String              @default("Etc/UTC") @map("time_zone")
   isActive            Boolean             @default(true) @map("is_active")
-  isAdmin             Boolean             @default(false) @map("is_admin")
+  role                UserRole            @default(MEMBER)
   showAdultContent    Boolean             @default(false) @map("show_adult_content")
   blurAdultContent    Boolean             @default(true) @map("blur_adult_content")
   createdAt           DateTime            @default(now()) @map("created_at")

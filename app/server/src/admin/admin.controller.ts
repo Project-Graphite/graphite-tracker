@@ -9,10 +9,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminGuard } from './admin.guard';
+import { RateLimit } from '../redis/rate-limit.guard';
+import { AdminGuard, SystemManagerGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import {
   AdminPageDto,
@@ -22,12 +24,16 @@ import {
   ResolveReportDto,
   SetReviewHiddenDto,
   SetUserActiveDto,
+  SetUserRoleDto,
 } from './dto/admin.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Get('reports')
   reports(@Query() query: ListReportsDto) {
@@ -77,5 +83,18 @@ export class AdminController {
     @Body() input: SetUserActiveDto,
   ) {
     await this.admin.setUserActive(user.id, id, input.active);
+  }
+
+  @Patch('users/:id/role')
+  @HttpCode(204)
+  @UseGuards(SystemManagerGuard)
+  @RateLimit('change-role', 10, 3_600)
+  async setUserRole(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() input: SetUserRoleDto,
+  ) {
+    await this.auth.confirmPassword(user.id, input.password);
+    await this.admin.setUserRole(user.id, id, input.role);
   }
 }

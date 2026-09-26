@@ -111,7 +111,7 @@ export function ReviewEditor({
             value={visibility}
           >
             <option value="public">Public</option>
-            <option value="private">Private, only you and the administrator</option>
+            <option value="private">Private, only you and administrators</option>
           </select>
         </label>
         <label className="flex items-center gap-2 self-end pb-3 text-sm text-muted">

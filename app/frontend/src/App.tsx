@@ -35,7 +35,7 @@ function Protected({ admin = false, children }: { admin?: boolean; children: Rea
   if (!auth.user) {
     return <Navigate replace state={{ from: location }} to="/login" />;
   }
-  return admin && !auth.user.isAdmin ? <Navigate replace to="/" /> : children;
+  return admin && auth.user.role === 'member' ? <Navigate replace to="/" /> : children;
 }
 
 function DiscoverRoute() {

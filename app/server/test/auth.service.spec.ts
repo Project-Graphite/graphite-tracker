@@ -10,7 +10,7 @@ const user = {
   handle: 'reader',
   displayName: 'Reader',
   isActive: true,
-  isAdmin: false,
+  role: 'MEMBER',
   verifiedAt: new Date(),
 };
 

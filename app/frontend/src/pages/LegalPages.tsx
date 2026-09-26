@@ -68,9 +68,10 @@ export function PrivacyPage() {
       <section>
         <h2>Moderation</h2>
         <p>
-          The administrator can see every profile, profile section and review, public or private, along
+          Administrators can see every profile, profile section and review, public or private, along
           with reports and account names, handles and email addresses, to deal with abuse. Private
-          profiles and reviews are shown to the administrator marked as private.
+          profiles and reviews are shown to them marked as private. One system manager, appointed
+          on the server itself, chooses the administrators.
         </p>
       </section>
       <section>
@@ -109,7 +110,7 @@ export function TermsPage() {
         <p>
           Write your own words. Do not post harassment, hate, spam, personal information about
           others or anything illegal, and mark reviews that reveal plot points as containing
-          spoilers. The administrator may hide reviews and deactivate accounts that break these
+          spoilers. Administrators may hide reviews and deactivate accounts that break these
           rules.
         </p>
       </section>

@@ -40,7 +40,7 @@ describe('OptionalJwtAuthGuard', () => {
               findUnique: vi.fn().mockResolvedValue({
                 id: 'admin-id',
                 isActive: true,
-                isAdmin: true,
+                role: 'ADMIN',
                 showAdultContent: false,
               }),
             },
@@ -66,7 +66,7 @@ describe('OptionalJwtAuthGuard', () => {
 
     const signedIn = await call(`Bearer ${token}`);
     await expect(signedIn.json()).resolves.toEqual({
-      viewer: { id: 'admin-id', isAdmin: true, showAdultContent: false },
+      viewer: { id: 'admin-id', isAdmin: true, isSystemManager: false, showAdultContent: false },
     });
 
     expect((await call('Bearer not-a-token')).status).toBe(401);

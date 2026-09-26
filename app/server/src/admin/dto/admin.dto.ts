@@ -1,5 +1,16 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ReportResolution } from '@prisma/client';
 
 export class AdminPageDto {
@@ -43,4 +54,13 @@ export class SetReviewHiddenDto {
 export class SetUserActiveDto {
   @IsBoolean()
   active!: boolean;
+}
+
+export class SetUserRoleDto {
+  @IsIn(['admin', 'member'])
+  role!: 'admin' | 'member';
+
+  @IsString()
+  @MaxLength(128)
+  password!: string;
 }
