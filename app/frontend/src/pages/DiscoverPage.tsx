@@ -28,7 +28,7 @@ const sections: Array<{ id: Exclude<CatalogSection, 'search'>; label: string }> 
 
 const filterKeys = ['genre', 'year', 'status', 'sort', 'source'] as const;
 
-function statusOptions(category: DiscoverCategory, section: CatalogSection) {
+function statusOptions(category: DiscoverCategory, section: CatalogSection, source: string) {
   if ((category === 'tv' || category === 'anime') && section !== 'search') {
     return [
       ['returning', 'Returning'],
@@ -39,7 +39,7 @@ function statusOptions(category: DiscoverCategory, section: CatalogSection) {
       ['pilot', 'Pilot'],
     ];
   }
-  if (category === 'manga' || category === 'manhwa') {
+  if ((category === 'manga' || category === 'manhwa') && source === 'mangadex') {
     return [
       ['ongoing', 'Ongoing'],
       ['completed', 'Completed'],
@@ -50,12 +50,18 @@ function statusOptions(category: DiscoverCategory, section: CatalogSection) {
   return [];
 }
 
-function sortOptions(category: DiscoverCategory, section: CatalogSection) {
+function sortOptions(category: DiscoverCategory, section: CatalogSection, source: string) {
   if (category === 'manga' || category === 'manhwa') {
-    return [
-      ['followedCount', 'Most followed'],
-      ['latestUploadedChapter', 'Latest update'],
-    ];
+    return source === 'mangadex'
+      ? [
+          ['followedCount', 'Most followed'],
+          ['latestUploadedChapter', 'Latest update'],
+        ]
+      : [
+          ['list_reading', 'Most read'],
+          ['month1_pos', 'Trending'],
+          ['rating', 'Rating'],
+        ];
   }
   const newest = category === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc';
   return [
@@ -124,7 +130,7 @@ export function DiscoverPage({
       attributionUrl: results.data.attributionUrl,
     },
   );
-  const statuses = statusOptions(category, section);
+  const statuses = statusOptions(category, section, source);
   const activeFilters = filterKeys.filter((key) => searchParams.get(key)).length;
   const hasFilters = activeFilters > 0;
 
@@ -133,9 +139,12 @@ export function DiscoverPage({
     const form = new FormData(event.currentTarget);
     const next = new URLSearchParams();
     if (section === 'search') next.set('q', query);
+    const sourceChanged = form.has('source') && form.get('source') !== source;
     for (const key of filterKeys) {
       const value = String(form.get(key) ?? '').trim();
-      if (value) next.set(key, value);
+      if (value && !(sourceChanged && ['genre', 'status', 'sort'].includes(key))) {
+        next.set(key, value);
+      }
     }
     navigate(`/discover/${category}/${section}?${next.toString()}`);
   }
@@ -279,7 +288,7 @@ export function DiscoverPage({
           Sort
           <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
             <option value="">{section === 'search' ? 'Relevance' : 'Default'}</option>
-            {sortOptions(category, section).map(([value, label]) => (
+            {sortOptions(category, section, source).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

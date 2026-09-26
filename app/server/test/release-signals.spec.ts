@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
 import { MangaDexService } from '../src/sources/mangadex/mangadex.service';
+import { MangaUpdatesService } from '../src/sources/mangaupdates/mangaupdates.service';
 import { RawgService } from '../src/sources/rawg/rawg.service';
 import { SourceConnector } from '../src/sources/source.types';
 import { TmdbService } from '../src/sources/tmdb/tmdb.service';
@@ -104,6 +105,7 @@ describe('Release signals', () => {
     const http = new ConnectorHttpService();
     const connectors: SourceConnector[] = [
       new TmdbService(config, http),
+      new MangaUpdatesService(cache as never, http),
       new MangaDexService(cache as never, http),
       new IgdbService(config, cache as never, http),
       new RawgService(config, http),
