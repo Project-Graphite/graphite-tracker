@@ -1,10 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AniListService } from '../src/sources/anilist/anilist.service';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { ConnectorRegistryService } from '../src/sources/connector-registry.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
 import { MangaDexService } from '../src/sources/mangadex/mangadex.service';
+import { MangaUpdatesService } from '../src/sources/mangaupdates/mangaupdates.service';
 import { RawgService } from '../src/sources/rawg/rawg.service';
 import { TmdbService } from '../src/sources/tmdb/tmdb.service';
 
@@ -279,7 +281,9 @@ describe('Source connectors', () => {
       const http = new ConnectorHttpService();
       return new ConnectorRegistryService(
         config,
+        new AniListService(cache as never, http),
         new TmdbService(config, http),
+        new MangaUpdatesService(cache as never, http),
         new MangaDexService(cache as never, http),
         new IgdbService(config, cache as never, http),
         new RawgService(config, http),
@@ -432,7 +436,9 @@ describe('Source connectors', () => {
     );
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(igdbCache() as never, http),
       new TmdbService(config, http),
+      new MangaUpdatesService(igdbCache() as never, http),
       new MangaDexService(igdbCache() as never, http),
       new IgdbService(config, igdbCache() as never, http),
       new RawgService(config, http),
@@ -464,7 +470,9 @@ describe('Source connectors', () => {
     const cache = igdbCache();
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(igdbCache() as never, http),
       new TmdbService(config, http),
+      new MangaUpdatesService(igdbCache() as never, http),
       new MangaDexService(igdbCache() as never, http),
       new IgdbService(config, igdbCache() as never, http),
       new RawgService(config, http),
@@ -510,19 +518,24 @@ describe('Source connectors', () => {
   });
 
   it('disables connectors named in DISABLED_SOURCES without removing them', () => {
-    const config = new ConfigService({ DISABLED_SOURCES: ' MangaDex ,unknown' });
+    const config = new ConfigService({ DISABLED_SOURCES: ' MangaDex ,MangaUpdates,unknown' });
     const cache = { getOrLoad: vi.fn() };
     const http = new ConnectorHttpService();
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(cache as never, http),
       new TmdbService(config, http),
+      new MangaUpdatesService(cache as never, http),
       new MangaDexService(cache as never, http),
       new IgdbService(config, cache as never, http),
       new RawgService(config, http),
       cache as never,
     );
 
-    expect(registry.list('manga')).toMatchObject([{ key: 'mangadex', enabled: false }]);
+    expect(registry.list('manga')).toMatchObject([
+      { key: 'mangaupdates', enabled: false },
+      { key: 'mangadex', enabled: false },
+    ]);
     expect(() => registry.resolve('manga')).toThrow(NotFoundException);
     expect(registry.resolve('movie').descriptor.key).toBe('tmdb');
   });

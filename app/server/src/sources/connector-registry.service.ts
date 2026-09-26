@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { withoutAdult } from './adult-content';
+import { AniListService } from './anilist/anilist.service';
 import { ConnectorCacheService } from './connector-cache.service';
 import { IgdbService } from './igdb/igdb.service';
 import { MangaDexService } from './mangadex/mangadex.service';
+import { MangaUpdatesService } from './mangaupdates/mangaupdates.service';
 import { RawgService } from './rawg/rawg.service';
 import {
   CatalogCategory,
@@ -20,7 +22,9 @@ export class ConnectorRegistryService {
 
   constructor(
     config: ConfigService,
+    anilist: AniListService,
     tmdb: TmdbService,
+    mangaUpdates: MangaUpdatesService,
     mangadex: MangaDexService,
     igdb: IgdbService,
     rawg: RawgService,
@@ -36,7 +40,7 @@ export class ConnectorRegistryService {
       gameSource === 'igdb' && igdb.descriptor.enabled;
     rawg.descriptor.enabled =
       gameSource === 'rawg' && rawg.descriptor.enabled;
-    this.connectors = [tmdb, mangadex, igdb, rawg];
+    this.connectors = [anilist, tmdb, mangaUpdates, mangadex, igdb, rawg];
     const disabled = new Set(
       (config.get<string>('DISABLED_SOURCES') ?? '')
         .split(',')

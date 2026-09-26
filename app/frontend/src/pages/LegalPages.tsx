@@ -61,9 +61,10 @@ export function PrivacyPage() {
       <section>
         <h2>Other services</h2>
         <p>
-          The server looks titles up at TMDB, MangaDex, IGDB and RAWG without sending anything about
-          you. Posters and artwork load straight from those services, so they see your browser's
-          request like any other image on the web. There are no ads, analytics or tracking cookies.
+          The server looks titles up at TMDB, AniList, MangaUpdates, MangaDex, IGDB and RAWG
+          without sending anything about you. Posters and artwork load straight from those
+          services, so they see your browser's request like any other image on the web. There are
+          no ads, analytics or tracking cookies.
         </p>
       </section>
       <section>
@@ -143,14 +144,30 @@ export function CreditsPage() {
           <img alt="The Movie Database (TMDB)" className="h-5" src="/tmdb.svg" />
         </a>
         <p>
-          Movie, TV and anime data and artwork come from TMDB. This product uses the TMDB API but is
-          not endorsed or certified by TMDB.
+          Movie and TV data and artwork come from TMDB, and anime data too when you choose TMDB as a
+          source. This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </p>
+      </section>
+      <section>
+        <h2>AniList</h2>
+        <p>
+          Anime data and artwork are provided by{' '}
+          <External href="https://anilist.co/">AniList</External>. Graphite Tracker is not
+          affiliated with AniList.
+        </p>
+      </section>
+      <section>
+        <h2>MangaUpdates</h2>
+        <p>
+          Manga and manhwa data, covers and chapter updates are provided by{' '}
+          <External href="https://www.mangaupdates.com/">MangaUpdates</External>. Graphite Tracker
+          is not affiliated with MangaUpdates.
         </p>
       </section>
       <section>
         <h2>MangaDex</h2>
         <p>
-          Manga and manhwa data and covers are provided by{' '}
+          When you choose MangaDex as a source, manga and manhwa data and covers are provided by{' '}
           <External href="https://mangadex.org/">MangaDex</External>. Graphite Tracker is not
           affiliated with MangaDex. It links to MangaDex titles and never hosts chapters or offers a
           reader.

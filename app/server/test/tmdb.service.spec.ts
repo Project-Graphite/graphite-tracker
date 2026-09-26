@@ -97,7 +97,7 @@ describe('TmdbService', () => {
     expect((fetchMock.mock.calls[0] as [URL])[0].pathname).toBe(`/3${path}`);
   });
 
-  it('orders recent TV and anime by their release fields', async () => {
+  it('orders recent anime by release date and recent TV by popularity', async () => {
     const fetchMock = vi.fn().mockImplementation((input: URL) => {
       const isMovie = input.pathname.endsWith('/discover/movie');
       return Promise.resolve(
@@ -158,12 +158,86 @@ describe('TmdbService', () => {
     const movieUrl = urls[1]!;
     const animeTvUrl = urls[2]!;
     expect(tvUrl.pathname).toBe('/3/discover/tv');
-    expect(tvUrl.searchParams.get('sort_by')).toBe('first_air_date.desc');
+    expect(tvUrl.searchParams.get('sort_by')).toBe('popularity.desc');
+    expect(tvUrl.searchParams.get('first_air_date.gte')).toBeTruthy();
     expect(tvUrl.searchParams.get('first_air_date.lte')).toBeTruthy();
+    expect(tvUrl.searchParams.get('vote_count.gte')).toBe('10');
     expect(movieUrl.searchParams.get('sort_by')).toBe('primary_release_date.desc');
     expect(movieUrl.searchParams.get('primary_release_date.lte')).toBeTruthy();
     expect(animeTvUrl.searchParams.get('sort_by')).toBe('first_air_date.desc');
     expect(animeTvUrl.searchParams.get('first_air_date.lte')).toBeTruthy();
+  });
+
+  it('browses scripted TV above a vote floor without Chinese-origin titles', async () => {
+    const show = (name: string, original_language: string, origin_country: string[]) => ({
+      id: name.length,
+      name,
+      original_name: name,
+      overview: '',
+      original_language,
+      origin_country,
+      first_air_date: '2026-01-01',
+    });
+    const response = {
+      page: 1,
+      total_pages: 1,
+      total_results: 4,
+      results: [
+        show('Kept', 'en', ['US']),
+        show('Mandarin', 'zh', ['TW']),
+        show('Cantonese', 'cn', ['HK']),
+        show('Co-production', 'ko', ['KR', 'CN']),
+      ],
+    };
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
+    );
+
+    const popular = await service.browse('tv', 'popular', 1, {});
+    const searched = await service.search('tv', 'drama', 1, {});
+
+    expect(popular.results.map(({ title }) => title)).toEqual(['Kept']);
+    expect(searched.results).toHaveLength(4);
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.pathname).toBe('/3/discover/tv');
+    expect(url.searchParams.get('sort_by')).toBe('popularity.desc');
+    expect(url.searchParams.get('with_type')).toBe('2|4');
+    expect(url.searchParams.get('vote_count.gte')).toBe('100');
+    expect(url.searchParams.get('first_air_date.gte')).toBeNull();
+  });
+
+  it('keeps chosen TV genres and unaired statuses reachable', async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ page: 1, total_pages: 1, total_results: 0, results: [] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new TmdbService(
+      new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'server-token' }),
+      new ConnectorHttpService(),
+    );
+
+    await service.browse('tv', 'popular', 1, { genre: 'Reality', status: 'planned' });
+
+    const [url] = fetchMock.mock.calls[0] as [URL];
+    expect(url.searchParams.get('with_genres')).toBe('10764');
+    expect(url.searchParams.get('with_status')).toBe('1');
+    expect(url.searchParams.get('with_type')).toBeNull();
+    expect(url.searchParams.get('vote_count.gte')).toBeNull();
   });
 
   it('loads a normalized movie detail by external ID', async () => {
