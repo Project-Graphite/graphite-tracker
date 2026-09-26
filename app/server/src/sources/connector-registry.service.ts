@@ -87,7 +87,12 @@ export class ConnectorRegistryService {
     return { ...result.value, stale: result.stale };
   }
 
-  async details(category: CatalogCategory, externalId: string, source?: string) {
+  async details(
+    category: CatalogCategory,
+    externalId: string,
+    source?: string,
+    adult = false,
+  ) {
     const connector = this.resolve(category, source);
     const result = await this.cached(
       connector,
@@ -96,6 +101,9 @@ export class ConnectorRegistryService {
       604_800,
       () => connector.details(category, externalId),
     );
+    if (result.value.adult && !adult) {
+      throw new NotFoundException('This title is not available');
+    }
     return { ...result.value, stale: result.stale };
   }
 

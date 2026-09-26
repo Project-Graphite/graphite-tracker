@@ -354,6 +354,10 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     if (this.running.has(batchId)) return;
     this.running.add(batchId);
     try {
+      const { user } = await this.prisma.importBatch.findUniqueOrThrow({
+        where: { id: batchId },
+        select: { user: { select: { showAdultContent: true } } },
+      });
       for (;;) {
         const pending = await this.prisma.importCandidate.findMany({
           where: { batchId, match: ImportMatch.PENDING },
@@ -362,7 +366,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         });
         if (pending.length === 0) break;
         for (const candidate of pending) {
-          const found = await this.find(candidate);
+          const found = await this.find(candidate, user.showAdultContent);
           const updated = await this.prisma.importCandidate.updateMany({
             where: { id: candidate.id },
             data: {
@@ -384,14 +388,14 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async find(candidate: Candidate) {
+  private async find(candidate: Candidate, adult: boolean) {
     try {
       this.connectors.resolve(primaryCategories[candidate.kind] ?? 'manga');
     } catch {
       return { match: ImportMatch.UNSUPPORTED, issue: 'no_connector', options: [] };
     }
     try {
-      return { ...(await this.matcher.match(candidate)), issue: null };
+      return { ...(await this.matcher.match(candidate, adult)), issue: null };
     } catch {
       return { match: ImportMatch.UNMATCHED, issue: 'lookup_failed', options: [] };
     }

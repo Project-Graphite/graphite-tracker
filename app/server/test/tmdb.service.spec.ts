@@ -37,6 +37,7 @@ describe('TmdbService', () => {
       tagline: null,
       rating: null,
       ratingCount: 0,
+      adult: false,
       deepLinks: [
         {
           label: 'View on TMDB',

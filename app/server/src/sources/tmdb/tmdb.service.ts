@@ -136,7 +136,10 @@ export class TmdbService {
         this.searchMovieRequest(query, page, filters),
         this.searchTvRequest(query, page, filters),
       ]);
-      return this.filterPage(this.normalizeAnimeList(movies, shows), filters);
+      return this.filterPage(
+        { ...this.normalizeAnimeList(movies, shows), totalResults: null },
+        filters,
+      );
     }
     throw new NotFoundException('TMDB does not support this category');
   }
@@ -379,6 +382,7 @@ export class TmdbService {
           ? movie.vote_average
           : null,
       ratingCount: movie.vote_count ?? 0,
+      adult: movie.adult === true,
       deepLinks: [
         {
           label: 'View on TMDB',
@@ -425,6 +429,7 @@ export class TmdbService {
           ? show.vote_average
           : null,
       ratingCount: show.vote_count ?? 0,
+      adult: show.adult === true,
       seasonCount: show.number_of_seasons ?? null,
       episodeCount: show.number_of_episodes ?? null,
       deepLinks: [
@@ -507,7 +512,9 @@ export class TmdbService {
   }
 
   private hasFilters(filters: CatalogFilters) {
-    return Object.values(filters).some((value) => value !== undefined);
+    return Object.entries(filters).some(
+      ([key, value]) => key !== 'adult' && value !== undefined,
+    );
   }
 
   private genreId(genres: Record<number, string>, name?: string) {
@@ -541,7 +548,7 @@ export class TmdbService {
     }
     const parameters: Record<string, string> = {
       page: String(page),
-      include_adult: 'false',
+      include_adult: String(filters.adult === true),
       sort_by:
         filters.sort === 'primary_release_date.desc' ||
         filters.sort === 'first_air_date.desc'
@@ -595,14 +602,14 @@ export class TmdbService {
         (right.releaseDate ?? '').localeCompare(left.releaseDate ?? ''),
       );
     }
-    return { ...page, results };
+    return { ...page, totalResults: filters.genre ? null : page.totalResults, results };
   }
 
   private searchMovieRequest(query: string, page: number, filters: CatalogFilters) {
     return this.request<TmdbSearchResponse>('/search/movie', {
       query,
       page: String(page),
-      include_adult: 'false',
+      include_adult: String(filters.adult === true),
       ...(filters.year ? { year: String(filters.year) } : {}),
     });
   }
@@ -611,17 +618,13 @@ export class TmdbService {
     return this.request<TmdbTvSearchResponse>('/search/tv', {
       query,
       page: String(page),
-      include_adult: 'false',
+      include_adult: String(filters.adult === true),
       ...(filters.year ? { first_air_date_year: String(filters.year) } : {}),
     });
   }
 
-  private async title<T extends TmdbMovieResult | TmdbTvResult>(path: string) {
-    const record = await this.request<T>(path, {});
-    if (record.adult) {
-      throw new NotFoundException('TMDB title is not available');
-    }
-    return record;
+  private title<T extends TmdbMovieResult | TmdbTvResult>(path: string) {
+    return this.request<T>(path, {});
   }
 
   private request<T>(path: string, parameters: Record<string, string>) {

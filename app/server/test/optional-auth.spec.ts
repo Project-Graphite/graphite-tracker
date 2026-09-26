@@ -37,7 +37,12 @@ describe('OptionalJwtAuthGuard', () => {
           provide: PrismaService,
           useValue: {
             user: {
-              findUnique: vi.fn().mockResolvedValue({ id: 'admin-id', isActive: true, isAdmin: true }),
+              findUnique: vi.fn().mockResolvedValue({
+                id: 'admin-id',
+                isActive: true,
+                isAdmin: true,
+                showAdultContent: false,
+              }),
             },
           },
         },
@@ -60,7 +65,9 @@ describe('OptionalJwtAuthGuard', () => {
     await expect(anonymous.json()).resolves.toEqual({ viewer: null });
 
     const signedIn = await call(`Bearer ${token}`);
-    await expect(signedIn.json()).resolves.toEqual({ viewer: { id: 'admin-id', isAdmin: true } });
+    await expect(signedIn.json()).resolves.toEqual({
+      viewer: { id: 'admin-id', isAdmin: true, showAdultContent: false },
+    });
 
     expect((await call('Bearer not-a-token')).status).toBe(401);
   });

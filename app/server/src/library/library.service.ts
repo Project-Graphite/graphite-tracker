@@ -123,12 +123,13 @@ export class LibraryService {
     return entries.map((entry) => this.present(entry, preferences));
   }
 
-  async create(userId: string, input: CreateLibraryEntryDto) {
+  async create(userId: string, input: CreateLibraryEntryDto, adult = false) {
     const connector = this.connectors.resolve(input.category, input.source);
     const details = await this.connectors.details(
       input.category,
       input.externalId,
       input.source,
+      adult,
     );
     const state = libraryStates[input.state];
     const entry = await this.prisma.$transaction(async (transaction) => {

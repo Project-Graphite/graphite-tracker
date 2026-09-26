@@ -8,6 +8,7 @@ export interface CatalogFilters {
   year?: number;
   status?: string;
   sort?: string;
+  adult?: boolean;
 }
 
 export interface CatalogCapabilities {
@@ -36,6 +37,7 @@ export interface CatalogCandidate {
   tagline: string | null;
   rating: number | null;
   ratingCount: number;
+  adult: boolean;
   capabilities: CatalogCapabilities;
   episodeCount?: number | null;
   seasonCount?: number | null;
@@ -54,7 +56,7 @@ export interface CatalogCandidate {
 export interface CatalogPage {
   page: number;
   totalPages: number;
-  totalResults: number;
+  totalResults: number | null;
   results: CatalogCandidate[];
   attribution: string;
   attributionUrl?: string;

@@ -32,6 +32,20 @@ const manhwa = {
   ],
 };
 
+const json = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const igdbCache = () => ({
+  getOrLoad: vi.fn((key: string, _fresh: number, _stale: number, load: () => Promise<unknown>) =>
+    key === 'connector:igdb:token'
+      ? Promise.resolve({ value: { access_token: 'token', expires_in: 3600 }, stale: false })
+      : load().then((value) => ({ value, stale: false })),
+  ),
+});
+
 describe('Source connectors', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -316,18 +330,7 @@ describe('Source connectors', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('keeps adult titles out of lists, details and pasted links', async () => {
-    const json = (body: unknown) =>
-      new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    const cache = {
-      getOrLoad: vi.fn().mockResolvedValue({
-        value: { access_token: 'token', expires_in: 3600 },
-        stale: false,
-      }),
-    };
+  it('keeps adult titles out of lists unless the reader opted in, and asks the sources to do it', async () => {
     const config = new ConfigService({
       TMDB_READ_ACCESS_TOKEN: 'tmdb-token',
       IGDB_CLIENT_ID: 'client',
@@ -339,49 +342,130 @@ describe('Source connectors', () => {
       { id: 1, name: 'Safe Quest', themes: [1] },
       { id: 2, name: 'Adult Quest', themes: [1, 42] },
     ];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((input: URL, init?: RequestInit) =>
-        Promise.resolve(
-          json(
-            input.hostname === 'api.themoviedb.org'
-              ? { id: 7, title: 'Adult Film', adult: true }
-              : input.hostname === 'api.mangadex.org'
-                ? { data: { ...manhwa, attributes: { ...manhwa.attributes, contentRating: 'erotica' } } }
-                : input.hostname === 'api.igdb.com'
-                  ? String(init?.body).includes('id = 2')
-                    ? [igdbGames[1]]
-                    : igdbGames
-                  : {
-                      count: 2,
-                      next: null,
-                      previous: null,
-                      results: [
-                        { id: 1, slug: 'safe', name: 'Safe Game' },
-                        { id: 2, slug: 'adult', name: 'Adult Game', esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
-                      ],
-                    },
-          ),
+    const request = vi.fn().mockImplementation((input: URL) =>
+      Promise.resolve(
+        json(
+          input.hostname === 'api.themoviedb.org'
+            ? { page: 1, total_pages: 1, total_results: 1, results: [{ id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true }] }
+            : input.hostname === 'api.mangadex.org'
+              ? { data: [{ ...manhwa, attributes: { ...manhwa.attributes, contentRating: 'erotica' } }], total: 1, limit: 20, offset: 0 }
+              : input.hostname === 'api.igdb.com'
+                ? igdbGames
+                : {
+                    count: 2,
+                    next: null,
+                    previous: null,
+                    results: [
+                      { id: 1, slug: 'safe', name: 'Safe Game' },
+                      { id: 2, slug: 'adult', name: 'Adult Game', esrb_rating: { id: 5, name: 'Adults Only', slug: 'adults-only' } },
+                    ],
+                  },
         ),
       ),
     );
+    vi.stubGlobal('fetch', request);
+    const igdb = new IgdbService(config, igdbCache() as never, http);
+    const rawg = new RawgService(config, http);
+    const tmdb = new TmdbService(config, http);
+    const mangadex = new MangaDexService(igdbCache() as never, http);
 
-    await expect(new TmdbService(config, http).details('movie', '7')).rejects.toBeInstanceOf(
-      NotFoundException,
+    const safeGames = await igdb.search('game', 'quest', 1, {});
+    expect(safeGames.results.map(({ title }) => title)).toEqual(['Safe Quest']);
+    expect(safeGames.totalResults).toBe(1);
+    expect(String((request.mock.calls.at(-1) as [URL, RequestInit])[1].body)).toContain(
+      'where themes != (42); limit 100;',
     );
-    await expect(
-      new MangaDexService(cache as never, http).details('manhwa', mangaId),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    const igdb = new IgdbService(config, cache as never, http);
-    expect((await igdb.search('game', 'quest', 1, {})).results.map(({ title }) => title)).toEqual([
-      'Safe Quest',
+    const allGames = await igdb.search('game', 'quest', 1, { adult: true });
+    expect(allGames.results.map(({ title, adult }) => `${title}:${adult}`)).toEqual([
+      'Safe Quest:false',
+      'Adult Quest:true',
     ]);
-    await expect(igdb.details('game', '2')).rejects.toBeInstanceOf(NotFoundException);
-    expect(
-      (await new RawgService(config, http).search('game', 'game', 1, {})).results.map(
-        ({ title }) => title,
+    expect(String((request.mock.calls.at(-1) as [URL, RequestInit])[1].body)).not.toContain(
+      'themes !=',
+    );
+
+    const safeRawg = await rawg.search('game', 'game', 1, {});
+    expect(safeRawg.results.map(({ title }) => title)).toEqual(['Safe Game']);
+    expect(safeRawg.totalResults).toBeNull();
+    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('page_size')).toBe('40');
+    const allRawg = await rawg.search('game', 'game', 1, { adult: true });
+    expect(allRawg.results).toHaveLength(2);
+    expect(allRawg.totalResults).toBe(2);
+
+    await tmdb.search('movie', 'film', 1, {});
+    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('include_adult')).toBe('false');
+    const adultFilms = await tmdb.search('movie', 'film', 1, { adult: true });
+    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('include_adult')).toBe('true');
+    expect(adultFilms.results[0]).toMatchObject({ adult: true });
+
+    await mangadex.search('manhwa', 'tower', 1, {});
+    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.getAll('contentRating[]')).toEqual([
+      'safe',
+      'suggestive',
+    ]);
+    const adultManhwa = await mangadex.search('manhwa', 'tower', 1, { adult: true });
+    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.getAll('contentRating[]')).toEqual([
+      'safe',
+      'suggestive',
+      'erotica',
+      'pornographic',
+    ]);
+    expect(adultManhwa.results[0]).toMatchObject({ adult: true });
+  });
+
+  it('hides adult details from readers who did not opt in, after the cache', async () => {
+    const config = new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'tmdb-token' });
+    const http = new ConnectorHttpService();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          json({ id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true }),
+        ),
       ),
-    ).toEqual(['Safe Game']);
+    );
+    const registry = new ConnectorRegistryService(
+      config,
+      new TmdbService(config, http),
+      new MangaDexService(igdbCache() as never, http),
+      new IgdbService(config, igdbCache() as never, http),
+      new RawgService(config, http),
+      igdbCache() as never,
+    );
+
+    await expect(registry.details('movie', '7')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(registry.details('movie', '7', undefined, true)).resolves.toMatchObject({
+      title: 'Adult Film',
+      adult: true,
+    });
+  });
+
+  it('ranks game searches by relevance and popularity across a 100-result window', async () => {
+    const config = new ConfigService({ IGDB_CLIENT_ID: 'client', IGDB_CLIENT_SECRET: 'secret' });
+    const games = [
+      { id: 1, name: 'Portal Knights', total_rating_count: 40 },
+      { id: 2, name: 'Portal 2', total_rating_count: 3_000 },
+      { id: 3, name: 'Portal', total_rating_count: 2_500 },
+      ...Array.from({ length: 22 }, (_, index) => ({
+        id: 10 + index,
+        name: `Portal Fan Game ${index}`,
+        total_rating_count: 1,
+      })),
+    ];
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(json(games))));
+    const igdb = new IgdbService(config, igdbCache() as never, new ConnectorHttpService());
+
+    const first = await igdb.search('game', 'portal', 1, {});
+    const second = await igdb.search('game', 'portal', 2, {});
+
+    expect(first.results.slice(0, 3).map(({ title }) => title)).toEqual([
+      'Portal',
+      'Portal 2',
+      'Portal Knights',
+    ]);
+    expect(first).toMatchObject({ page: 1, totalPages: 2, totalResults: 25 });
+    expect(first.results).toHaveLength(20);
+    expect(second.results).toHaveLength(5);
   });
 
   it('disables connectors named in DISABLED_SOURCES without removing them', () => {

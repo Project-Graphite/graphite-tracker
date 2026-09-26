@@ -36,6 +36,10 @@ export class UpdateProfileDto {
   @MaxLength(64)
   @IsTimeZone()
   timeZone?: string;
+
+  @IsOptionalNotNull()
+  @IsBoolean()
+  showAdultContent?: boolean;
 }
 
 export class UpdatePrivacyDto {

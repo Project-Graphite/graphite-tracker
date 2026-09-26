@@ -45,7 +45,7 @@ export class LibraryController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: CreateLibraryEntryDto,
   ) {
-    return this.library.create(user.id, input);
+    return this.library.create(user.id, input, user.showAdultContent);
   }
 
   @Patch(':id')

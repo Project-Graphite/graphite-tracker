@@ -25,6 +25,7 @@ export class UsersService {
       bio: user.bio,
       timeZone: user.timeZone,
       isAdmin: user.isAdmin,
+      showAdultContent: user.showAdultContent,
       privacy,
     };
   }
@@ -32,7 +33,12 @@ export class UsersService {
   async updateProfile(userId: string, input: UpdateProfileDto) {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { displayName: input.displayName, bio: input.bio, timeZone: input.timeZone },
+      data: {
+        displayName: input.displayName,
+        bio: input.bio,
+        timeZone: input.timeZone,
+        showAdultContent: input.showAdultContent,
+      },
     });
     return this.me(userId);
   }

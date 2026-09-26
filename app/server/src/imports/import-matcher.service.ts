@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ImportMatch } from '@prisma/client';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
+import { normalizeTitle } from '../sources/normalize-title';
 import { CatalogCandidate, CatalogCategory } from '../sources/source.types';
 
 export interface ImportOption {
@@ -19,15 +20,6 @@ const searchCategories: Record<string, CatalogCategory[]> = {
   manga: ['manga', 'manhwa'],
   anime: ['anime', 'tv', 'movie'],
 };
-
-export function normalizeTitle(title: string) {
-  return title
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
 
 function bigrams(value: string) {
   const compact = value.replace(/ /g, '');
@@ -61,7 +53,10 @@ export function titleSimilarity(left: string, right: string) {
 export class ImportMatcherService {
   constructor(private readonly connectors: ConnectorRegistryService) {}
 
-  async match(input: MatchInput): Promise<{ match: ImportMatch; options: ImportOption[] }> {
+  async match(
+    input: MatchInput,
+    adult = false,
+  ): Promise<{ match: ImportMatch; options: ImportOption[] }> {
     if (input.mangadexId) {
       try {
         const recognized = await this.connectors.recognize(
@@ -71,6 +66,7 @@ export class ImportMatcherService {
           recognized.category,
           recognized.externalId,
           'mangadex',
+          adult,
         );
         return { match: ImportMatch.EXACT, options: [{ score: 1, item: { ...item, synopsis: '' } }] };
       } catch (error) {
@@ -82,7 +78,7 @@ export class ImportMatcherService {
     for (const query of titles.slice(0, 2)) {
       for (const category of searchCategories[input.kind] ?? []) {
         const exactOnly = category === 'tv' || category === 'movie';
-        const page = await this.connectors.search(category, query, 1, {});
+        const page = await this.connectors.search(category, query, 1, { adult });
         for (const item of page.results) {
           const score = Math.max(
             ...titles.flatMap((title) =>

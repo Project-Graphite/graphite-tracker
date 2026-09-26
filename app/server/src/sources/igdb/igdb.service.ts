@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
+import { rankByRelevanceAndPopularity } from '../game-ranking';
 import { platformReleaseSignals } from '../release-signals';
 import {
   CatalogCandidate,
@@ -93,7 +94,25 @@ export class IgdbService {
     page: number,
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
-    return this.list(`search "${this.escape(query)}";`, [], page, filters);
+    const { value: games } = await this.cache.getOrLoad(
+      `connector:igdb:search:${Buffer.from(JSON.stringify([query, filters])).toString('base64url')}`,
+      300,
+      86_400,
+      () =>
+        this.request<IgdbGame[]>(
+          'games',
+          `${this.fields()} search "${this.escape(query)}"; ${this.where([], filters)} limit 100;`,
+        ),
+    );
+    const ranked = rankByRelevanceAndPopularity(this.filtered(games, filters), query);
+    return {
+      page,
+      totalPages: Math.max(1, Math.ceil(ranked.length / 20)),
+      totalResults: ranked.length,
+      results: ranked.slice((page - 1) * 20, page * 20),
+      attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
+    };
   }
 
   async browse(
@@ -120,7 +139,7 @@ export class IgdbService {
       `${this.fields()} where ${selector}; limit 1;`,
     );
     const game = games[0];
-    if (!game || game.themes?.includes(eroticTheme)) {
+    if (!game) {
       throw new NotFoundException('IGDB game not found');
     }
     return {
@@ -150,20 +169,38 @@ export class IgdbService {
     page: number,
     filters: CatalogFilters,
   ) {
+    const offset = (page - 1) * 20;
+    const games = await this.request<IgdbGame[]>(
+      'games',
+      `${this.fields()} ${fragment} ${this.where(conditions, filters)} limit 20; offset ${offset};`,
+    );
+    return {
+      page,
+      totalPages: games.length === 20 ? page + 1 : page,
+      totalResults: null,
+      results: this.filtered(games, filters),
+      attribution: this.descriptor.attribution,
+      attributionUrl: this.descriptor.attributionUrl,
+    };
+  }
+
+  private where(conditions: string[], filters: CatalogFilters) {
     const where = [...conditions];
+    if (!filters.adult) {
+      where.push(`themes != (${eroticTheme})`);
+    }
     if (filters.year) {
       const start = Math.floor(Date.UTC(filters.year, 0, 1) / 1000);
       const end = Math.floor(Date.UTC(filters.year + 1, 0, 1) / 1000);
       where.push(`first_release_date >= ${start} & first_release_date < ${end}`);
     }
-    const offset = (page - 1) * 20;
-    const games = await this.request<IgdbGame[]>(
-      'games',
-      `${this.fields()} ${fragment} ${where.length ? `where ${where.join(' & ')};` : ''} limit 20; offset ${offset};`,
-    );
-    const filtered = games
-      .filter((game) => !game.themes?.includes(eroticTheme))
+    return where.length ? `where ${where.join(' & ')};` : '';
+  }
+
+  private filtered(games: IgdbGame[], filters: CatalogFilters) {
+    return games
       .map((game) => this.normalize(game))
+      .filter((game) => filters.adult || !game.adult)
       .filter(
         (game) =>
           !filters.genre ||
@@ -175,14 +212,6 @@ export class IgdbService {
         (game) =>
           !filters.status || game.status?.toLowerCase() === filters.status.toLowerCase(),
       );
-    return {
-      page,
-      totalPages: games.length === 20 ? page + 1 : page,
-      totalResults: offset + filtered.length,
-      results: filtered,
-      attribution: this.descriptor.attribution,
-      attributionUrl: this.descriptor.attributionUrl,
-    };
   }
 
   private normalize(game: IgdbGame): CatalogCandidate {
@@ -229,6 +258,7 @@ export class IgdbService {
       tagline: null,
       rating: game.total_rating ? game.total_rating / 10 : null,
       ratingCount: game.total_rating_count ?? 0,
+      adult: game.themes?.includes(eroticTheme) === true,
       platforms: game.platforms?.map((platform) => platform.name) ?? [],
       releaseDates:
         game.release_dates?.flatMap((release) =>

@@ -1,11 +1,11 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConnectorHttpService } from '../connector-http.service';
+import { rankByRelevanceAndPopularity } from '../game-ranking';
 import { platformReleaseSignals } from '../release-signals';
 import {
   CatalogCandidate,
@@ -109,9 +109,6 @@ export class RawgService {
       `/games/${encodeURIComponent(identifier)}`,
       {},
     );
-    if (this.adult(game)) {
-      throw new NotFoundException('RAWG game not found');
-    }
     const [additions, series] = await Promise.all([
       this.request<RawgPage>(
         `/games/${encodeURIComponent(String(game.id))}/additions`,
@@ -163,10 +160,11 @@ export class RawgService {
     filters: CatalogFilters,
     parameters: Record<string, string>,
   ): Promise<CatalogPage> {
+    const window = parameters.search ? 40 : 20;
     const response = await this.request<RawgPage>('/games', {
       ...parameters,
-      page: String(page),
-      page_size: '20',
+      page: String(Math.ceil((page * 20) / window)),
+      page_size: String(window),
       ...(filters.year
         ? { dates: `${filters.year}-01-01,${filters.year}-12-31` }
         : {}),
@@ -175,13 +173,18 @@ export class RawgService {
         : {}),
       ...(filters.sort ? { ordering: this.ordering(filters.sort) } : {}),
     });
+    const results = response.results
+      .map((game) => this.normalize(game))
+      .filter((game) => filters.adult || !game.adult);
+    const offset = ((page - 1) * 20) % window;
     return {
       page,
       totalPages: Math.max(1, Math.ceil(response.count / 20)),
-      totalResults: response.count,
-      results: response.results
-        .filter((game) => !this.adult(game))
-        .map((game) => this.normalize(game)),
+      totalResults: results.length === response.results.length ? response.count : null,
+      results: (parameters.search
+        ? rankByRelevanceAndPopularity(results, parameters.search)
+        : results
+      ).slice(offset, offset + 20),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
@@ -213,6 +216,7 @@ export class RawgService {
           ? Math.min(10, Math.max(0, game.rating * 2))
           : null,
       ratingCount: game.ratings_count ?? 0,
+      adult: this.adult(game),
       platforms: game.platforms?.map(({ platform }) => platform.name) ?? [],
       releaseDates:
         game.platforms

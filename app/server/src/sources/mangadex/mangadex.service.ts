@@ -62,7 +62,8 @@ interface MangaDexTags {
   }>;
 }
 
-const allowedContentRatings = ['safe', 'suggestive'];
+const safeContentRatings = ['safe', 'suggestive'];
+const allContentRatings = [...safeContentRatings, 'erotica', 'pornographic'];
 
 @Injectable()
 export class MangaDexService {
@@ -120,9 +121,6 @@ export class MangaDexService {
         { 'translatedLanguage[]': ['en'] },
       ).catch(() => null),
     ]);
-    if (!allowedContentRatings.includes(response.data.attributes.contentRating)) {
-      throw new NotFoundException('MangaDex title is not available');
-    }
     const item = this.normalize(response.data);
     if (item.category !== category) {
       throw new NotFoundException('MangaDex title does not match this category');
@@ -227,7 +225,7 @@ export class MangaDexService {
         ? { 'originalLanguage[]': ['ko'] }
         : { 'excludedOriginalLanguage[]': ['ko'] }),
       'includes[]': ['cover_art'],
-      'contentRating[]': allowedContentRatings,
+      'contentRating[]': filters.adult ? allContentRatings : safeContentRatings,
       [`order[${selectedOrder}]`]: 'desc',
     });
     return {
@@ -289,6 +287,7 @@ export class MangaDexService {
       tagline: null,
       rating: null,
       ratingCount: 0,
+      adult: !safeContentRatings.includes(manga.attributes.contentRating),
       chapterCount: manga.attributes.lastChapter
         ? Number(manga.attributes.lastChapter) || null
         : null,
