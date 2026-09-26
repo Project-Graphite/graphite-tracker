@@ -155,18 +155,6 @@ export class TmdbService {
     if (category === 'movie' && !this.hasFilters(filters)) {
       return section === 'recent' ? this.recentMovies(page) : this.popularMovies(page);
     }
-    if (
-      category === 'tv' &&
-      section === 'popular' &&
-      !this.hasFilters(filters)
-    ) {
-      return this.normalizeTvList(
-        await this.request<TmdbTvSearchResponse>(
-          '/tv/popular',
-          { page: String(page) },
-        ),
-      );
-    }
     if (category === 'movie') {
       return this.normalizeMovieList(
         await this.request<TmdbSearchResponse>(
@@ -183,19 +171,25 @@ export class TmdbService {
       );
     }
     if (category === 'tv') {
-      return this.normalizeTvList(
-        await this.request<TmdbTvSearchResponse>(
-          '/discover/tv',
-          this.discoverFilters(
-            category,
-            section,
-            page,
-            filters,
-            'first_air_date',
-            this.requiredGenreId(tvGenres, filters.genre),
-          ),
+      const response = await this.request<TmdbTvSearchResponse>(
+        '/discover/tv',
+        this.discoverFilters(
+          category,
+          section,
+          page,
+          filters,
+          'first_air_date',
+          this.requiredGenreId(tvGenres, filters.genre),
         ),
       );
+      return this.normalizeTvList({
+        ...response,
+        results: response.results.filter(
+          (show) =>
+            !['zh', 'cn'].includes(show.original_language) &&
+            !show.origin_country?.includes('CN'),
+        ),
+      });
     }
     if (category === 'anime') {
       const movieGenre = this.genreId(movieGenres, filters.genre);
@@ -647,7 +641,9 @@ export class TmdbService {
         filters.sort === 'first_air_date.desc'
           ? `${dateField}.desc`
           : filters.sort ??
-            (section === 'recent' ? `${dateField}.desc` : 'popularity.desc'),
+            (section === 'recent' && category !== 'tv'
+              ? `${dateField}.desc`
+              : 'popularity.desc'),
     };
     if (genreId) {
       parameters.with_genres = genreId;
@@ -673,6 +669,19 @@ export class TmdbService {
           canceled: '4',
           pilot: '5',
         }[filters.status.toLowerCase()] ?? filters.status;
+    }
+    if (category === 'tv') {
+      if (!filters.genre) {
+        parameters.with_type = '2|4';
+      }
+      if (!['planned', 'production', 'pilot'].includes(filters.status?.toLowerCase() ?? '')) {
+        parameters['vote_count.gte'] = section === 'recent' ? '10' : '100';
+      }
+      if (section === 'recent' && !filters.year) {
+        parameters['first_air_date.gte'] = new Date(Date.now() - 90 * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+      }
     }
     return parameters;
   }
