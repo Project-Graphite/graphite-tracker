@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AniListService } from '../src/sources/anilist/anilist.service';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { ConnectorRegistryService } from '../src/sources/connector-registry.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
@@ -219,6 +220,7 @@ describe('MangaUpdatesService', () => {
     const http = new ConnectorHttpService();
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(cache as never, http),
       new TmdbService(config, http),
       new MangaUpdatesService(cache as never, http),
       new MangaDexService(cache as never, http),

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AniListService } from '../src/sources/anilist/anilist.service';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
 import { MangaDexService } from '../src/sources/mangadex/mangadex.service';
@@ -104,6 +105,7 @@ describe('Release signals', () => {
   it('declares release updates exactly where a connector can check them', () => {
     const http = new ConnectorHttpService();
     const connectors: SourceConnector[] = [
+      new AniListService(cache as never, http),
       new TmdbService(config, http),
       new MangaUpdatesService(cache as never, http),
       new MangaDexService(cache as never, http),

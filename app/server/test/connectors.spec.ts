@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AniListService } from '../src/sources/anilist/anilist.service';
 import { ConnectorHttpService } from '../src/sources/connector-http.service';
 import { ConnectorRegistryService } from '../src/sources/connector-registry.service';
 import { IgdbService } from '../src/sources/igdb/igdb.service';
@@ -279,6 +280,7 @@ describe('Source connectors', () => {
       const http = new ConnectorHttpService();
       return new ConnectorRegistryService(
         config,
+        new AniListService(cache as never, http),
         new TmdbService(config, http),
         new MangaUpdatesService(cache as never, http),
         new MangaDexService(cache as never, http),
@@ -433,6 +435,7 @@ describe('Source connectors', () => {
     );
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(igdbCache() as never, http),
       new TmdbService(config, http),
       new MangaUpdatesService(igdbCache() as never, http),
       new MangaDexService(igdbCache() as never, http),
@@ -466,6 +469,7 @@ describe('Source connectors', () => {
     const cache = igdbCache();
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(igdbCache() as never, http),
       new TmdbService(config, http),
       new MangaUpdatesService(igdbCache() as never, http),
       new MangaDexService(igdbCache() as never, http),
@@ -518,6 +522,7 @@ describe('Source connectors', () => {
     const http = new ConnectorHttpService();
     const registry = new ConnectorRegistryService(
       config,
+      new AniListService(cache as never, http),
       new TmdbService(config, http),
       new MangaUpdatesService(cache as never, http),
       new MangaDexService(cache as never, http),

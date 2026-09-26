@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { AniListService } from './anilist/anilist.service';
 import { ConnectorCacheService } from './connector-cache.service';
 import { ConnectorHttpService } from './connector-http.service';
 import { ConnectorRegistryService } from './connector-registry.service';
@@ -14,6 +15,7 @@ import { TmdbService } from './tmdb/tmdb.service';
 @Module({
   imports: [AuthModule],
   providers: [
+    AniListService,
     ConnectorCacheService,
     ConnectorHttpService,
     ConnectorRegistryService,
