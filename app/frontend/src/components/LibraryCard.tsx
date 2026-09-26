@@ -29,7 +29,11 @@ export function LibraryCard({
   const summary = [stateLabel(entry.item.category, entry.state), progressSummary(entry.progress)]
     .filter(Boolean)
     .join(' · ');
-  const meta = [categoryLabels[entry.item.category], entry.item.releaseDate?.slice(0, 4)]
+  const meta = [
+    categoryLabels[entry.item.category],
+    entry.item.releaseDate?.slice(0, 4),
+    entry.isPrivate && 'hidden from profile',
+  ]
     .filter(Boolean)
     .join(' · ');
   const title = href ? (

@@ -53,6 +53,7 @@ export function PrivacyPage() {
           Nothing, until you choose. Profiles start private and show only your display name. You
           decide in <Link className="rule-link" to="/settings">settings</Link> whether your profile
           and each of its sections are public, and every change applies to earlier activity too.
+          A title you hide from your profile stays out of every profile section and count.
           A review you mark as public appears on its title with your display name and a link to
           your profile.
         </p>

@@ -300,6 +300,7 @@ model LibraryEntry {
   startedAt            DateTime?            @map("started_at")
   completedAt          DateTime?            @map("completed_at")
   notificationsEnabled Boolean              @default(false) @map("notifications_enabled")
+  isPrivate            Boolean              @default(false) @map("is_private")
   progressSeason      Int?                  @map("progress_season")
   progressEpisode     Int?                  @map("progress_episode")
   progressChapter     Decimal?              @map("progress_chapter") @db.Decimal(10, 2)

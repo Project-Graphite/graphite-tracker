@@ -22,6 +22,7 @@ export interface LibraryEntry {
   id: string;
   state: LibraryState;
   notificationsEnabled: boolean;
+  isPrivate: boolean;
   progress: {
     season: number | null;
     episode: number | null;

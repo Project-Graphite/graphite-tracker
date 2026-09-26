@@ -49,6 +49,7 @@ interface Activity {
 interface ProfileEntry {
   id: string;
   state: LibraryState;
+  isPrivate: boolean;
   progress: Omit<LibraryEntry['progress'], 'platforms'>;
   rating: number | null;
   item: ItemSummary;
@@ -195,6 +196,7 @@ function LibraryGrid({ handle }: { handle: string }) {
                     stateLabel(entry.item.category, entry.state),
                     progressSummary(entry.progress),
                     entry.rating !== null && `${entry.rating}/10`,
+                    entry.isPrivate && 'private',
                   ]
                     .filter(Boolean)
                     .join(' · ')}

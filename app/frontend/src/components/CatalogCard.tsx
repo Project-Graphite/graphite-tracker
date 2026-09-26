@@ -25,6 +25,7 @@ function AddToListDialog({
 }) {
   const auth = useAuth();
   const [state, setState] = useState<LibraryState>('planned');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,6 +42,7 @@ function AddToListDialog({
             category: item.category,
             source: item.source,
             state,
+            isPrivate,
           }),
         }),
       );
@@ -66,6 +68,14 @@ function AddToListDialog({
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input
+            checked={isPrivate}
+            onChange={(event) => setIsPrivate(event.target.checked)}
+            type="checkbox"
+          />
+          Hide from my profile
         </label>
         {error && <p className="error-message">{error}</p>}
         <div className="flex justify-end gap-3">

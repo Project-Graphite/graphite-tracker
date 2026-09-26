@@ -28,6 +28,10 @@ const sectionSettings = {
   statistics: 'showStatistics',
 } as const;
 
+function withoutPrivateEntries(userId: string, admin: boolean) {
+  return admin ? {} : { catalogItem: { libraryEntries: { none: { userId, isPrivate: true } } } };
+}
+
 function paged<T>(page: number, total: number, results: T[]) {
   return {
     page,
@@ -62,7 +66,9 @@ export class ProfilesService {
               .map(([section]) => section),
           }
         : {}),
-      statistics: sections.statistics ? await this.statistics(user.id, sections.ratings) : null,
+      statistics: sections.statistics
+        ? await this.statistics(user.id, sections.ratings, admin)
+        : null,
     };
   }
 
@@ -70,6 +76,7 @@ export class ProfilesService {
     const { user, privacy, admin } = await this.section(handle, 'showActivity', viewer);
     const where: Prisma.ActivityEventWhereInput = {
       userId: user.id,
+      ...withoutPrivateEntries(user.id, admin),
       OR: [
         ...(admin || privacy.showLibrary
           ? [{ kind: { in: [ActivityKind.ADDED, ActivityKind.STATE_CHANGED] } }]
@@ -113,6 +120,7 @@ export class ProfilesService {
     const { user, privacy, admin } = await this.section(handle, 'showLibrary', viewer);
     const where: Prisma.LibraryEntryWhereInput = {
       userId: user.id,
+      ...(admin ? {} : { isPrivate: false }),
       ...(query.state ? { state: libraryStates[query.state] } : {}),
       ...(query.category
         ? { catalogItem: { category: mediaCategories[query.category] } }
@@ -144,6 +152,7 @@ export class ProfilesService {
       entries.map((entry) => ({
         id: entry.id,
         state: entry.state.toLowerCase(),
+        isPrivate: entry.isPrivate,
         progress: {
           season: entry.progressSeason,
           episode: entry.progressEpisode,
@@ -160,8 +169,13 @@ export class ProfilesService {
   }
 
   async ratings(handle: string, page: number, viewer?: AuthenticatedUser) {
-    const { user } = await this.section(handle, 'showRatings', viewer);
-    const where = { userId: user.id, rating: { not: null }, hiddenAt: null };
+    const { user, admin } = await this.section(handle, 'showRatings', viewer);
+    const where = {
+      userId: user.id,
+      rating: { not: null },
+      hiddenAt: null,
+      ...withoutPrivateEntries(user.id, admin),
+    };
     const [total, reviews] = await this.prisma.$transaction([
       this.prisma.review.count({ where }),
       this.prisma.review.findMany({
@@ -185,7 +199,11 @@ export class ProfilesService {
 
   async reviews(handle: string, page: number, viewer?: AuthenticatedUser) {
     const { user, admin } = await this.section(handle, 'showReviews', viewer);
-    const where = { ...(admin ? readableReviewWhere(viewer) : publicReviewWhere), userId: user.id };
+    const where = {
+      ...(admin ? readableReviewWhere(viewer) : publicReviewWhere),
+      userId: user.id,
+      ...withoutPrivateEntries(user.id, admin),
+    };
     const [total, reviews] = await this.prisma.$transaction([
       this.prisma.review.count({ where }),
       this.prisma.review.findMany({
@@ -209,20 +227,26 @@ export class ProfilesService {
     );
   }
 
-  private async statistics(userId: string, includeRatings: boolean) {
+  private async statistics(userId: string, includeRatings: boolean, admin: boolean) {
+    const entries = { userId, ...(admin ? {} : { isPrivate: false }) };
     const [states, categories, ratings] = await Promise.all([
-      this.prisma.libraryEntry.groupBy({ by: ['state'], where: { userId }, _count: true }),
+      this.prisma.libraryEntry.groupBy({ by: ['state'], where: entries, _count: true }),
       Promise.all(
         catalogCategories.map(async (category) => [
           category,
           await this.prisma.libraryEntry.count({
-            where: { userId, catalogItem: { category: mediaCategories[category] } },
+            where: { ...entries, catalogItem: { category: mediaCategories[category] } },
           }),
         ]),
       ),
       includeRatings
         ? this.prisma.review.aggregate({
-            where: { userId, rating: { not: null }, hiddenAt: null },
+            where: {
+              userId,
+              rating: { not: null },
+              hiddenAt: null,
+              ...withoutPrivateEntries(userId, admin),
+            },
             _avg: { rating: true },
             _count: { rating: true },
           })

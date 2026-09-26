@@ -227,6 +227,21 @@ export function LibraryEntryEditor({
       <div>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
+            checked={entry.isPrivate}
+            disabled={busy}
+            onChange={(event) => update({ isPrivate: event.target.checked })}
+            type="checkbox"
+          />
+          Hide from my profile
+        </label>
+        <p className="mono-sm mt-1 mb-0 text-faint">
+          Keeps this title, its progress, rating and review off your library, activity, ratings,
+          reviews and statistics for other people.
+        </p>
+      </div>
+      <div>
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input
             checked={entry.notificationsEnabled}
             disabled={busy || finished || needsPlatform}
             onChange={(event) => update({ notificationsEnabled: event.target.checked })}

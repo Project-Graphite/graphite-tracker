@@ -146,6 +146,7 @@ export class LibraryService {
             userId,
             catalogItemId: item.id,
             state,
+            isPrivate: input.isPrivate,
             startedAt: state === LibraryState.IN_PROGRESS ? new Date() : null,
             completedAt: state === LibraryState.COMPLETED ? new Date() : null,
             statusEvents: { create: { newState: state } },
@@ -220,6 +221,7 @@ export class LibraryService {
         completionPercentage: input.completionPercentage,
         platforms: input.platforms,
         notificationsEnabled: finished ? false : input.notificationsEnabled,
+        isPrivate: input.isPrivate,
         preferredSourceId,
         startedAt:
           nextState === LibraryState.IN_PROGRESS && !current.startedAt
@@ -341,6 +343,7 @@ export class LibraryService {
       id: entry.id,
       state: entry.state.toLowerCase(),
       notificationsEnabled: entry.notificationsEnabled,
+      isPrivate: entry.isPrivate,
       progress: {
         season: entry.progressSeason,
         episode: entry.progressEpisode,

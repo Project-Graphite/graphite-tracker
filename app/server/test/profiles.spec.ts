@@ -90,6 +90,7 @@ describe('ProfilesService privacy', () => {
     expect(prisma.activityEvent.count).toHaveBeenCalledWith({
       where: {
         userId: 'user-id',
+        catalogItem: { libraryEntries: { none: { userId: 'user-id', isPrivate: true } } },
         OR: [
           {
             kind: ActivityKind.RATED,
@@ -144,6 +145,43 @@ describe('ProfilesService privacy', () => {
       });
       await expect(service.reviews('reader', 1, viewer)).rejects.toBeInstanceOf(NotFoundException);
     }
+  });
+
+  it('keeps private entries off the profile for everyone but administrators', async () => {
+    const everything = {
+      isPublic: true,
+      showLibrary: true,
+      showActivity: true,
+      showRatings: true,
+      showReviews: true,
+      showStatistics: true,
+    };
+    const hidesPrivate = { catalogItem: { libraryEntries: { none: { userId: 'user-id', isPrivate: true } } } };
+    const { prisma, service } = serviceFor(everything);
+
+    await service.profile('reader');
+    await service.library('reader', { page: 1 });
+    await service.activity('reader', 1);
+    await service.ratings('reader', 1);
+    await service.reviews('reader', 1);
+
+    expect(prisma.libraryEntry.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-id', isPrivate: false } }),
+    );
+    expect(prisma.libraryEntry.count).toHaveBeenCalledWith({
+      where: { userId: 'user-id', isPrivate: false },
+    });
+    expect(prisma.review.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining(hidesPrivate) }),
+    );
+    expect(prisma.activityEvent.count).toHaveBeenCalledWith({ where: expect.objectContaining(hidesPrivate) });
+    for (const [where] of prisma.review.count.mock.calls as Array<[{ where: object }]>) {
+      expect(where.where).toMatchObject(hidesPrivate);
+    }
+
+    const admin = serviceFor(everything);
+    await admin.service.library('reader', { page: 1 }, { id: 'admin-id', isAdmin: true } as never);
+    expect(admin.prisma.libraryEntry.count).toHaveBeenCalledWith({ where: { userId: 'user-id' } });
   });
 
   it('keeps rating statistics out when ratings are hidden', async () => {

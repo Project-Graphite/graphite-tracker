@@ -135,8 +135,9 @@ export function ProfileSettingsPage() {
         <h2 className="m-0 text-xl font-medium">Privacy</h2>
         <p className="mt-2 text-sm text-muted">
           Profiles are private until you publish them. A private profile shows only your display
-          name, and a hidden section shows neither its entries nor their counts. Public reviews stay
-          visible on each title either way. Administrators can see private profiles and sections to
+          name, and a hidden section shows neither its entries nor their counts. To keep a single
+          title off your profile, choose Hide from my profile in its library entry. Public reviews
+          stay visible on each title either way. Administrators can see private profiles and sections to
           deal with abuse.
         </p>
         <label className="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface p-4">

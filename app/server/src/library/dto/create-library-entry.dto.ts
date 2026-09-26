@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsString, Length } from 'class-validator';
 import { CatalogCategory, catalogCategories } from '../../sources/source.types';
 
 export enum LibraryStateInput {
@@ -22,4 +22,7 @@ export class CreateLibraryEntryDto {
 
   @IsEnum(LibraryStateInput)
   state: LibraryStateInput = LibraryStateInput.Planned;
+
+  @IsBoolean()
+  isPrivate = false;
 }

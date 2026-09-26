@@ -73,6 +73,10 @@ export class UpdateLibraryEntryDto {
   @IsBoolean()
   notificationsEnabled?: boolean;
 
+  @IsOptionalNotNull()
+  @IsBoolean()
+  isPrivate?: boolean;
+
   @IsOptional()
   @IsString()
   @Length(2, 30)
