@@ -137,6 +137,7 @@ export function ReviewEditor({
               title: title.trim() || null,
               body: body.trim() || null,
               containsSpoilers,
+              visibility,
               updatedAt: new Date().toISOString(),
             }}
           />

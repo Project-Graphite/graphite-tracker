@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationState, Prisma, ReportResolution } from '@prisma/client';
+import { NotificationState, Prisma, ReportResolution, ReviewVisibility } from '@prisma/client';
 import {
   catalogItemSummary,
   catalogItemSummaryInclude,
@@ -101,10 +101,15 @@ export class AdminService {
     });
   }
 
-  async reviews(status: 'visible' | 'hidden', page: number) {
+  async reviews(status: 'public' | 'private' | 'hidden', page: number) {
     const where: Prisma.ReviewWhereInput = {
       ...moderatedReviewWhere,
-      hiddenAt: status === 'hidden' ? { not: null } : null,
+      ...(status === 'hidden'
+        ? { hiddenAt: { not: null } }
+        : {
+            hiddenAt: null,
+            visibility: status === 'public' ? ReviewVisibility.PUBLIC : ReviewVisibility.PRIVATE,
+          }),
     };
     const [total, reviews] = await this.prisma.$transaction([
       this.prisma.review.count({ where }),

@@ -127,7 +127,7 @@ export function AdminPage() {
   const page = Number(searchParams.get('page')) || 1;
   const query = searchParams.get('query') ?? '';
   const status =
-    searchParams.get('status') ?? (tab === 'reports' ? 'open' : tab === 'reviews' ? 'visible' : '');
+    searchParams.get('status') ?? (tab === 'reports' ? 'open' : tab === 'reviews' ? 'public' : '');
   const path =
     tab === 'users'
       ? `/admin/users?page=${page}${query ? `&query=${encodeURIComponent(query)}` : ''}`
@@ -219,7 +219,7 @@ export function AdminPage() {
       )}
       {tab === 'reviews' && (
         <>
-          <Filter options={['visible', 'hidden']} tab={tab} value={status} />
+          <Filter options={['public', 'private', 'hidden']} tab={tab} value={status} />
           <Listing pageHref={pageHref} resource={reviews}>
             {(results) =>
               results.map((review) => (

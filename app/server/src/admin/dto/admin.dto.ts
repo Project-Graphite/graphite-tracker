@@ -16,8 +16,8 @@ export class ListReportsDto extends AdminPageDto {
 }
 
 export class ListReviewsDto extends AdminPageDto {
-  @IsIn(['visible', 'hidden'])
-  status: 'visible' | 'hidden' = 'visible';
+  @IsIn(['public', 'private', 'hidden'])
+  status: 'public' | 'private' | 'hidden' = 'public';
 }
 
 export class ListUsersDto extends AdminPageDto {

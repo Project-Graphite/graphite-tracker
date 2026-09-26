@@ -266,4 +266,22 @@ describe('ReviewsService', () => {
       }),
     );
   });
+
+  it('adds private reviews only for their author and the administrator', async () => {
+    const findMany = vi.fn();
+    const service = new ReviewsService({
+      catalogItem: { findFirst: vi.fn().mockResolvedValue({ id: itemId }) },
+      review: { aggregate: vi.fn(), count: vi.fn(), findMany },
+      $transaction: () => Promise.resolve([{ _avg: { rating: null }, _count: { rating: 0 } }, 0, []]),
+    } as never);
+    const listed = { catalogItemId: itemId, hiddenAt: null, body: { not: null }, user: { isActive: true } };
+
+    await service.forSource('tmdb', '550', 1, { id: 'reader-id', isAdmin: false });
+    await service.forSource('tmdb', '550', 1, { id: 'admin-id', isAdmin: true });
+
+    expect(findMany.mock.calls.map(([args]) => (args as { where: object }).where)).toEqual([
+      { ...listed, OR: [{ visibility: ReviewVisibility.PUBLIC }, { userId: 'reader-id' }] },
+      listed,
+    ]);
+  });
 });

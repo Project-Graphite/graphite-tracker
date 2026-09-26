@@ -6,7 +6,12 @@ import {
 } from '../catalog/catalog-item-summary';
 import { libraryStates } from '../library/library.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { presentPublicReview, publicReviewWhere } from '../reviews/reviews.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import {
+  presentPublicReview,
+  publicReviewWhere,
+  readableReviewWhere,
+} from '../reviews/reviews.service';
 import { catalogCategories } from '../sources/source.types';
 import { mediaCategories } from '../sources/source-settings.service';
 import { ProfileLibraryDto } from './dto/users.dto';
@@ -14,6 +19,14 @@ import { ProfileLibraryDto } from './dto/users.dto';
 const pageSize = 20;
 
 type Section = 'showLibrary' | 'showActivity' | 'showRatings' | 'showReviews';
+
+const sectionSettings = {
+  library: 'showLibrary',
+  activity: 'showActivity',
+  ratings: 'showRatings',
+  reviews: 'showReviews',
+  statistics: 'showStatistics',
+} as const;
 
 function paged<T>(page: number, total: number, results: T[]) {
   return {
@@ -28,42 +41,44 @@ function paged<T>(page: number, total: number, results: T[]) {
 export class ProfilesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async profile(handle: string) {
-    const { user, privacy } = await this.owner(handle);
-    if (!privacy.isPublic) {
+  async profile(handle: string, viewer?: AuthenticatedUser) {
+    const { user, privacy, admin } = await this.owner(handle, viewer);
+    if (!privacy.isPublic && !admin) {
       return { handle: user.handle, displayName: user.displayName, isPublic: false };
     }
+    const sections = Object.fromEntries(
+      Object.entries(sectionSettings).map(([section, setting]) => [section, admin || privacy[setting]]),
+    ) as Record<keyof typeof sectionSettings, boolean>;
     return {
       handle: user.handle,
       displayName: user.displayName,
       bio: user.bio,
-      isPublic: true,
-      sections: {
-        library: privacy.showLibrary,
-        activity: privacy.showActivity,
-        ratings: privacy.showRatings,
-        reviews: privacy.showReviews,
-        statistics: privacy.showStatistics,
-      },
-      statistics: privacy.showStatistics
-        ? await this.statistics(user.id, privacy.showRatings)
-        : null,
+      isPublic: privacy.isPublic,
+      sections,
+      ...(admin
+        ? {
+            privateSections: Object.entries(sectionSettings)
+              .filter(([, setting]) => !privacy.isPublic || !privacy[setting])
+              .map(([section]) => section),
+          }
+        : {}),
+      statistics: sections.statistics ? await this.statistics(user.id, sections.ratings) : null,
     };
   }
 
-  async activity(handle: string, page: number) {
-    const { user, privacy } = await this.section(handle, 'showActivity');
+  async activity(handle: string, page: number, viewer?: AuthenticatedUser) {
+    const { user, privacy, admin } = await this.section(handle, 'showActivity', viewer);
     const where: Prisma.ActivityEventWhereInput = {
       userId: user.id,
       OR: [
-        ...(privacy.showLibrary
+        ...(admin || privacy.showLibrary
           ? [{ kind: { in: [ActivityKind.ADDED, ActivityKind.STATE_CHANGED] } }]
           : []),
-        ...(privacy.showRatings
+        ...(admin || privacy.showRatings
           ? [{ kind: ActivityKind.RATED, review: { is: { rating: { not: null }, hiddenAt: null } } }]
           : []),
-        ...(privacy.showReviews
-          ? [{ kind: ActivityKind.REVIEWED, review: { is: publicReviewWhere } }]
+        ...(admin || privacy.showReviews
+          ? [{ kind: ActivityKind.REVIEWED, review: { is: admin ? readableReviewWhere(viewer) : publicReviewWhere } }]
           : []),
       ],
     };
@@ -94,8 +109,8 @@ export class ProfilesService {
     );
   }
 
-  async library(handle: string, query: ProfileLibraryDto) {
-    const { user, privacy } = await this.section(handle, 'showLibrary');
+  async library(handle: string, query: ProfileLibraryDto, viewer?: AuthenticatedUser) {
+    const { user, privacy, admin } = await this.section(handle, 'showLibrary', viewer);
     const where: Prisma.LibraryEntryWhereInput = {
       userId: user.id,
       ...(query.state ? { state: libraryStates[query.state] } : {}),
@@ -137,14 +152,15 @@ export class ProfilesService {
           hours: entry.hoursPlayed?.toNumber() ?? null,
           percentage: entry.completionPercentage,
         },
-        rating: privacy.showRatings ? (entry.catalogItem.reviews[0]?.rating ?? null) : null,
+        rating:
+          admin || privacy.showRatings ? (entry.catalogItem.reviews[0]?.rating ?? null) : null,
         item: catalogItemSummary(entry.catalogItem),
       })),
     );
   }
 
-  async ratings(handle: string, page: number) {
-    const { user } = await this.section(handle, 'showRatings');
+  async ratings(handle: string, page: number, viewer?: AuthenticatedUser) {
+    const { user } = await this.section(handle, 'showRatings', viewer);
     const where = { userId: user.id, rating: { not: null }, hiddenAt: null };
     const [total, reviews] = await this.prisma.$transaction([
       this.prisma.review.count({ where }),
@@ -167,9 +183,9 @@ export class ProfilesService {
     );
   }
 
-  async reviews(handle: string, page: number) {
-    const { user } = await this.section(handle, 'showReviews');
-    const where = { ...publicReviewWhere, userId: user.id };
+  async reviews(handle: string, page: number, viewer?: AuthenticatedUser) {
+    const { user, admin } = await this.section(handle, 'showReviews', viewer);
+    const where = { ...(admin ? readableReviewWhere(viewer) : publicReviewWhere), userId: user.id };
     const [total, reviews] = await this.prisma.$transaction([
       this.prisma.review.count({ where }),
       this.prisma.review.findMany({
@@ -226,7 +242,7 @@ export class ProfilesService {
     };
   }
 
-  private async owner(handle: string) {
+  private async owner(handle: string, viewer?: AuthenticatedUser) {
     const user = await this.prisma.user.findUnique({
       where: { handle: handle.toLowerCase() },
       include: { privacy: true },
@@ -234,12 +250,16 @@ export class ProfilesService {
     if (!user?.isActive || !user.privacy) {
       throw new NotFoundException('Profile not found');
     }
-    return { user, privacy: user.privacy };
+    return {
+      user,
+      privacy: user.privacy,
+      admin: viewer?.isAdmin === true && viewer.id !== user.id,
+    };
   }
 
-  private async section(handle: string, section: Section) {
-    const owner = await this.owner(handle);
-    if (!owner.privacy.isPublic || !owner.privacy[section]) {
+  private async section(handle: string, section: Section, viewer?: AuthenticatedUser) {
+    const owner = await this.owner(handle, viewer);
+    if (!owner.admin && (!owner.privacy.isPublic || !owner.privacy[section])) {
       throw new NotFoundException('This part of the profile is private');
     }
     return owner;

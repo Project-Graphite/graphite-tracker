@@ -74,7 +74,8 @@ export function ReviewCard({ item, review }: { item?: ItemSummary; review: Publi
   const [revealed, setRevealed] = useState(!review.containsSpoilers);
   const [reporting, setReporting] = useState(false);
   const href = item && itemHref(item);
-  const reportable = auth.user && auth.user.handle !== review.author.handle;
+  const reportable =
+    auth.user && auth.user.handle !== review.author.handle && review.visibility === 'public';
 
   return (
     <article className="border-b border-line-soft py-5">
@@ -86,6 +87,7 @@ export function ReviewCard({ item, review }: { item?: ItemSummary; review: Publi
           <span className="mono-sm text-faint">
             {[
               review.rating !== null && `${review.rating}/10`,
+              review.visibility === 'private' && 'private',
               new Date(review.updatedAt).toLocaleDateString(),
             ]
               .filter(Boolean)

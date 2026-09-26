@@ -15,6 +15,7 @@ const review: PublicReview = {
   title: 'The ending',
   body: 'The tower was the narrator all along.',
   containsSpoilers: true,
+  visibility: 'public',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
@@ -62,6 +63,13 @@ describe('ReviewCard', () => {
     expect(container.textContent).toContain(review.title);
     expect(container.textContent).toContain(review.body);
     expect(container.textContent).not.toContain('This review contains spoilers.');
+  });
+
+  it('marks a private review as private and offers no report', async () => {
+    await render({ ...review, containsSpoilers: false, visibility: 'private' });
+
+    expect(container.textContent).toContain('8/10 · private');
+    expect(container.textContent).not.toContain('report');
   });
 
   it('shows review text as written without turning it into markup', async () => {

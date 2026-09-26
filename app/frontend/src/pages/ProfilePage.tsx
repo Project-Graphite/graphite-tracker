@@ -26,6 +26,7 @@ interface Profile {
   isPublic: boolean;
   bio?: string | null;
   sections?: Record<Section | 'statistics', boolean>;
+  privateSections?: Array<Section | 'statistics'>;
   statistics?: {
     total: number;
     states: Partial<Record<LibraryState, number>>;
@@ -86,9 +87,13 @@ function SectionPage<T>({
   handle: string;
   section: Section;
 }) {
+  const auth = useAuth();
   const [searchParams] = useSearchParams();
   const page = Number(searchParams.get('page')) || 1;
-  const list = useResource<Page<T>>(`/users/${handle}/${section}?page=${page}${filter}`);
+  const list = useResource<Page<T>>(
+    auth.ready ? `/users/${handle}/${section}?page=${page}${filter}` : null,
+    Boolean(auth.user),
+  );
 
   if (list.error) return <p className="error-message mt-6">{list.error}</p>;
   if (!list.data) return <p className="mt-6 text-muted">Loading…</p>;
@@ -224,7 +229,13 @@ const sectionViews: Record<Section, (props: { handle: string }) => ReactNode> = 
   reviews: ReviewsList,
 };
 
-function Statistics({ statistics }: { statistics: NonNullable<Profile['statistics']> }) {
+function Statistics({
+  hiddenFromPublic,
+  statistics,
+}: {
+  hiddenFromPublic: boolean;
+  statistics: NonNullable<Profile['statistics']>;
+}) {
   const figure = (value: string, label: string) => (
     <p className="m-0" key={label}>
       <strong className="text-2xl font-medium">{value}</strong>{' '}
@@ -233,6 +244,7 @@ function Statistics({ statistics }: { statistics: NonNullable<Profile['statistic
   );
   return (
     <section aria-label="Statistics" className="mt-8 grid gap-4 border-y border-line py-5">
+      {hiddenFromPublic && <p className="mono-sm m-0 text-faint">statistics · private</p>}
       <div className="flex flex-wrap gap-x-8 gap-y-3">
         {figure(statistics.total.toLocaleString(), 'titles')}
         {libraryStates.map((state) =>
@@ -258,7 +270,10 @@ export function ProfilePage() {
   const { handle = '' } = useParams();
   const auth = useAuth();
   const [searchParams] = useSearchParams();
-  const profile = useResource<Profile>(`/users/${encodeURIComponent(handle.toLowerCase())}`);
+  const profile = useResource<Profile>(
+    auth.ready ? `/users/${encodeURIComponent(handle.toLowerCase())}` : null,
+    Boolean(auth.user),
+  );
 
   if (profile.error) {
     return (
@@ -287,12 +302,24 @@ export function ProfilePage() {
           </Link>
         </p>
       )}
-      {!data.isPublic ? (
+      {data.privateSections && (
+        <p className="notice mt-5 max-w-3xl">
+          {data.isPublic
+            ? 'You see every section because you are the administrator. Sections marked private are hidden from everyone else.'
+            : 'This profile is private. You see it because you are the administrator; everyone else sees only the display name.'}
+        </p>
+      )}
+      {!data.isPublic && !data.privateSections ? (
         <p className="mt-6 text-muted">This profile is private.</p>
       ) : (
         <>
           {data.bio && <p className="mt-5 max-w-2xl whitespace-pre-line text-muted">{data.bio}</p>}
-          {data.statistics && <Statistics statistics={data.statistics} />}
+          {data.statistics && (
+            <Statistics
+              hiddenFromPublic={data.privateSections?.includes('statistics') ?? false}
+              statistics={data.statistics}
+            />
+          )}
           {View ? (
             <>
               <nav aria-label="Profile sections" className="mt-10 mb-6 flex gap-2 overflow-x-auto border-b border-line">
@@ -306,6 +333,9 @@ export function ProfilePage() {
                     to={`/users/${data.handle}?tab=${section}`}
                   >
                     {sectionLabels[section]}
+                    {data.privateSections?.includes(section) && (
+                      <span className="mono-sm font-normal text-faint"> · private</span>
+                    )}
                   </Link>
                 ))}
               </nav>

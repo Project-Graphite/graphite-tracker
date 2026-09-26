@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { ReportResolution } from '@prisma/client';
+import { ReportResolution, ReviewVisibility } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminGuard } from '../src/admin/admin.guard';
 import { AdminService } from '../src/admin/admin.service';
@@ -64,14 +64,19 @@ describe('Administration', () => {
     } as never);
 
     await service.reports('open', 1);
-    await service.reviews('visible', 1);
+    await service.reviews('public', 1);
+    await service.reviews('private', 1);
+    await service.reviews('hidden', 1);
 
     const reportWhere = { resolution: null, review: { body: { not: null } } };
     expect(reportCount).toHaveBeenCalledWith({ where: reportWhere });
     expect(reportFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: reportWhere }));
-    const reviewWhere = { body: { not: null }, hiddenAt: null };
-    expect(reviewCount).toHaveBeenCalledWith({ where: reviewWhere });
-    expect(reviewFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: reviewWhere }));
+    expect(reviewCount.mock.calls.map(([args]) => (args as { where: object }).where)).toEqual([
+      { body: { not: null }, hiddenAt: null, visibility: ReviewVisibility.PUBLIC },
+      { body: { not: null }, hiddenAt: null, visibility: ReviewVisibility.PRIVATE },
+      { body: { not: null }, hiddenAt: { not: null } },
+    ]);
+    expect(reviewFindMany).toHaveBeenCalledTimes(3);
   });
 
   it('dismisses a report without touching the review', async () => {

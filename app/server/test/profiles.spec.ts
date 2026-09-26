@@ -100,6 +100,52 @@ describe('ProfilesService privacy', () => {
     });
   });
 
+  it('shows the administrator a private profile in full, marked as private', async () => {
+    const admin = { id: 'admin-id', isAdmin: true };
+    const { prisma, service } = serviceFor({ showReviews: true });
+
+    await expect(service.profile('reader', admin)).resolves.toMatchObject({
+      isPublic: false,
+      bio: 'Private bio',
+      sections: { library: true, activity: true, ratings: true, reviews: true, statistics: true },
+      privateSections: ['library', 'activity', 'ratings', 'reviews', 'statistics'],
+      statistics: { total: 0 },
+    });
+    await service.reviews('reader', 1, admin);
+    expect(prisma.review.count).toHaveBeenCalledWith({
+      where: { hiddenAt: null, body: { not: null }, user: { isActive: true }, userId: 'user-id' },
+    });
+    await service.library('reader', { page: 1 }, admin);
+    expect(prisma.libraryEntry.count).toHaveBeenCalled();
+  });
+
+  it('marks only the hidden sections of a public profile for the administrator', async () => {
+    const { service } = serviceFor({ isPublic: true, showLibrary: true, showStatistics: true });
+
+    await expect(
+      service.profile('reader', { id: 'admin-id', isAdmin: true }),
+    ).resolves.toMatchObject({
+      isPublic: true,
+      privateSections: ['activity', 'ratings', 'reviews'],
+    });
+  });
+
+  it('shows readers and the administrator on their own profile only what is public', async () => {
+    const { service } = serviceFor({});
+
+    for (const viewer of [
+      { id: 'someone', isAdmin: false },
+      { id: 'user-id', isAdmin: true },
+    ]) {
+      await expect(service.profile('reader', viewer)).resolves.toEqual({
+        handle: 'reader',
+        displayName: 'Reader One',
+        isPublic: false,
+      });
+      await expect(service.reviews('reader', 1, viewer)).rejects.toBeInstanceOf(NotFoundException);
+    }
+  });
+
   it('keeps rating statistics out when ratings are hidden', async () => {
     const { prisma, service } = serviceFor({ isPublic: true, showStatistics: true });
 

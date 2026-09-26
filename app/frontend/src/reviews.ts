@@ -8,6 +8,7 @@ export interface PublicReview {
   title: string | null;
   body: string | null;
   containsSpoilers: boolean;
+  visibility: 'public' | 'private';
   updatedAt: string;
 }
 

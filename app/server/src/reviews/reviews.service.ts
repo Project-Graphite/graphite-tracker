@@ -13,6 +13,7 @@ import {
   Review,
   ReviewVisibility,
 } from '@prisma/client';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveReviewDto } from './dto/review.dto';
 
@@ -25,6 +26,12 @@ export const publicReviewWhere = {
   user: { isActive: true },
 } satisfies Prisma.ReviewWhereInput;
 
+export function readableReviewWhere(viewer?: AuthenticatedUser): Prisma.ReviewWhereInput {
+  const { visibility, ...listed } = publicReviewWhere;
+  if (viewer?.isAdmin) return listed;
+  return viewer ? { ...listed, OR: [{ visibility }, { userId: viewer.id }] } : publicReviewWhere;
+}
+
 export function presentPublicReview(
   review: Review & { user: { handle: string; displayName: string } },
 ) {
@@ -35,6 +42,7 @@ export function presentPublicReview(
     title: review.title,
     body: review.body,
     containsSpoilers: review.containsSpoilers,
+    visibility: review.visibility.toLowerCase(),
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };
@@ -44,7 +52,7 @@ export function presentPublicReview(
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async forSource(source: string, externalId: string, page: number) {
+  async forSource(source: string, externalId: string, page: number, viewer?: AuthenticatedUser) {
     const item = await this.prisma.catalogItem.findFirst({
       where: { sourceEntries: { some: { externalId, source: { key: source } } } },
       select: { id: true },
@@ -59,7 +67,7 @@ export class ReviewsService {
         results: [],
       };
     }
-    const where = { ...publicReviewWhere, catalogItemId: item.id };
+    const where = { ...readableReviewWhere(viewer), catalogItemId: item.id };
     const [rating, total, reviews] = await this.prisma.$transaction([
       this.prisma.review.aggregate({
         where: {

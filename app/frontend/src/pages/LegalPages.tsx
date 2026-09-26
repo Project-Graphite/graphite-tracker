@@ -68,9 +68,9 @@ export function PrivacyPage() {
       <section>
         <h2>Moderation</h2>
         <p>
-          The administrator can see every review with text, public or private, along with reports and
-          account names, handles and email addresses, to deal with abuse. Private profile sections are
-          not shown in the moderation tools.
+          The administrator can see every profile, profile section and review, public or private, along
+          with reports and account names, handles and email addresses, to deal with abuse. Private
+          profiles and reviews are shown to the administrator marked as private.
         </p>
       </section>
       <section>

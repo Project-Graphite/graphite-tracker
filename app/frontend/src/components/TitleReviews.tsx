@@ -92,7 +92,10 @@ export function TitleReviews({
   const auth = useAuth();
   const [page, setPage] = useState(1);
   const reviews = useResource<TitleReviewsPage>(
-    `/reviews?source=${encodeURIComponent(item.source)}&externalId=${encodeURIComponent(item.externalId)}&page=${page}`,
+    auth.ready
+      ? `/reviews?source=${encodeURIComponent(item.source)}&externalId=${encodeURIComponent(item.externalId)}&page=${page}`
+      : null,
+    Boolean(auth.user),
   );
   const itemId = entry?.item.id ?? reviews.data?.itemId ?? null;
   const summary = reviews.data?.rating;
