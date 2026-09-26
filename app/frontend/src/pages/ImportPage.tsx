@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { ListSkeleton } from '../components/Skeleton';
 import { importApps, importStateLabels, type ImportDetail, type ImportSummary } from '../imports';
 import { useResource } from '../useResource';
 
@@ -62,11 +63,11 @@ export function ImportPage() {
         {history.error ? (
           <p className="error-message mt-5">{history.error}</p>
         ) : !history.data ? (
-          <p className="mt-5 text-muted">Loading imports…</p>
+          <ListSkeleton label="Loading imports" rows={3} />
         ) : history.data.length === 0 ? (
           <p className="mt-5 text-muted">No imports in the last seven days.</p>
         ) : (
-          <ul className="m-0 p-0">
+          <ul className="fade-in m-0 p-0">
             {history.data.map((batch) => (
               <li className="flex list-none flex-wrap items-baseline justify-between gap-3 border-b border-line-soft py-3" key={batch.id}>
                 <Link className="rule-link" to={`/import/${batch.id}`}>

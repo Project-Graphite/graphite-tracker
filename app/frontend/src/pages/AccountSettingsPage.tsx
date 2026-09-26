@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { FormSkeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
 import type { Me } from './SettingsPage';
 
@@ -66,12 +67,12 @@ export function AccountSettingsPage() {
   }
 
   if (me.error) return <p className="error-message">{me.error}</p>;
-  if (!me.data) return <p className="text-muted">Loading settings…</p>;
+  if (!me.data) return <FormSkeleton fields={2} />;
   const current = me.data;
   const zones = [...new Set([current.timeZone, ...Intl.supportedValuesOf('timeZone')])];
 
   return (
-    <div className="grid max-w-3xl gap-12">
+    <div className="fade-in grid max-w-3xl gap-12">
       <Section description={`Signed in as ${current.email}. A new address takes effect once you open the link sent to it.`} title="Email">
         <form
           className="mt-5 grid gap-4 sm:grid-cols-2"

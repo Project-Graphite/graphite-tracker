@@ -141,7 +141,11 @@ export function CatalogCard({
         </Link>
       </h3>
       <p className="mono-sm mt-1 mb-3 text-faint">
-        {[item.releaseDate?.slice(0, 4), item.rating ? `${item.rating.toFixed(1)}/10` : null]
+        {[
+          item.releaseDate?.slice(0, 4),
+          item.rating ? `${item.rating.toFixed(1)}/10` : null,
+          item.adult ? '18+' : null,
+        ]
           .filter(Boolean)
           .join(' · ') || 'Date unknown'}
       </p>

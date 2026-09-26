@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { FormSkeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
 
 export interface Me {
@@ -10,6 +11,7 @@ export interface Me {
   displayName: string;
   bio: string | null;
   timeZone: string;
+  showAdultContent: boolean;
   privacy: Record<PrivacySetting, boolean>;
 }
 
@@ -29,10 +31,6 @@ const sections: Array<[Exclude<PrivacySetting, 'isPublic'>, string, string]> = [
   ['showReviews', 'Reviews', 'Your public reviews. New reviews start public when this is on.'],
 ];
 
-const tabClass = ({ isActive }: { isActive: boolean }) =>
-  `border-b-2 px-4 py-3 text-sm font-semibold whitespace-nowrap no-underline ${
-    isActive ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
-  }`;
 
 export function SettingsLayout() {
   return (
@@ -40,16 +38,16 @@ export function SettingsLayout() {
       <p className="eyebrow">Your account</p>
       <h1 className="page-title">Settings</h1>
       <nav aria-label="Settings" className="mt-7 flex gap-2 overflow-x-auto border-b border-line">
-        <NavLink className={tabClass} end to="/settings">
+        <NavLink className="tab-link" end to="/settings">
           Profile and privacy
         </NavLink>
-        <NavLink className={tabClass} to="/settings/account">
+        <NavLink className="tab-link" to="/settings/account">
           Account
         </NavLink>
-        <NavLink className={tabClass} to="/settings/notifications">
+        <NavLink className="tab-link" to="/settings/notifications">
           Notifications
         </NavLink>
-        <NavLink className={tabClass} to="/settings/sources">
+        <NavLink className="tab-link" to="/settings/sources">
           Sources
         </NavLink>
       </nav>
@@ -72,6 +70,7 @@ export function ProfileSettingsPage() {
     try {
       const next = await auth.request<Me>(path, { method: 'PATCH', body: JSON.stringify(body) });
       me.mutate(() => next);
+      auth.updateUser({ displayName: next.displayName, showAdultContent: next.showAdultContent });
       return true;
     } catch (reason) {
       setError(errorMessage(reason, 'Could not save your settings'));
@@ -91,11 +90,11 @@ export function ProfileSettingsPage() {
   }
 
   if (me.error) return <p className="error-message">{me.error}</p>;
-  if (!me.data) return <p className="text-muted">Loading settings…</p>;
+  if (!me.data) return <FormSkeleton fields={2} />;
   const { data } = me;
 
   return (
-    <div className="grid max-w-3xl gap-12">
+    <div className="fade-in grid max-w-3xl gap-12">
       {error && <p className="error-message m-0">{error}</p>}
       <section>
         <h2 className="m-0 text-xl font-medium">Profile</h2>
@@ -159,6 +158,28 @@ export function ProfileSettingsPage() {
             </label>
           ))}
         </fieldset>
+      </section>
+      <section>
+        <h2 className="m-0 text-xl font-medium">Content</h2>
+        <p className="mt-2 text-sm text-muted">
+          Adult titles stay out of search, discovery, imports and title pages until you turn this
+          on. Titles already in your library are kept either way.
+        </p>
+        <label className="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
+          <input
+            checked={data.showAdultContent}
+            className="mt-1"
+            onChange={(event) => void send('/me', { showAdultContent: event.target.checked })}
+            type="checkbox"
+          />
+          <span>
+            <span className="block font-medium">Show adult content</span>
+            <span className="text-sm text-muted">
+              Adult films, erotica and pornographic manga, and adult-only games, as labelled by
+              each source. Results marked 18+ come from this setting.
+            </span>
+          </span>
+        </label>
       </section>
     </div>
   );

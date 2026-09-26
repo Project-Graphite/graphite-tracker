@@ -1,7 +1,29 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 export const posterGridClass =
   'grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+
+function PosterImage({ posterUrl, title }: { posterUrl: string; title: string }) {
+  const image = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (image.current?.complete && image.current.naturalWidth > 0) setLoaded(true);
+  }, []);
+
+  return (
+    <img
+      alt={`Poster for ${title}`}
+      className={`h-full w-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      loading="lazy"
+      onLoad={() => setLoaded(true)}
+      ref={image}
+      referrerPolicy="no-referrer"
+      src={posterUrl}
+    />
+  );
+}
 
 export function Poster({
   className = '',
@@ -15,13 +37,7 @@ export function Poster({
   title: string;
 }) {
   const image = posterUrl ? (
-    <img
-      alt={`Poster for ${title}`}
-      className="h-full w-full object-cover"
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      src={posterUrl}
-    />
+    <PosterImage key={posterUrl} posterUrl={posterUrl} title={title} />
   ) : (
     <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
       {title}
@@ -31,7 +47,7 @@ export function Poster({
   return href ? (
     <Link
       aria-hidden="true"
-      className={`${frame} transition-colors hover:border-muted`}
+      className={`${frame} poster-link`}
       tabIndex={-1}
       to={href}
     >

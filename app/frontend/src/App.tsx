@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useParams, type Location } from '
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
+import { PageSkeleton } from './components/Skeleton';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { DiscoverPage } from './pages/DiscoverPage';
@@ -12,6 +13,7 @@ import { ImportPage } from './pages/ImportPage';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/LegalPages';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
 import { ProfilePage } from './pages/ProfilePage';
@@ -27,7 +29,7 @@ function Protected({ admin = false, children }: { admin?: boolean; children: Rea
   const auth = useAuth();
   const location = useLocation();
   if (!auth.ready) {
-    return <p className="text-muted">Loading your session…</p>;
+    return <PageSkeleton label="Loading your session" />;
   }
   if (!auth.user) {
     return <Navigate replace state={{ from: location }} to="/login" />;
@@ -45,7 +47,7 @@ function DiscoverRoute() {
   return validCategory && validSection ? (
     <DiscoverPage category={validCategory} section={validSection} />
   ) : (
-    <Navigate replace to="/discover/movie/recent" />
+    <NotFoundPage />
   );
 }
 
@@ -53,7 +55,7 @@ function SignedOutLogin() {
   const auth = useAuth();
   const location = useLocation();
   if (!auth.ready) {
-    return <p className="text-muted">Loading your session…</p>;
+    return <PageSkeleton label="Loading your session" />;
   }
   const from = (location.state as { from?: Location } | null)?.from;
   return auth.user ? <Navigate replace to={from ?? '/'} /> : <LoginPage />;
@@ -88,7 +90,7 @@ export function App() {
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="unsubscribe" element={<UnsubscribePage />} />
-        <Route path="*" element={<Navigate replace to="/" />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

@@ -9,6 +9,7 @@ import {
   type DiscoverCategory,
 } from '../catalog';
 import { CatalogCard } from '../components/CatalogCard';
+import { PosterRowSkeleton } from '../components/Skeleton';
 import { useLibraryStates } from '../useLibraryStates';
 import { useResource } from '../useResource';
 
@@ -59,11 +60,13 @@ function RecentRow({ category }: { category: DiscoverCategory }) {
       {error || library.error ? (
         <p className="error-message mt-5">{error || library.error}</p>
       ) : !items ? (
-        <p className="mt-5 text-muted">Loading recent titles…</p>
+        <div className="mt-5">
+          <PosterRowSkeleton label={`Loading recent ${categoryLabels[category]}`} />
+        </div>
       ) : items.length === 0 ? (
         <p className="mt-5 text-muted">No recent titles are available.</p>
       ) : (
-        <div className="relative mt-5">
+        <div className="fade-in relative mt-5">
           <div className="catalog-row" ref={row}>
             {items.map((item) => (
               <div className="snap-start" key={catalogRef(item)}>

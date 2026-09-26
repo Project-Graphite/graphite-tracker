@@ -16,6 +16,7 @@ interface User {
   handle: string;
   displayName: string;
   isAdmin: boolean;
+  showAdultContent: boolean;
 }
 
 interface Session {
@@ -38,6 +39,7 @@ interface AuthContextValue {
   logout(): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
   deleteAccount(password: string): Promise<void>;
+  updateUser(changes: Partial<Pick<User, 'displayName' | 'showAdultContent'>>): void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -148,6 +150,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteAccount: async (password) => {
         await request('/me', { method: 'DELETE', body: JSON.stringify({ password }) });
         applySession(undefined);
+      },
+      updateUser: (changes) => {
+        const active = current.current;
+        if (active) applySession({ ...active, user: { ...active.user, ...changes } });
       },
     }),
     [applySession, ready, request, session],

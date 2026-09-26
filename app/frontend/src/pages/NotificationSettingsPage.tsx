@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
+import { FormSkeleton } from '../components/Skeleton';
 import type { NotificationPreferences } from '../notifications';
 import { useResource } from '../useResource';
 
@@ -29,11 +30,11 @@ export function NotificationSettingsPage() {
   }
 
   if (preferences.error) return <p className="error-message">{preferences.error}</p>;
-  if (!preferences.data) return <p className="text-muted">Loading settings…</p>;
+  if (!preferences.data) return <FormSkeleton fields={1} />;
   const { cadence, categories, enabled, suspended } = preferences.data;
 
   return (
-    <div className="grid max-w-3xl gap-12">
+    <div className="fade-in grid max-w-3xl gap-12">
       {error && <p className="error-message m-0">{error}</p>}
       {suspended && (
         <p className="notice m-0">

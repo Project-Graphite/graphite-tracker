@@ -4,6 +4,7 @@ import { errorMessage, type Page } from '../api';
 import { useAuth } from '../auth';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
+import { ListSkeleton } from '../components/Skeleton';
 import { itemHref, reportReasons, type ItemSummary } from '../reviews';
 import { useResource, type Resource } from '../useResource';
 
@@ -90,14 +91,14 @@ function Listing<T>({
   pageHref: (page: number) => string;
 }) {
   if (resource.error) return <p className="error-message">{resource.error}</p>;
-  if (!resource.data) return <p className="text-muted">Loading…</p>;
+  if (!resource.data) return <ListSkeleton label="Loading" />;
   return resource.data.results.length === 0 ? (
     <EmptyState title="Nothing to show" />
   ) : (
-    <>
+    <div className="fade-in">
       <ul className="m-0 p-0">{children(resource.data.results)}</ul>
       <Pagination page={resource.data.page} pageHref={pageHref} totalPages={resource.data.totalPages} />
-    </>
+    </div>
   );
 }
 
@@ -168,9 +169,7 @@ export function AdminPage() {
         {(Object.entries(tabs) as Array<[Tab, string]>).map(([key, label]) => (
           <Link
             aria-current={key === tab ? 'page' : undefined}
-            className={`border-b-2 px-4 py-3 text-sm font-semibold whitespace-nowrap no-underline ${
-              key === tab ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
-            }`}
+            className="tab-link"
             key={key}
             to={`/admin?tab=${key}`}
           >

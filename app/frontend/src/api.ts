@@ -7,12 +7,33 @@ export class ApiError extends Error {
   }
 }
 
+export class OutageError extends ApiError {
+  constructor() {
+    super('Graphite Tracker cannot be reached right now', 503);
+  }
+}
+
 export interface Page<T> {
   page: number;
   totalPages: number;
   totalResults: number;
   results: T[];
 }
+
+const outageListeners = new Set<() => void>();
+
+export function onOutage(listener: () => void) {
+  outageListeners.add(listener);
+  return () => {
+    outageListeners.delete(listener);
+  };
+}
+
+function reportOutage() {
+  for (const listener of outageListeners) listener();
+}
+
+const gatewayStatuses = [500, 502, 503, 504];
 
 export function isAbortError(reason: unknown) {
   return reason instanceof DOMException && reason.name === 'AbortError';
@@ -27,19 +48,30 @@ export async function apiRequest<T>(
   init: RequestInit = {},
   accessToken?: string,
 ) {
-  const response = await fetch(`/api/v1${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...init.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: {
+        ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...init.headers,
+      },
+    });
+  } catch (reason) {
+    if (isAbortError(reason)) throw reason;
+    reportOutage();
+    throw new OutageError();
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string | string[];
     } | null;
+    if (!body?.message && gatewayStatuses.includes(response.status)) {
+      reportOutage();
+      throw new OutageError();
+    }
     const message = Array.isArray(body?.message)
       ? body.message.join(', ')
       : body?.message;

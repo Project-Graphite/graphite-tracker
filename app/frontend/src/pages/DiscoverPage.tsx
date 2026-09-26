@@ -17,6 +17,7 @@ import { Attribution } from '../components/Attribution';
 import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
+import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 
@@ -174,15 +175,7 @@ export function DiscoverPage({
       </nav>
       <nav aria-label="Discovery section" className="mt-5 flex gap-2 border-b border-line">
         {sections.map(({ id, label }) => (
-          <NavLink
-            className={({ isActive }) =>
-              `-mb-px border-b-2 px-4 py-3 text-sm font-semibold no-underline transition-colors ${
-                isActive ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
-              }`
-            }
-            key={id}
-            to={`/discover/${category}/${id}`}
-          >
+          <NavLink className="tab-link -mb-px" key={id} to={`/discover/${category}/${id}`}>
             {label}
           </NavLink>
         ))}
@@ -283,10 +276,15 @@ export function DiscoverPage({
           </EmptyState>
         </div>
       ) : results.loading || !sourcesReady ? (
-        <p className="mt-10 text-muted">Loading titles…</p>
+        <div className="mt-10">
+          <div className="mb-6 border-b border-line pb-4">
+            <Skeleton className="h-7 w-48" />
+          </div>
+          <PosterGridSkeleton />
+        </div>
       ) : (
         results.data && (
-          <section className="mt-10">
+          <section className="fade-in mt-10">
             {results.data.stale && (
               <p className="notice mb-5">
                 The source is temporarily unavailable. Showing the most recent cached result.
@@ -295,7 +293,7 @@ export function DiscoverPage({
             <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
               <h2 className="m-0 text-xl font-medium">
                 {section === 'search'
-                  ? `${countLabel(results.data.totalResults, 'result')} for “${query}”`
+                  ? `${results.data.totalResults === null ? 'Results' : countLabel(results.data.totalResults, 'result')} for “${query}”`
                   : section === 'recent'
                     ? 'Recently released'
                     : 'Popular now'}

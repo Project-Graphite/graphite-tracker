@@ -6,6 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LibraryCard } from '../components/LibraryCard';
 import { Pagination } from '../components/Pagination';
 import { posterGridClass } from '../components/Poster';
+import { ListSkeleton, PosterGridSkeleton, Skeleton } from '../components/Skeleton';
 import { libraryStateLabels, libraryStates, type LibraryEntry } from '../library';
 import { useResource } from '../useResource';
 
@@ -118,10 +119,17 @@ export function LibraryPage() {
       </div>
       {library.error && <p className="error-message mt-6">{library.error}</p>}
       {library.loading ? (
-        <p className="mt-9 text-muted">Loading your library…</p>
+        <div className="mt-9">
+          <Skeleton className="mb-5 h-3.5 w-20" />
+          {layout === 'grid' ? (
+            <PosterGridSkeleton label="Loading your library" />
+          ) : (
+            <ListSkeleton label="Loading your library" rows={8} />
+          )}
+        </div>
       ) : (
         library.data && (
-          <section className="mt-9">
+          <section className="fade-in mt-9">
             <p className="mono-sm mt-0 mb-5 text-faint">{countLabel(library.data.totalResults, 'title')}</p>
             {library.data.results.length === 0 ? (
               <EmptyState title={filtered ? 'Nothing matches these filters' : 'Your library is empty'}>

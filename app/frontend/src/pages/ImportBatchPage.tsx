@@ -6,6 +6,7 @@ import { categoryLabels } from '../catalog';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Poster } from '../components/Poster';
+import { ListSkeleton, PageSkeleton } from '../components/Skeleton';
 import {
   importApps,
   importStateLabels,
@@ -186,7 +187,7 @@ export function ImportBatchPage() {
   }
 
   if (batch.error) return <p className="error-message">{batch.error}</p>;
-  if (!batch.data) return <p className="text-muted">Loading import…</p>;
+  if (!batch.data) return <PageSkeleton label="Loading import" />;
   const detail = batch.data;
   const total = Object.values(detail.matches).reduce((sum, count) => sum + (count ?? 0), 0);
   const pending = detail.matches.pending ?? 0;
@@ -292,9 +293,7 @@ export function ImportBatchPage() {
             {tabs.filter((tab) => tab.match !== 'conflict' || detail.state === 'ready').map((tab) => (
               <button
                 aria-current={match === tab.match ? 'page' : undefined}
-                className={`border-0 border-b-2 bg-transparent px-4 py-3 text-sm font-semibold whitespace-nowrap ${
-                  match === tab.match ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
-                }`}
+                className="tab-link border-x-0 border-t-0 bg-transparent"
                 key={tab.match}
                 onClick={() => setSearchParams({ match: tab.match })}
                 type="button"
@@ -306,6 +305,7 @@ export function ImportBatchPage() {
               </button>
             ))}
           </nav>
+          {candidates.loading && <ListSkeleton label="Loading entries" />}
           {candidates.error && <p className="error-message mt-6">{candidates.error}</p>}
           {candidates.data &&
             (candidates.data.results.length === 0 ? (
@@ -313,7 +313,7 @@ export function ImportBatchPage() {
                 <EmptyState title="Nothing here" />
               </div>
             ) : (
-              <>
+              <div className="fade-in">
                 <ul className="m-0 p-0">
                   {candidates.data.results.map((candidate) => (
                     <CandidateRow
@@ -335,7 +335,7 @@ export function ImportBatchPage() {
                   pageHref={(next) => `/import/${id}?match=${match}&page=${next}`}
                   totalPages={candidates.data.totalPages}
                 />
-              </>
+              </div>
             ))}
         </>
       )}

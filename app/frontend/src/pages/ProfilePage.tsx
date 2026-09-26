@@ -7,6 +7,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Poster, posterGridClass } from '../components/Poster';
 import { ReviewCard } from '../components/ReviewCard';
+import { ListSkeleton, PageSkeleton, PosterGridSkeleton } from '../components/Skeleton';
 import {
   libraryStateLabels,
   libraryStates,
@@ -81,11 +82,13 @@ function SectionPage<T>({
   filter = '',
   handle,
   section,
+  skeleton = <ListSkeleton label="Loading" />,
 }: {
   children: (results: T[]) => ReactNode;
   filter?: string;
   handle: string;
   section: Section;
+  skeleton?: ReactNode;
 }) {
   const auth = useAuth();
   const [searchParams] = useSearchParams();
@@ -96,9 +99,9 @@ function SectionPage<T>({
   );
 
   if (list.error) return <p className="error-message mt-6">{list.error}</p>;
-  if (!list.data) return <p className="mt-6 text-muted">Loading…</p>;
+  if (!list.data) return <div className="mt-6">{skeleton}</div>;
   return (
-    <>
+    <div className="fade-in">
       {list.data.results.length === 0 ? (
         <EmptyState title="Nothing here yet" />
       ) : (
@@ -109,7 +112,7 @@ function SectionPage<T>({
         pageHref={(next) => `/users/${handle}?tab=${section}&page=${next}${filter}`}
         totalPages={list.data.totalPages}
       />
-    </>
+    </div>
   );
 }
 
@@ -170,6 +173,7 @@ function LibraryGrid({ handle }: { handle: string }) {
         handle={handle}
         key={state}
         section="library"
+        skeleton={<PosterGridSkeleton label="Loading library" />}
       >
         {(entries) => (
           <div className={posterGridClass}>
@@ -276,13 +280,15 @@ export function ProfilePage() {
   );
 
   if (profile.error) {
-    return (
+    return profile.status === 404 ? (
       <EmptyState title="Profile not found">
         <p className="mt-2 mb-0 text-muted">No account uses @{handle}.</p>
       </EmptyState>
+    ) : (
+      <p className="error-message">{profile.error}</p>
     );
   }
-  if (!profile.data) return <p className="text-muted">Loading profile…</p>;
+  if (!profile.data) return <PageSkeleton label="Loading profile" />;
   const { data } = profile;
   const visible = (Object.keys(sectionLabels) as Section[]).filter(
     (section) => data.sections?.[section],
@@ -326,9 +332,7 @@ export function ProfilePage() {
                 {visible.map((section) => (
                   <Link
                     aria-current={section === tab ? 'page' : undefined}
-                    className={`border-b-2 px-4 py-3 text-sm font-semibold whitespace-nowrap no-underline ${
-                      section === tab ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
-                    }`}
+                    className="tab-link"
                     key={section}
                     to={`/users/${data.handle}?tab=${section}`}
                   >

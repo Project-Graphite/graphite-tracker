@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
+import { Placeholder, Skeleton } from '../components/Skeleton';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 
@@ -30,13 +31,21 @@ export function SourcesPage() {
     return settings.error ? (
       <p className="error-message">{settings.error}</p>
     ) : (
-      <p className="text-muted">Loading sources…</p>
+      <Placeholder label="Loading sources">
+        <Skeleton className="h-3.5 w-full max-w-2xl" />
+        <Skeleton className="mt-2.5 h-3.5 w-2/5 max-w-md" />
+        <div aria-hidden="true" className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton className="h-44 rounded-xl" key={index} />
+          ))}
+        </div>
+      </Placeholder>
     );
   }
   const { data } = settings;
 
   return (
-    <div>
+    <div className="fade-in">
       <p className="m-0 max-w-3xl text-muted">
         Choose which approved connectors you use and which one to prefer. Changing a source never
         removes library progress.

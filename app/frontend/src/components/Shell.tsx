@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { OutageGate } from './Outage';
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `whitespace-nowrap no-underline transition-colors ${isActive ? 'text-ink' : 'text-muted hover:text-ink'}`;
@@ -72,7 +73,9 @@ export function Shell() {
         )}
       </header>
       <main className="shell flex-1 py-10 sm:py-14" id="content">
-        <Outlet />
+        <OutageGate>
+          <Outlet />
+        </OutageGate>
       </main>
       <footer className="shell mono-sm mt-16 flex flex-wrap justify-between gap-x-6 gap-y-3 border-t border-line-soft py-8 text-faint">
         <span>Track stories across every medium.</span>

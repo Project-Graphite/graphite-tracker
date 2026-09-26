@@ -9,6 +9,7 @@ import { EmptyState } from '../components/EmptyState';
 import { LibraryCard } from '../components/LibraryCard';
 import { Pagination } from '../components/Pagination';
 import { posterGridClass } from '../components/Poster';
+import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
 
@@ -29,7 +30,9 @@ function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
       {tracked.error ? (
         <p className="error-message mt-5">{tracked.error}</p>
       ) : !tracked.data ? (
-        <p className="mt-5 text-muted">Loading tracked games…</p>
+        <div className="mt-6">
+          <PosterGridSkeleton count={5} label="Loading tracked games" />
+        </div>
       ) : tracked.data.results.length === 0 ? (
         <div className="mt-5">
           <EmptyState title="No games tracked yet">
@@ -37,7 +40,7 @@ function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
           </EmptyState>
         </div>
       ) : (
-        <div className={`mt-6 ${posterGridClass}`}>
+        <div className={`fade-in mt-6 ${posterGridClass}`}>
           {tracked.data.results.map((entry) => (
             <LibraryCard
               entry={entry}
@@ -108,9 +111,16 @@ export function TrackGamesPage() {
         </button>
       </form>
       {results.error && <p className="error-message mt-6">{results.error}</p>}
-      {results.loading && <p className="mt-8 text-muted">Searching games…</p>}
+      {results.loading && (
+        <div className="mt-10">
+          <div className="mb-6 border-b border-line pb-4">
+            <Skeleton className="h-7 w-56" />
+          </div>
+          <PosterGridSkeleton label="Searching games" />
+        </div>
+      )}
       {results.data && (
-        <section className="mt-10">
+        <section className="fade-in mt-10">
           {results.data.stale && (
             <p className="notice mb-5">
               The game source is temporarily unavailable. Showing the most recent cached result.
@@ -118,7 +128,10 @@ export function TrackGamesPage() {
           )}
           <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
             <h2 className="m-0 text-xl font-medium">
-              {countLabel(results.data.totalResults, 'result')} for “{query}”
+              {results.data.totalResults === null
+                ? 'Results'
+                : countLabel(results.data.totalResults, 'result')}{' '}
+              for “{query}”
             </h2>
             <Attribution source={results.data} />
           </div>

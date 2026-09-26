@@ -50,6 +50,7 @@ export interface CatalogCandidate {
   tagline: string | null;
   rating: number | null;
   ratingCount: number;
+  adult: boolean;
   capabilities: CatalogCapabilities;
   episodeCount?: number | null;
   seasonCount?: number | null;
@@ -73,7 +74,8 @@ export interface Attribution {
 
 export type CatalogDetails = CatalogCandidate & Attribution;
 
-export type CatalogResponse = Page<CatalogCandidate> & Attribution;
+export type CatalogResponse = Omit<Page<CatalogCandidate>, 'totalResults'> &
+  Attribution & { totalResults: number | null };
 
 export interface ConnectorDescriptor {
   key: string;

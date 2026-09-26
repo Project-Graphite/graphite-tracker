@@ -10,8 +10,10 @@ import {
 } from '../catalog';
 import { Attribution } from '../components/Attribution';
 import { AddToListButton } from '../components/CatalogCard';
+import { EmptyState } from '../components/EmptyState';
 import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
+import { LinesSkeleton, TitleSkeleton } from '../components/Skeleton';
 import { TitleReviews } from '../components/TitleReviews';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
@@ -31,7 +33,7 @@ function LibraryPanel({
       <h2 className="m-0 text-lg font-medium">Your library</h2>
       <div className="mt-4">
         {!auth.ready || lookup.loading ? (
-          <p className="m-0 text-sm text-muted">Loading…</p>
+          <LinesSkeleton label="Loading your library entry" lines={2} />
         ) : !auth.user ? (
           <p className="m-0 text-sm text-muted">
             <Link className="rule-link" to="/login">Sign in</Link> to track this title.
@@ -118,11 +120,22 @@ export function TitleDetailsPage() {
     return (
       <div className="page-enter">
         {back}
-        <p className="error-message mt-6 max-w-2xl">{details.error}</p>
+        {details.status === 404 ? (
+          <div className="mt-6">
+            <EmptyState title="Title not found">
+              <p className="mt-2 mb-0 text-muted">
+                This title is not available from its source, or it is adult content hidden by your{' '}
+                <Link className="rule-link" to="/settings">content settings</Link>.
+              </p>
+            </EmptyState>
+          </div>
+        ) : (
+          <p className="error-message mt-6 max-w-2xl">{details.error}</p>
+        )}
       </div>
     );
   }
-  if (!item) return <p className="text-muted">Loading title…</p>;
+  if (!item) return <TitleSkeleton />;
 
   return (
     <article className="page-enter">
@@ -132,7 +145,7 @@ export function TitleDetailsPage() {
       )}
       {item.backdropUrl && (
         <div className="mt-6 aspect-[16/6] overflow-hidden rounded-2xl border border-line bg-line-soft">
-          <img alt="" className="h-full w-full object-cover" src={item.backdropUrl} />
+          <img alt="" className="fade-in h-full w-full object-cover" src={item.backdropUrl} />
         </div>
       )}
       <div className="mt-8 grid gap-x-8 gap-y-6 md:grid-cols-[14rem_1fr] md:grid-rows-[auto_1fr]">
@@ -140,6 +153,7 @@ export function TitleDetailsPage() {
         <header className="min-w-0 md:col-start-2 md:row-start-1">
           <p className="eyebrow">
             {categoryLabels[item.category]} · {item.releaseDate?.slice(0, 4) ?? 'date unknown'}
+            {item.adult && ' · 18+'}
           </p>
           <h1 className="page-title">{item.title}</h1>
           {item.originalTitle !== item.title && (

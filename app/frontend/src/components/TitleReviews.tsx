@@ -7,6 +7,7 @@ import type { OwnReview, TitleReviews as TitleReviewsPage } from '../reviews';
 import { useResource } from '../useResource';
 import { ReviewCard } from './ReviewCard';
 import { ReviewEditor } from './ReviewEditor';
+import { LinesSkeleton, ListSkeleton } from './Skeleton';
 
 const notInLibrary =
   'Add this title to your library and finish or drop it to rate and review it.';
@@ -31,7 +32,9 @@ function YourReview({
   const eligible = entry?.state === 'completed' || entry?.state === 'dropped';
 
   if (own.error) return <p className="error-message">{own.error}</p>;
-  if (review === undefined) return null;
+  if (review === undefined) {
+    return <LinesSkeleton className="max-w-sm" label="Loading your review" lines={1} />;
+  }
   if (!review && !eligible) {
     return (
       <p className="mono-sm m-0 text-faint">
@@ -123,12 +126,17 @@ export function TitleReviews({
           entry === null && <p className="mono-sm m-0 text-faint">{notInLibrary}</p>
         )}
       </div>
+      {reviews.loading && (
+        <div className="mt-4">
+          <ListSkeleton label="Loading reviews" rows={2} />
+        </div>
+      )}
       {reviews.error && <p className="error-message mt-5">{reviews.error}</p>}
       {reviews.data && reviews.data.results.length === 0 && (
         <p className="mt-6 text-muted">No public reviews yet.</p>
       )}
       {reviews.data && reviews.data.results.length > 0 && (
-        <div className="mt-4">
+        <div className="fade-in mt-4">
           {reviews.data.results.map((review) => (
             <ReviewCard key={review.id} review={review} />
           ))}
