@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
@@ -44,6 +44,15 @@ function SiteFooter() {
       </div>
     </footer>
   );
+}
+
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+  const page = new URLSearchParams(search).get('page');
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname, page]);
+  return null;
 }
 
 function MobileTabBar() {
@@ -107,6 +116,7 @@ export function Shell() {
       <InboxProvider>
         <FooterSourceProvider>
           <div className="flex min-h-screen flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
+            <ScrollToTop />
             <a className="skip-link" href="#content">
               skip to content
             </a>

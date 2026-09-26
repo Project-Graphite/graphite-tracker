@@ -51,6 +51,34 @@
   color: var(--color-ink);
   font-synthesis: none;
   scroll-padding-top: 5rem;
+  scrollbar-color: var(--color-line) var(--color-paper);
+  scrollbar-gutter: stable;
+}
+
+* {
+  scrollbar-color: var(--color-line) transparent;
+  scrollbar-width: thin;
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--color-line) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted);
+  }
 }
 
 body {
@@ -59,6 +87,7 @@ body {
   background: var(--color-paper);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @layer base {
@@ -84,6 +113,15 @@ body {
     resize: vertical;
     font: inherit;
     line-height: 1.55;
+    scrollbar-gutter: stable;
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6' stroke='%238b8b95' stroke-linecap='round' stroke-width='2'/%3E%3C/svg%3E");
+    background-position: right 0.875rem center;
+    background-repeat: no-repeat;
+    padding-right: 2.5rem;
   }
 
   input::placeholder {
@@ -267,14 +305,31 @@ body {
   }
 
   .tab-link {
-    border-bottom: 2px solid transparent;
+    position: relative;
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
     font-weight: 600;
     white-space: nowrap;
     color: var(--color-muted);
     text-decoration: none;
-    transition: color 160ms ease, border-color 160ms ease;
+    transition: color 160ms ease;
+  }
+
+  .tab-link::after,
+  .nav-link::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--color-ink);
+    content: '';
+    transform: scaleX(0);
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .tab-link::after {
+    bottom: 0;
   }
 
   .tab-link:hover {
@@ -283,8 +338,28 @@ body {
 
   .tab-link[aria-current='page'],
   .tab-link.active {
-    border-bottom-color: var(--color-ink);
     color: var(--color-ink);
+  }
+
+  .tab-link[aria-current='page']::after,
+  .tab-link.active::after,
+  .nav-link[aria-current='page']::after {
+    transform: scaleX(1);
+  }
+
+  .nav-link {
+    position: relative;
+    padding-block: 0.4rem;
+    transition: color 160ms ease;
+  }
+
+  .nav-link::after {
+    bottom: 0;
+    height: 1px;
+  }
+
+  .nav-link:hover::after {
+    transform: scaleX(0.35);
   }
 
   .poster-link {
@@ -415,6 +490,7 @@ body {
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0.5rem;
+    scrollbar-gutter: stable;
   }
 
   .year-option {
@@ -525,6 +601,7 @@ body {
     max-height: min(26rem, 60dvh);
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 
   .notification-row {
@@ -791,8 +868,34 @@ body {
   }
 
   .primary-button:active:not(:disabled),
-  .secondary-button:active:not(:disabled) {
-    transform: scale(0.97);
+  .secondary-button:active:not(:disabled),
+  .icon-button:active,
+  .avatar-button:active {
+    transform: scale(0.95);
+  }
+
+  .tab-bar-item svg {
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .tab-bar-item:active svg {
+    transform: scale(0.88);
+  }
+
+  .tab-bar-item[aria-current='page'] svg {
+    transform: translateY(-1px);
+  }
+
+  .count-badge {
+    animation: badge-pop 260ms cubic-bezier(0.2, 0.8, 0.2, 1.4) both;
+  }
+
+  .snackbar.snackbar-leaving {
+    animation: snackbar-leave 180ms ease-in both;
+  }
+
+  .field-error {
+    animation: fade-in 160ms ease-out backwards;
   }
 
   dialog[open] {
@@ -838,6 +941,19 @@ body {
   from {
     opacity: 0;
     transform: translateY(12px) scale(0.98);
+  }
+}
+
+@keyframes snackbar-leave {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes badge-pop {
+  from {
+    transform: scale(0.4);
   }
 }
 

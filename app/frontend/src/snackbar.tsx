@@ -24,16 +24,25 @@ const visibleMs = 6_000;
 
 function Snackbar({ onDismiss, snack }: { onDismiss: (id: number) => void; snack: Snack }) {
   const [paused, setPaused] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const leave = useCallback(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) onDismiss(snack.id);
+    else setLeaving(true);
+  }, [onDismiss, snack.id]);
 
   useEffect(() => {
-    if (paused) return;
-    const timer = window.setTimeout(() => onDismiss(snack.id), visibleMs);
+    if (paused || leaving) return;
+    const timer = window.setTimeout(leave, visibleMs);
     return () => window.clearTimeout(timer);
-  }, [onDismiss, paused, snack.id]);
+  }, [leave, leaving, paused]);
 
   return (
     <div
-      className="snackbar"
+      className={`snackbar ${leaving ? 'snackbar-leaving' : ''}`}
+      onAnimationEnd={(event) => {
+        if (leaving && event.target === event.currentTarget) onDismiss(snack.id);
+      }}
       onBlur={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onMouseEnter={() => setPaused(true)}
@@ -44,14 +53,14 @@ function Snackbar({ onDismiss, snack }: { onDismiss: (id: number) => void; snack
         {snack.detail && <p className="mono-sm m-0 mt-0.5 truncate text-faint">{snack.detail}</p>}
       </div>
       {snack.action && (
-        <Link className="rule-link mono-sm shrink-0" onClick={() => onDismiss(snack.id)} to={snack.action.to}>
+        <Link className="rule-link mono-sm shrink-0" onClick={leave} to={snack.action.to}>
           {snack.action.label}
         </Link>
       )}
       <button
         aria-label="Dismiss"
         className="text-button shrink-0 px-1 text-lg leading-none"
-        onClick={() => onDismiss(snack.id)}
+        onClick={leave}
         type="button"
       >
         ×
