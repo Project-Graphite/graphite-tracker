@@ -22,44 +22,44 @@ export class UpdateLibraryEntryDto {
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(1_000_000)
+  @IsInt({ message: 'Season must be a whole number.' })
+  @Min(0, { message: 'Season cannot be negative.' })
+  @Max(1_000_000, { message: 'Season is too large.' })
   progressSeason?: number | null;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(1_000_000)
+  @IsInt({ message: 'Episode must be a whole number.' })
+  @Min(0, { message: 'Episode cannot be negative.' })
+  @Max(1_000_000, { message: 'Episode is too large.' })
   progressEpisode?: number | null;
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(99_999_999.99)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Chapter can have up to two decimals.' })
+  @Min(0, { message: 'Chapter cannot be negative.' })
+  @Max(99_999_999.99, { message: 'Chapter is too large.' })
   progressChapter?: number | null;
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(99_999_999.99)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Volume can have up to two decimals.' })
+  @Min(0, { message: 'Volume cannot be negative.' })
+  @Max(99_999_999.99, { message: 'Volume is too large.' })
   progressVolume?: number | null;
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(99_999_999.99)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Hours played can have up to two decimals.' })
+  @Min(0, { message: 'Hours played cannot be negative.' })
+  @Max(99_999_999.99, { message: 'Hours played is too large.' })
   hoursPlayed?: number | null;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @IsInt({ message: 'Completion must be a whole number.' })
+  @Min(0, { message: 'Completion cannot be negative.' })
+  @Max(100, { message: 'Completion is too large.' })
   completionPercentage?: number | null;
 
   @IsOptionalNotNull()

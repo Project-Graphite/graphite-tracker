@@ -20,7 +20,7 @@ export class UpdateProfileDto {
   @IsOptionalNotNull()
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  @Length(1, 80)
+  @Length(1, 80, { message: 'Display names are 1 to 80 characters long.' })
   displayName?: string;
 
   @IsOptional()
@@ -28,13 +28,13 @@ export class UpdateProfileDto {
     typeof value === 'string' ? value.trim() || null : value,
   )
   @IsString()
-  @MaxLength(500)
+  @MaxLength(500, { message: 'Bios are at most 500 characters long.' })
   bio?: string | null;
 
   @IsOptionalNotNull()
   @IsString()
   @MaxLength(64)
-  @IsTimeZone()
+  @IsTimeZone({ message: 'Choose a time zone from the list.' })
   timeZone?: string;
 
   @IsOptionalNotNull()

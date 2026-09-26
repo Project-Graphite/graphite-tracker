@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseUUIDPipe,
   Post,
   Put,
   UseGuards,
@@ -16,6 +15,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RateLimit } from '../redis/rate-limit.guard';
 import { ReportReviewDto, SaveReviewDto } from './dto/review.dto';
 import { ReviewsService } from './reviews.service';
+import { UuidPipe } from '../validation/uuid.pipe';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -25,7 +25,7 @@ export class ReviewsController {
   @Get('items/:itemId/review')
   own(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @Param('itemId', UuidPipe) itemId: string,
   ) {
     return this.reviews.own(user.id, itemId);
   }
@@ -34,7 +34,7 @@ export class ReviewsController {
   @RateLimit('reviews', 30, 3_600)
   save(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @Param('itemId', UuidPipe) itemId: string,
     @Body() input: SaveReviewDto,
   ) {
     return this.reviews.save(user.id, itemId, input);
@@ -44,7 +44,7 @@ export class ReviewsController {
   @HttpCode(204)
   async remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @Param('itemId', UuidPipe) itemId: string,
   ) {
     await this.reviews.remove(user.id, itemId);
   }
@@ -53,7 +53,7 @@ export class ReviewsController {
   @RateLimit('reports', 20, 3_600)
   report(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: ReportReviewDto,
   ) {
     return this.reviews.report(user.id, id, input.reason);

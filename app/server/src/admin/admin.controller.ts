@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseUUIDPipe,
   Patch,
   Query,
   UseGuards,
@@ -28,6 +27,7 @@ import {
   SetUserRoleDto,
   UpdateSiteSettingsDto,
 } from './dto/admin.dto';
+import { UuidPipe } from '../validation/uuid.pipe';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -47,7 +47,7 @@ export class AdminController {
   @HttpCode(204)
   async resolveReport(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: ResolveReportDto,
   ) {
     await this.admin.resolveReport(user.id, id, input.resolution);
@@ -62,7 +62,7 @@ export class AdminController {
   @HttpCode(204)
   async setReviewHidden(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: SetReviewHiddenDto,
   ) {
     await this.admin.setReviewHidden(user.id, id, input.hidden);
@@ -82,7 +82,7 @@ export class AdminController {
   @HttpCode(204)
   async setUserActive(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: SetUserActiveDto,
   ) {
     await this.admin.setUserActive(user.id, id, input.active);
@@ -94,7 +94,7 @@ export class AdminController {
   @RateLimit('change-role', 10, 3_600)
   async setUserRole(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: SetUserRoleDto,
   ) {
     await this.auth.confirmPassword(user.id, input.password);

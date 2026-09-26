@@ -18,21 +18,21 @@ const trimmedOrNull = ({ value }: { value: unknown }) =>
 
 export class SaveReviewDto {
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(10)
+  @IsInt({ message: 'Ratings go from 1 to 10.' })
+  @Min(1, { message: 'Ratings go from 1 to 10.' })
+  @Max(10, { message: 'Ratings go from 1 to 10.' })
   rating?: number | null;
 
   @IsOptional()
   @Transform(trimmedOrNull)
   @IsString()
-  @MaxLength(200)
+  @MaxLength(200, { message: 'Review titles are at most 200 characters long.' })
   title?: string | null;
 
   @IsOptional()
   @Transform(trimmedOrNull)
   @IsString()
-  @MaxLength(10_000)
+  @MaxLength(10_000, { message: 'Reviews are at most 10,000 characters long.' })
   body?: string | null;
 
   @IsBoolean()

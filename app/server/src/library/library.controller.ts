@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -18,6 +17,7 @@ import { CreateLibraryEntryDto } from './dto/create-library-entry.dto';
 import { ListLibraryDto, LookupLibraryDto } from './dto/list-library.dto';
 import { UpdateLibraryEntryDto } from './dto/update-library-entry.dto';
 import { LibraryService } from './library.service';
+import { UuidPipe } from '../validation/uuid.pipe';
 
 @Controller('library')
 @UseGuards(JwtAuthGuard)
@@ -51,7 +51,7 @@ export class LibraryController {
   @Patch(':id')
   update(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() input: UpdateLibraryEntryDto,
   ) {
     return this.library.update(user.id, id, input);
@@ -61,7 +61,7 @@ export class LibraryController {
   @HttpCode(204)
   async remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', UuidPipe) id: string,
   ) {
     await this.library.remove(user.id, id);
   }
@@ -70,8 +70,8 @@ export class LibraryController {
   @HttpCode(204)
   async removeImportedSource(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Param('referenceId', ParseUUIDPipe) referenceId: string,
+    @Param('id', UuidPipe) id: string,
+    @Param('referenceId', UuidPipe) referenceId: string,
   ) {
     await this.library.removeImportedSource(user.id, id, referenceId);
   }

@@ -2,21 +2,31 @@ import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { TextField } from '../components/Field';
+import { required, useFormErrors } from '../validation';
 
 export function VerifyPage() {
   const auth = useAuth();
   const [parameters] = useSearchParams();
+  const form = useFormErrors();
   const [error, setError] = useState('');
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
-    const form = new FormData(event.currentTarget);
+    if (
+      !form.check(event.currentTarget, {
+        token: [required('Paste the token from the email, or open the link it contains.')],
+      })
+    ) {
+      return;
+    }
+    setBusy(true);
+    const values = new FormData(event.currentTarget);
     try {
-      await auth.verify(String(form.get('token')));
+      await auth.verify(String(values.get('token')).trim());
       setVerified(true);
     } catch (reason) {
       setError(errorMessage(reason, 'Verification failed'));
@@ -43,11 +53,13 @@ export function VerifyPage() {
     <section className="form-panel page-enter">
       <p className="eyebrow">One last step</p>
       <h1 className="page-title">Verify your email</h1>
-      <form className="mt-8 grid gap-5" onSubmit={submit}>
-        <label className="field-label">
-          Verification token
-          <input defaultValue={parameters.get('token') ?? ''} name="token" required />
-        </label>
+      <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
+        <TextField
+          defaultValue={parameters.get('token') ?? ''}
+          label="Verification token"
+          spellCheck={false}
+          {...form.field('token')}
+        />
         {error && <p className="error-message">{error}</p>}
         <button className="primary-button" disabled={busy} type="submit">
           {busy ? 'Verifying…' : 'Verify email'}

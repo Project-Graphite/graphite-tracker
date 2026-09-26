@@ -75,7 +75,7 @@ export async function apiRequest<T>(
     const message = Array.isArray(body?.message)
       ? body.message.join(', ')
       : body?.message;
-    throw new ApiError(message ?? `Request failed with ${response.status}`, response.status);
+    throw new ApiError(message ?? `Something went wrong (error ${response.status}). Try again.`, response.status);
   }
   const text = await response.text();
   return (text ? JSON.parse(text) : null) as T;

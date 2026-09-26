@@ -2,26 +2,47 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { TextField } from '../components/Field';
 import { ResendVerification } from '../components/ResendVerification';
+import { atLeast, atMost, emailAddress, password, required, useFormErrors } from '../validation';
 
 export function RegisterPage() {
   const auth = useAuth();
+  const form = useFormErrors();
   const [error, setError] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get('email')).trim();
+    if (
+      !form.check(event.currentTarget, {
+        displayName: [required('Enter a display name.'), atMost(80, 'Use at most 80 characters.')],
+        handle: [
+          required('Choose a handle.'),
+          atLeast(3, 'Use at least 3 characters.'),
+          atMost(32, 'Use at most 32 characters.'),
+          (value) =>
+            /^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$/.test(value.trim().toLowerCase())
+              ? undefined
+              : 'Use letters, numbers, - and _, starting and ending with a letter or number.',
+        ],
+        email: [required('Enter your email address.'), emailAddress],
+        password,
+      })
+    ) {
+      return;
+    }
+    setBusy(true);
+    const values = new FormData(event.currentTarget);
+    const email = String(values.get('email')).trim();
     try {
       await auth.register({
         email,
-        handle: String(form.get('handle')),
-        displayName: String(form.get('displayName')),
-        password: String(form.get('password')),
+        handle: String(values.get('handle')).trim().toLowerCase(),
+        displayName: String(values.get('displayName')),
+        password: String(values.get('password')),
       });
       setCreatedEmail(email);
     } catch (reason) {
@@ -49,23 +70,24 @@ export function RegisterPage() {
     <section className="form-panel page-enter">
       <p className="eyebrow">Start a library</p>
       <h1 className="page-title">Create your account</h1>
-      <form className="mt-8 grid gap-5" onSubmit={submit}>
-        <label className="field-label">
-          Display name
-          <input autoComplete="name" maxLength={80} name="displayName" required />
-        </label>
-        <label className="field-label">
-          Handle
-          <input autoCapitalize="none" maxLength={32} minLength={3} name="handle" required />
-        </label>
-        <label className="field-label">
-          Email
-          <input autoComplete="email" name="email" required type="email" />
-        </label>
-        <label className="field-label">
-          Password
-          <input autoComplete="new-password" minLength={12} name="password" required type="password" />
-        </label>
+      <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
+        <TextField autoComplete="name" label="Display name" maxLength={80} {...form.field('displayName')} />
+        <TextField
+          autoCapitalize="none"
+          hint="Your profile address. It cannot be changed later."
+          label="Handle"
+          maxLength={32}
+          spellCheck={false}
+          {...form.field('handle')}
+        />
+        <TextField autoComplete="email" inputMode="email" label="Email" type="email" {...form.field('email')} />
+        <TextField
+          autoComplete="new-password"
+          hint="At least 12 characters."
+          label="Password"
+          type="password"
+          {...form.field('password')}
+        />
         {error && <p className="error-message">{error}</p>}
         <button className="primary-button" disabled={busy} type="submit">
           {busy ? 'Creating…' : 'Create account'}

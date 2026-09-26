@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { reviewBodyLimit, type OwnReview } from '../reviews';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ReviewCard } from './ReviewCard';
 
 export function ReviewEditor({
@@ -26,6 +27,7 @@ export function ReviewEditor({
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   async function run(action: () => Promise<void>, fallback: string) {
     setBusy(true);
@@ -51,16 +53,9 @@ export function ReviewEditor({
     }, 'Could not save your review');
   }
 
-  function remove() {
-    if (!window.confirm('Delete your rating and review for this title?')) return;
-    void run(async () => {
-      await auth.request(`/items/${itemId}/review`, { method: 'DELETE' });
-      onSaved(null);
-    }, 'Could not delete your review');
-  }
 
   return (
-    <form className="grid gap-5" onSubmit={save}>
+    <form className="grid gap-5" noValidate onSubmit={save}>
       <fieldset className="m-0 border-0 p-0">
         <legend className="field-label mb-2">Rating</legend>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -160,11 +155,25 @@ export function ReviewEditor({
           Cancel
         </button>
         {review && !review.hidden && (
-          <button className="text-button ml-auto text-sm" disabled={busy} onClick={remove} type="button">
+          <button className="text-button ml-auto text-sm" disabled={busy} onClick={() => setDeleting(true)} type="button">
             Delete review
           </button>
         )}
       </div>
+      {deleting && (
+        <ConfirmDialog
+          confirmLabel="Delete"
+          eyebrow="Your review"
+          onClose={() => setDeleting(false)}
+          onConfirm={async () => {
+            await auth.request(`/items/${itemId}/review`, { method: 'DELETE' });
+            onSaved(null);
+          }}
+          title="Delete your rating and review?"
+        >
+          <p className="m-0">They are removed from this title, your profile and the site average.</p>
+        </ConfirmDialog>
+      )}
     </form>
   );
 }

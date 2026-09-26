@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
@@ -11,43 +11,63 @@ import {
 } from '../library';
 import type { NotificationPreferences } from '../notifications';
 import { useResource } from '../useResource';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type EntryUpdate = Record<string, unknown>;
 
+function progressProblem(text: string, label: string, max: number | null | undefined, decimals: boolean) {
+  const value = Number(text);
+  if (!/^\d*[.,]?\d*$/.test(text) || Number.isNaN(value)) return `${label} must be a number.`;
+  if (!decimals && !Number.isInteger(value)) return `${label} must be a whole number.`;
+  if (decimals && Math.round(value * 100) !== value * 100) return `${label} can have up to two decimals.`;
+  if (max !== null && max !== undefined && value > max) return `${label} can be at most ${max}.`;
+  return '';
+}
+
 function NumberField({
+  decimals = false,
   label,
   max,
   name,
   onCommit,
-  step,
   value,
 }: {
+  decimals?: boolean;
   label: string;
   max?: number | null;
   name: string;
   onCommit: (update: EntryUpdate) => void;
-  step?: string;
   value: number | null;
 }) {
+  const id = useId();
+  const [error, setError] = useState('');
   return (
     <label className="field-label">
       {label}
       <input
+        aria-describedby={error ? `${id}-error` : undefined}
+        aria-invalid={error ? true : undefined}
         defaultValue={value ?? ''}
-        inputMode="decimal"
+        inputMode={decimals ? 'decimal' : 'numeric'}
         key={`${name}:${value}`}
-        max={max ?? undefined}
-        min="0"
         onBlur={(event) => {
-          const next = event.target.value === '' ? null : Number(event.target.value);
+          const text = event.target.value.trim().replace(',', '.');
+          const problem = text === '' ? '' : progressProblem(text, label, max, decimals);
+          setError(problem);
+          if (problem) return;
+          const next = text === '' ? null : Number(text);
           if (next !== value) onCommit({ [name]: next });
         }}
+        onInput={() => setError('')}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur();
         }}
-        step={step}
-        type="number"
       />
+      {error && (
+        <span className="field-error" id={`${id}-error`}>
+          {error}
+        </span>
+      )}
     </label>
   );
 }
@@ -73,13 +93,13 @@ function ProgressFields({
         <NumberField label="Episode" max={metadata.episodeCount} name="progressEpisode" onCommit={onUpdate} value={entry.progress.episode} />
       )}
       {units.includes('chapter') && (
-        <NumberField label="Chapter" max={metadata.chapterCount} name="progressChapter" onCommit={onUpdate} step="0.01" value={entry.progress.chapter} />
+        <NumberField decimals label="Chapter" max={metadata.chapterCount} name="progressChapter" onCommit={onUpdate} value={entry.progress.chapter} />
       )}
       {units.includes('volume') && (
-        <NumberField label="Volume" max={metadata.volumeCount} name="progressVolume" onCommit={onUpdate} step="0.01" value={entry.progress.volume} />
+        <NumberField decimals label="Volume" max={metadata.volumeCount} name="progressVolume" onCommit={onUpdate} value={entry.progress.volume} />
       )}
       {units.includes('hours') && (
-        <NumberField label="Hours played" name="hoursPlayed" onCommit={onUpdate} step="0.25" value={entry.progress.hours} />
+        <NumberField decimals label="Hours played" name="hoursPlayed" onCommit={onUpdate} value={entry.progress.hours} />
       )}
       {units.includes('percentage') && (
         <NumberField label="Completion %" max={100} name="completionPercentage" onCommit={onUpdate} value={entry.progress.percentage} />
@@ -127,6 +147,7 @@ export function LibraryEntryEditor({
   const auth = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [removing, setRemoving] = useState(false);
   const unavailableSources = entry.item.sources.filter((source) => !source.active);
   const finished = entry.state === 'completed' || entry.state === 'dropped';
   const needsPlatform =
@@ -174,13 +195,6 @@ export function LibraryEntryEditor({
       });
     }, 'Could not remove this source');
 
-  const remove = () => {
-    if (!window.confirm(`Remove ${entry.item.title} from your library?`)) return;
-    void send(async () => {
-      await auth.request(`/library/${entry.id}`, { method: 'DELETE' });
-      onRemove();
-    }, 'Could not remove this title');
-  };
 
   return (
     <div className="@container grid gap-5">
@@ -295,10 +309,27 @@ export function LibraryEntryEditor({
       )}
       {error && <p className="error-message m-0">{error}</p>}
       <div className="border-t border-line pt-4">
-        <button className="text-button text-sm" disabled={busy} onClick={remove} type="button">
+        <button className="text-button text-sm" disabled={busy} onClick={() => setRemoving(true)} type="button">
           Remove from library
         </button>
       </div>
+      {removing && (
+        <ConfirmDialog
+          confirmLabel="Remove"
+          eyebrow="Library"
+          onClose={() => setRemoving(false)}
+          onConfirm={async () => {
+            await auth.request(`/library/${entry.id}`, { method: 'DELETE' });
+            onRemove();
+          }}
+          title={`Remove ${entry.item.title}?`}
+        >
+          <p className="m-0">
+            Its list, progress and notification choices go with it. Your rating and review stay on the
+            title.
+          </p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

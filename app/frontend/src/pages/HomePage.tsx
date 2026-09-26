@@ -8,6 +8,7 @@ import {
 import { useCatalogSearch } from '../catalogSearch';
 import { CatalogRow } from '../components/CatalogRow';
 import { useResource } from '../useResource';
+import { searchQuery, useFormErrors } from '../validation';
 
 function RecentRow({ category }: { category: DiscoverCategory }) {
   const { data, error } = useResource<CatalogResponse>(`/catalog/${category}/recent?page=1`);
@@ -25,9 +26,11 @@ function RecentRow({ category }: { category: DiscoverCategory }) {
 
 export function HomePage() {
   const search = useCatalogSearch();
+  const form = useFormErrors();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.check(event.currentTarget, { query: searchQuery })) return;
     const query = String(new FormData(event.currentTarget).get('query')).trim();
     void search.submit(query, (value) => `/search?q=${encodeURIComponent(value)}`);
   }
@@ -40,19 +43,24 @@ export function HomePage() {
         <p className="mt-5 max-w-2xl text-lg text-muted">
           Movies, TV, anime, manga, manhwa and games in one library, with your progress in each.
         </p>
-        <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" onSubmit={submit} role="search">
+        <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" noValidate onSubmit={submit} role="search">
           <input
+            aria-describedby={form.errors.query ? 'search-error' : undefined}
+            aria-invalid={form.errors.query ? true : undefined}
             aria-label="Title"
-            minLength={2}
             name="query"
+            onInput={form.field('query').onInput}
             placeholder="Search every medium, or paste a TMDB, MangaDex, IGDB or RAWG link"
-            required
             type="search"
           />
           <button className="primary-button" disabled={search.opening} type="submit">
             {search.opening ? 'Opening…' : 'Search'}
           </button>
-          {search.error && <p className="error-message m-0 sm:col-span-2">{search.error}</p>}
+          {(form.errors.query || search.error) && (
+            <p className="error-message m-0 sm:col-span-2" id="search-error">
+              {form.errors.query || search.error}
+            </p>
+          )}
         </form>
       </section>
       {discoverCategories.map((category) => (

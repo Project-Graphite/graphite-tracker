@@ -11,6 +11,7 @@ import { useCatalogSearch } from '../catalogSearch';
 import { CatalogRow } from '../components/CatalogRow';
 import { EmptyState } from '../components/EmptyState';
 import { useResource } from '../useResource';
+import { searchQuery, useFormErrors } from '../validation';
 
 function CategoryResults({ category, query }: { category: CatalogCategory; query: string }) {
   const results = useResource<CatalogResponse>(
@@ -40,11 +41,13 @@ function CategoryResults({ category, query }: { category: CatalogCategory; query
 
 export function SearchPage() {
   const search = useCatalogSearch();
+  const form = useFormErrors();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.check(event.currentTarget, { query: searchQuery })) return;
     const next = String(new FormData(event.currentTarget).get('query')).trim();
     void search.submit(next, (value) => `/search?q=${encodeURIComponent(value)}`);
   }
@@ -53,20 +56,25 @@ export function SearchPage() {
     <div className="page-enter">
       <p className="eyebrow">Unified catalogue</p>
       <h1 className="page-title">{query.length >= 2 ? `Results for “${query}”` : 'Search'}</h1>
-      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={submit} role="search">
+      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} noValidate onSubmit={submit} role="search">
         <input
+          aria-describedby={form.errors.query ? 'search-error' : undefined}
+          aria-invalid={form.errors.query ? true : undefined}
           aria-label="Title"
           defaultValue={query}
-          minLength={2}
           name="query"
+          onInput={form.field('query').onInput}
           placeholder="Search every medium, or paste a TMDB, MangaDex, IGDB or RAWG link"
-          required
           type="search"
         />
         <button className="primary-button" disabled={search.opening} type="submit">
           {search.opening ? 'Opening…' : 'Search'}
         </button>
-        {search.error && <p className="error-message m-0 sm:col-span-2">{search.error}</p>}
+        {(form.errors.query || search.error) && (
+          <p className="error-message m-0 sm:col-span-2" id="search-error">
+            {form.errors.query || search.error}
+          </p>
+        )}
       </form>
       {query.length >= 2 ? (
         catalogCategories.map((category) => (

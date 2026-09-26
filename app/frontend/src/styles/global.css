@@ -8,6 +8,7 @@
   --color-ink: #e8e8ea;
   --color-muted: #8b8b95;
   --color-faint: #7d7d87;
+  --color-danger: #f2a09a;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
 }
@@ -87,6 +88,27 @@ body {
 
   input::placeholder {
     color: var(--color-faint);
+  }
+
+  input[aria-invalid='true'],
+  textarea[aria-invalid='true'],
+  .file-picker[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    appearance: none;
+  }
+
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+  }
+
+  input[type='number'] {
+    appearance: textfield;
   }
 }
 
@@ -200,7 +222,44 @@ body {
   }
 
   .error-message {
+    border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-line));
+    border-left: 3px solid var(--color-danger);
     color: var(--color-ink);
+  }
+
+  .field-error,
+  .field-hint {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .field-error {
+    color: var(--color-danger);
+  }
+
+  .field-hint {
+    color: var(--color-faint);
+  }
+
+  .file-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    padding: 0.4rem 0.875rem 0.4rem 0.4rem;
+    cursor: pointer;
+    transition: border-color 160ms ease;
+  }
+
+  .file-picker:hover {
+    border-color: var(--color-muted);
+  }
+
+  .file-picker:focus-within {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
   }
 
   .notice {

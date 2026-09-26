@@ -1,16 +1,22 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { apiRequest, errorMessage } from '../api';
+import { TextField } from '../components/Field';
+import { emailAddress, password, required, useFormErrors } from '../validation';
 
 export function ForgotPasswordPage() {
+  const form = useFormErrors();
   const [sentTo, setSentTo] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
+    if (!form.check(event.currentTarget, { email: [required('Enter your email address.'), emailAddress] })) {
+      return;
+    }
+    setBusy(true);
     const email = String(new FormData(event.currentTarget).get('email')).trim();
     try {
       await apiRequest('/auth/forgot-password', {
@@ -34,11 +40,8 @@ export function ForgotPasswordPage() {
           If an account uses {sentTo}, a reset link is on its way. It works for one hour.
         </p>
       ) : (
-        <form className="mt-8 grid gap-5" onSubmit={submit}>
-          <label className="field-label">
-            Email
-            <input autoComplete="email" name="email" required type="email" />
-          </label>
+        <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
+          <TextField autoComplete="email" inputMode="email" label="Email" type="email" {...form.field('email')} />
           {error && <p className="error-message">{error}</p>}
           <button className="primary-button" disabled={busy} type="submit">
             {busy ? 'Sending…' : 'Send reset link'}
@@ -54,14 +57,16 @@ export function ForgotPasswordPage() {
 
 export function ResetPasswordPage() {
   const [parameters] = useSearchParams();
+  const form = useFormErrors();
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
+    if (!form.check(event.currentTarget, { password })) return;
+    setBusy(true);
     try {
       await apiRequest('/auth/reset-password', {
         method: 'POST',
@@ -93,11 +98,14 @@ export function ResetPasswordPage() {
     <section className="form-panel page-enter">
       <p className="eyebrow">Account help</p>
       <h1 className="page-title">Choose a new password</h1>
-      <form className="mt-8 grid gap-5" onSubmit={submit}>
-        <label className="field-label">
-          New password
-          <input autoComplete="new-password" maxLength={128} minLength={12} name="password" required type="password" />
-        </label>
+      <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
+        <TextField
+          autoComplete="new-password"
+          hint="At least 12 characters."
+          label="New password"
+          type="password"
+          {...form.field('password')}
+        />
         {error && (
           <p className="error-message">
             {error} <Link className="rule-link" to="/forgot-password">Request a new link</Link>

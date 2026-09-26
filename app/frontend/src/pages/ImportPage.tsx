@@ -12,9 +12,20 @@ export function ImportPage() {
   const history = useResource<ImportSummary[]>('/imports', true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [file, setFile] = useState<File>();
+  const [fileError, setFileError] = useState('');
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const problem = !file
+      ? 'Choose a .tachibk or .proto.gz backup first.'
+      : !/\.(tachibk|gz)$/i.test(file.name)
+        ? 'Choose a .tachibk or .proto.gz file. Other files cannot be read.'
+        : file.size > 50 * 1024 * 1024
+          ? 'Backups can be up to 50 MB.'
+          : '';
+    setFileError(problem);
+    if (problem) return;
     setBusy(true);
     setError('');
     try {
@@ -48,12 +59,38 @@ export function ImportPage() {
           soon as it has been read.
         </p>
       </div>
-      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" onSubmit={(event) => void upload(event)}>
-        <label className="field-label">
-          Backup file
-          <input accept=".tachibk,.gz,application/gzip" name="file" required type="file" />
-        </label>
-        <button className="primary-button self-end" disabled={busy} type="submit">
+      <form
+        className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto] sm:items-start"
+        noValidate
+        onSubmit={(event) => void upload(event)}
+      >
+        <div className="field-label">
+          <span id="backup-label">Backup file</span>
+          <label className="file-picker" aria-invalid={fileError ? true : undefined}>
+            <input
+              accept=".tachibk,.gz,application/gzip"
+              aria-describedby={fileError ? 'backup-error' : undefined}
+              aria-labelledby="backup-label"
+              className="sr-only"
+              name="file"
+              onChange={(event) => {
+                setFile(event.target.files?.[0]);
+                setFileError('');
+              }}
+              type="file"
+            />
+            <span className="secondary-button shrink-0 px-3 py-2 text-sm">Choose file</span>
+            <span className={`min-w-0 truncate text-sm ${file ? 'text-ink' : 'text-faint'}`}>
+              {file?.name ?? 'No file chosen'}
+            </span>
+          </label>
+          {fileError && (
+            <span className="field-error" id="backup-error">
+              {fileError}
+            </span>
+          )}
+        </div>
+        <button className="primary-button sm:mt-6" disabled={busy} type="submit">
           {busy ? 'Uploading…' : 'Upload'}
         </button>
         {error && <p className="error-message m-0 sm:col-span-2">{error}</p>}

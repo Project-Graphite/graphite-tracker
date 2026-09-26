@@ -4,6 +4,7 @@ import { errorMessage, type Page } from '../api';
 import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import { categoryLabels } from '../catalog';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Poster } from '../components/Poster';
@@ -144,6 +145,7 @@ export function ImportBatchPage() {
   const [policy, setPolicy] = useState<ConflictPolicy>('add_missing');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const batch = useResource<ImportDetail>(`/imports/${id}`, true);
   const state = batch.data?.state;
   const working = state === 'parsing' || state === 'matching' || state === 'applying';
@@ -183,15 +185,6 @@ export function ImportBatchPage() {
     }
   }
 
-  async function remove() {
-    if (!window.confirm('Delete this import review? Your library is not changed.')) return;
-    try {
-      await auth.request(`/imports/${id}`, { method: 'DELETE' });
-      navigate('/import');
-    } catch (reason) {
-      setError(errorMessage(reason, 'Could not delete this import'));
-    }
-  }
 
   if (batch.error) return <p className="error-message">{batch.error}</p>;
   if (!batch.data) return <PageSkeleton label="Loading import" />;
@@ -347,9 +340,23 @@ export function ImportBatchPage() {
         </>
       )}
       {!working && (
-        <button className="text-button mt-10 text-sm" onClick={() => void remove()} type="button">
+        <button className="text-button mt-10 text-sm" onClick={() => setDeleting(true)} type="button">
           Delete this import review
         </button>
+      )}
+      {deleting && (
+        <ConfirmDialog
+          confirmLabel="Delete"
+          eyebrow="Library import"
+          onClose={() => setDeleting(false)}
+          onConfirm={async () => {
+            await auth.request(`/imports/${id}`, { method: 'DELETE' });
+            navigate('/import');
+          }}
+          title="Delete this import review?"
+        >
+          <p className="m-0">Your library is not changed. You can upload the backup again later.</p>
+        </ConfirmDialog>
       )}
     </div>
   );

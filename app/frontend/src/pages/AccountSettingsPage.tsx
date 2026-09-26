@@ -1,9 +1,12 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TextField } from '../components/Field';
 import { FormSkeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
+import { emailAddress, password as newPassword, required, useFormErrors } from '../validation';
 import type { Me } from './SettingsPage';
 
 function Section({ children, description, title }: { children: ReactNode; description: string; title: string }) {
@@ -50,13 +53,12 @@ export function AccountSettingsPage() {
   const password = useAction();
   const timeZone = useAction();
   const data = useAction();
-  const removal = useAction();
+  const emailForm = useFormErrors();
+  const passwordForm = useFormErrors();
+  const removalForm = useFormErrors();
+  const [removingWith, setRemovingWith] = useState<string>();
   const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  function formValues(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    return new FormData(event.currentTarget);
-  }
 
   async function saveTimeZone(value: string) {
     await timeZone.run(async () => {
@@ -76,9 +78,19 @@ export function AccountSettingsPage() {
       <Section description={`Signed in as ${current.email}. A new address takes effect once you open the link sent to it.`} title="Email">
         <form
           className="mt-5 grid gap-4 sm:grid-cols-2"
+          noValidate
           onSubmit={(event) => {
-            const form = formValues(event);
+            event.preventDefault();
             const target = event.currentTarget;
+            if (
+              !emailForm.check(target, {
+                email: [required('Enter the new email address.'), emailAddress],
+                password: [required('Enter your current password.')],
+              })
+            ) {
+              return;
+            }
+            const form = new FormData(target);
             const next = String(form.get('email')).trim();
             void email
               .run(async () => {
@@ -91,14 +103,19 @@ export function AccountSettingsPage() {
               .then((changed) => changed && target.reset());
           }}
         >
-          <label className="field-label">
-            New email
-            <input autoComplete="email" name="email" required type="email" />
-          </label>
-          <label className="field-label">
-            Current password
-            <input autoComplete="current-password" name="password" required type="password" />
-          </label>
+          <TextField
+            autoComplete="email"
+            inputMode="email"
+            label="New email"
+            type="email"
+            {...emailForm.field('email')}
+          />
+          <TextField
+            autoComplete="current-password"
+            label="Current password"
+            type="password"
+            {...emailForm.field('password')}
+          />
           <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
             <button className="primary-button" disabled={email.busy} type="submit">
               Change email
@@ -110,9 +127,19 @@ export function AccountSettingsPage() {
       <Section description="Changing it signs out every other device." title="Password">
         <form
           className="mt-5 grid gap-4 sm:grid-cols-2"
+          noValidate
           onSubmit={(event) => {
-            const form = formValues(event);
+            event.preventDefault();
             const target = event.currentTarget;
+            if (
+              !passwordForm.check(target, {
+                currentPassword: [required('Enter your current password.')],
+                newPassword,
+              })
+            ) {
+              return;
+            }
+            const form = new FormData(target);
             void password
               .run(async () => {
                 await auth.changePassword(String(form.get('currentPassword')), String(form.get('newPassword')));
@@ -121,14 +148,19 @@ export function AccountSettingsPage() {
               .then((changed) => changed && target.reset());
           }}
         >
-          <label className="field-label">
-            Current password
-            <input autoComplete="current-password" name="currentPassword" required type="password" />
-          </label>
-          <label className="field-label">
-            New password
-            <input autoComplete="new-password" maxLength={128} minLength={12} name="newPassword" required type="password" />
-          </label>
+          <TextField
+            autoComplete="current-password"
+            label="Current password"
+            type="password"
+            {...passwordForm.field('currentPassword')}
+          />
+          <TextField
+            autoComplete="new-password"
+            hint="At least 12 characters."
+            label="New password"
+            type="password"
+            {...passwordForm.field('newPassword')}
+          />
           <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
             <button className="primary-button" disabled={password.busy} type="submit">
               Change password
@@ -196,27 +228,43 @@ export function AccountSettingsPage() {
         title="Delete account"
       >
         <form
-          className="mt-5 flex flex-wrap items-end gap-4"
+          className="mt-5 flex flex-wrap items-start gap-4"
+          noValidate
           onSubmit={(event) => {
-            const form = formValues(event);
-            if (!window.confirm('Delete your account and everything in it? This cannot be undone.')) return;
-            void removal
-              .run(async () => {
-                await auth.deleteAccount(String(form.get('password')));
-                return 'Deleted.';
-              }, 'Could not delete the account')
-              .then((deleted) => deleted && navigate('/'));
+            event.preventDefault();
+            const target = event.currentTarget;
+            if (!removalForm.check(target, { password: [required('Enter your current password.')] })) return;
+            setRemovingWith(String(new FormData(target).get('password')));
           }}
         >
-          <label className="field-label min-w-64">
-            Current password
-            <input autoComplete="current-password" name="password" required type="password" />
-          </label>
-          <button className="secondary-button" disabled={removal.busy} type="submit">
+          <TextField
+            autoComplete="current-password"
+            className="min-w-64"
+            label="Current password"
+            type="password"
+            {...removalForm.field('password')}
+          />
+          <button className="secondary-button mt-6" type="submit">
             Delete account
           </button>
-          {removal.status}
         </form>
+        {removingWith !== undefined && (
+          <ConfirmDialog
+            confirmLabel="Delete my account"
+            eyebrow="Delete account"
+            onClose={() => setRemovingWith(undefined)}
+            onConfirm={async () => {
+              await auth.deleteAccount(removingWith);
+              navigate('/');
+            }}
+            title="Delete your account?"
+          >
+            <p className="m-0">
+              Your library, ratings, reviews, reports and activity are deleted with it. This cannot be
+              undone.
+            </p>
+          </ConfirmDialog>
+        )}
       </Section>
     </div>
   );

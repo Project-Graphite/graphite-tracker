@@ -3,10 +3,12 @@ import { Link, NavLink, Outlet } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Dialog } from '../components/Dialog';
+import { TextAreaField, TextField } from '../components/Field';
 import { FormSkeleton, LinesSkeleton } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { useSiteSettings } from '../site';
 import { useResource } from '../useResource';
+import { atMost, required, useFormErrors } from '../validation';
 
 export interface Me {
   handle: string;
@@ -66,6 +68,7 @@ export function ProfileSettingsPage() {
   const auth = useAuth();
   const me = useResource<Me>('/me', true);
   const site = useSiteSettings();
+  const profileForm = useFormErrors();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [confirmingAdult, setConfirmingAdult] = useState(false);
@@ -90,6 +93,14 @@ export function ProfileSettingsPage() {
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      !profileForm.check(event.currentTarget, {
+        displayName: [required('Enter a display name.'), atMost(80, 'Use at most 80 characters.')],
+        bio: [atMost(500, 'Keep the bio to 500 characters.')],
+      })
+    ) {
+      return;
+    }
     const form = new FormData(event.currentTarget);
     setSaved(
       await send('/me', {
@@ -108,15 +119,20 @@ export function ProfileSettingsPage() {
       {error && <p className="error-message m-0">{error}</p>}
       <section>
         <h2 className="m-0 text-xl font-medium">Profile</h2>
-        <form className="mt-5 grid gap-5" key={data.displayName + data.bio} onSubmit={(event) => void saveProfile(event)}>
-          <label className="field-label">
-            Display name
-            <input defaultValue={data.displayName} maxLength={80} name="displayName" required />
-          </label>
-          <label className="field-label">
-            Short bio
-            <textarea defaultValue={data.bio ?? ''} maxLength={500} name="bio" rows={3} />
-          </label>
+        <form
+          className="mt-5 grid gap-5"
+          key={data.displayName + data.bio}
+          noValidate
+          onSubmit={(event) => void saveProfile(event)}
+        >
+          <TextField defaultValue={data.displayName} label="Display name" maxLength={80} {...profileForm.field('displayName')} />
+          <TextAreaField
+            defaultValue={data.bio ?? ''}
+            label="Short bio"
+            maxLength={500}
+            rows={3}
+            {...profileForm.field('bio')}
+          />
           <p className="mono-sm m-0 text-faint">
             Handle @{data.handle} · {data.email} · the handle is permanent so profile links keep working
           </p>

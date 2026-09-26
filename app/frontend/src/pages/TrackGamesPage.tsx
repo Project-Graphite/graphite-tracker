@@ -13,6 +13,7 @@ import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
 import { useFooterSource } from '../footerSource';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
+import { searchQuery, useFormErrors } from '../validation';
 
 function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
   return (
@@ -71,6 +72,7 @@ function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
 export function TrackGamesPage() {
   const auth = useAuth();
   const search = useCatalogSearch();
+  const form = useFormErrors();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
   const page = Number(searchParams.get('page')) || 1;
@@ -92,6 +94,7 @@ export function TrackGamesPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.check(event.currentTarget, { query: searchQuery })) return;
     const next = String(new FormData(event.currentTarget).get('query')).trim();
     void search.submit(next, (value) => `/games?q=${encodeURIComponent(value)}`);
   }
@@ -103,20 +106,25 @@ export function TrackGamesPage() {
       <p className="mt-5 max-w-2xl text-muted">
         Find a game, choose its list, and record hours, completion and the platforms you play on.
       </p>
-      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={submit} role="search">
+      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} noValidate onSubmit={submit} role="search">
         <input
+          aria-describedby={form.errors.query ? 'search-error' : undefined}
+          aria-invalid={form.errors.query ? true : undefined}
           aria-label="Game title"
           defaultValue={query}
-          minLength={2}
           name="query"
+          onInput={form.field('query').onInput}
           placeholder="Search games, or paste an IGDB or RAWG link"
-          required
           type="search"
         />
         <button className="primary-button" disabled={search.opening} type="submit">
           {search.opening ? 'Opening…' : 'Search'}
         </button>
-        {search.error && <p className="error-message m-0 sm:col-span-2">{search.error}</p>}
+        {(form.errors.query || search.error) && (
+          <p className="error-message m-0 sm:col-span-2" id="search-error">
+            {form.errors.query || search.error}
+          </p>
+        )}
       </form>
       {results.error && <p className="error-message mt-6">{results.error}</p>}
       {results.loading && (
