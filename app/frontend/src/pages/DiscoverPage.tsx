@@ -15,6 +15,7 @@ import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { YearPicker } from '../components/YearPicker';
 import { useFooterSource } from '../footerSource';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
@@ -244,17 +245,7 @@ export function DiscoverPage({
             </select>
           </label>
         )}
-        <label className="field-label">
-          Year
-          <input
-            defaultValue={searchParams.get('year') ?? ''}
-            max="2200"
-            min="1800"
-            name="year"
-            placeholder="Any year"
-            type="number"
-          />
-        </label>
+        <YearPicker defaultValue={searchParams.get('year') ?? ''} label="Year" name="year" />
         {statuses.length > 0 && (
           <label className="field-label">
             Status
