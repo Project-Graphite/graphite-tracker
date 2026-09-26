@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { RateLimit } from '../redis/rate-limit.guard';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory, catalogCategories } from '../sources/source.types';
 import { BrowseCatalogDto } from './dto/browse-catalog.dto';
@@ -23,7 +24,10 @@ function showsAdultContent(viewer?: AuthenticatedUser) {
 @Controller('catalog')
 @UseGuards(OptionalJwtAuthGuard)
 export class CatalogController {
-  constructor(private readonly connectors: ConnectorRegistryService) {}
+  constructor(
+    private readonly connectors: ConnectorRegistryService,
+    private readonly site: SiteSettingsService,
+  ) {}
 
   @Get('sources')
   sources(@Query('category') category?: string) {
@@ -40,18 +44,19 @@ export class CatalogController {
 
   @Get(':category/search')
   @RateLimit('catalog', 120, 60)
-  searchCategory(
+  async searchCategory(
     @Param('category') category: string,
     @Query() query: SearchCatalogDto,
     @CurrentUser() viewer?: AuthenticatedUser,
   ) {
     const { source, query: term, page, ...filters } = query;
+    const selected = this.category(category);
     return this.connectors.search(
-      this.category(category),
+      selected,
       term,
       page,
       { ...filters, adult: showsAdultContent(viewer) },
-      source,
+      await this.source(selected, source),
     );
   }
 
@@ -76,48 +81,55 @@ export class CatalogController {
   }
 
   @Get(':category/genres')
-  genres(
+  async genres(
     @Param('category') category: string,
     @Query('source') source?: string,
     @CurrentUser() viewer?: AuthenticatedUser,
   ) {
+    const selected = this.category(category);
     return this.connectors.genres(
-      this.category(category),
-      source,
+      selected,
+      await this.source(selected, source),
       showsAdultContent(viewer),
     );
   }
 
   @Get(':category/:externalId')
   @RateLimit('catalog', 120, 60)
-  details(
+  async details(
     @Param('category') category: string,
     @Param('externalId') externalId: string,
     @Query('source') source?: string,
     @CurrentUser() viewer?: AuthenticatedUser,
   ) {
+    const selected = this.category(category);
     return this.connectors.details(
-      this.category(category),
+      selected,
       externalId,
-      source,
+      await this.source(selected, source),
       showsAdultContent(viewer),
     );
   }
 
-  private browseCategory(
+  private async browseCategory(
     category: string,
     section: 'recent' | 'popular',
     query: BrowseCatalogDto,
     viewer?: AuthenticatedUser,
   ) {
     const { source, page, ...filters } = query;
+    const selected = this.category(category);
     return this.connectors.browse(
-      this.category(category),
+      selected,
       section,
       page,
       { ...filters, adult: showsAdultContent(viewer) },
-      source,
+      await this.source(selected, source),
     );
+  }
+
+  private async source(category: CatalogCategory, source?: string) {
+    return source ?? (await this.site.defaultSource(category));
   }
 
   private category(value: string): CatalogCategory {

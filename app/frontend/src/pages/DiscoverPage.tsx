@@ -18,6 +18,7 @@ import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
 import { Icon } from '../components/Icon';
 import { YearPicker } from '../components/YearPicker';
 import { useFooterSource } from '../footerSource';
+import { useSiteSettings } from '../site';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 
@@ -124,6 +125,8 @@ export function DiscoverPage({
   const source =
     searchParams.get('source') ||
     (preferred && sources.some((item) => item.key === preferred) ? preferred : '');
+  const site = useSiteSettings();
+  const activeSource = source || site.data?.defaultSources[category] || '';
   const sourcesReady = Boolean(
     settings.data ?? publicSources.data ?? (settings.error || publicSources.error),
   );
@@ -147,7 +150,7 @@ export function DiscoverPage({
       attributionUrl: results.data.attributionUrl,
     },
   );
-  const statuses = statusOptions(category, section, source);
+  const statuses = statusOptions(category, section, activeSource);
   const activeFilters = filterKeys.filter((key) => searchParams.get(key)).length;
   const hasFilters = activeFilters > 0;
 
@@ -305,7 +308,7 @@ export function DiscoverPage({
           Sort
           <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
             <option value="">{section === 'search' ? 'Relevance' : 'Default'}</option>
-            {sortOptions(category, section, source).map(([value, label]) => (
+            {sortOptions(category, section, activeSource).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

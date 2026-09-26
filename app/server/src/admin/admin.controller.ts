@@ -5,6 +5,7 @@ import {
   HttpCode,
   Param,
   Patch,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RateLimit } from '../redis/rate-limit.guard';
 import { SiteSettingsService } from '../site/site-settings.service';
+import { SourcePreferenceDto } from '../sources/dto/source-setting.dto';
+import type { CatalogCategory } from '../sources/source.types';
 import { AdminGuard, SystemManagerGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import {
@@ -107,5 +110,14 @@ export class AdminController {
   async updateSite(@CurrentUser() user: AuthenticatedUser, @Body() input: UpdateSiteSettingsDto) {
     await this.auth.confirmPassword(user.id, input.password);
     return this.site.update({ adultContentEnabled: input.adultContentEnabled });
+  }
+
+  @Put('site/sources/:category')
+  @UseGuards(SystemManagerGuard)
+  setDefaultSource(
+    @Param('category') category: CatalogCategory,
+    @Body() input: SourcePreferenceDto,
+  ) {
+    return this.site.setDefaultSource(category, input.source);
   }
 }

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { errorMessage, type Page } from '../api';
 import { useAuth, type UserRole } from '../auth';
+import { catalogCategories, categoryLabels, type CatalogCategory } from '../catalog';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { PasswordDialog } from '../components/PasswordDialog';
@@ -9,6 +10,7 @@ import { LinesSkeleton, ListSkeleton } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { itemHref, reportReasons, type ItemSummary } from '../reviews';
 import { useSiteSettings, type SiteSettings } from '../site';
+import type { SourceSettings } from '../sources';
 import { useResource, type Resource } from '../useResource';
 
 interface ModeratedReview {
@@ -133,10 +135,27 @@ function RoleDialog({
 function SitePanel() {
   const auth = useAuth();
   const site = useSiteSettings();
+  const sources = useResource<SourceSettings>('/sources', true);
   const [confirming, setConfirming] = useState<boolean>();
+  const [sourceError, setSourceError] = useState('');
 
   if (site.error) return <p className="error-message">{site.error}</p>;
   if (!site.data) return <LinesSkeleton className="max-w-3xl" label="Loading site settings" lines={2} />;
+  const { defaultSources } = site.data;
+  const available = sources.data?.sources.filter((source) => source.available) ?? [];
+
+  async function chooseDefault(category: CatalogCategory, source: string) {
+    setSourceError('');
+    try {
+      const next = await auth.request<SiteSettings>(`/admin/site/sources/${category}`, {
+        method: 'PUT',
+        body: JSON.stringify({ source }),
+      });
+      site.mutate(() => next);
+    } catch (reason) {
+      setSourceError(errorMessage(reason, 'Could not change the default source'));
+    }
+  }
 
   return (
     <div className="fade-in grid max-w-3xl gap-3">
@@ -167,6 +186,38 @@ function SitePanel() {
           </p>
         </PasswordDialog>
       )}
+      <section className="mt-8">
+        <h2 className="m-0 text-xl font-medium">Default sources</h2>
+        <p className="mt-2 text-sm text-muted">
+          Used wherever a reader hasn't chosen a source themselves, including the home page and
+          imports.
+        </p>
+        {sourceError && <p className="error-message mt-4">{sourceError}</p>}
+        {sources.error && <p className="error-message mt-4">{sources.error}</p>}
+        {sources.data && (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {catalogCategories.map((category) => {
+              const options = available.filter((source) => source.categories.includes(category));
+              return (
+                options.length > 0 && (
+                  <label className="field-label" key={category}>
+                    {categoryLabels[category]}
+                    <select
+                      disabled={options.length === 1}
+                      onChange={(event) => void chooseDefault(category, event.target.value)}
+                      value={defaultSources[category] ?? ''}
+                    >
+                      {options.map((source) => (
+                        <option key={source.key} value={source.key}>{source.displayName}</option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

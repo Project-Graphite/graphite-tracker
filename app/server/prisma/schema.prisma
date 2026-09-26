@@ -230,6 +230,7 @@ model SourceRecord {
   globalPreferences GlobalSourcePreference[]
   categoryPreferences CategorySourcePreference[]
   userSettings UserSourceSetting[]
+  siteDefaults SiteSourceDefault[]
 
   @@map("source_records")
 }
@@ -518,4 +519,13 @@ model SiteSettings {
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
+}
+
+model SiteSourceDefault {
+  category  MediaCategory @id
+  sourceId  String        @map("source_id") @db.Uuid
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  source    SourceRecord  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@map("site_source_defaults")
 }

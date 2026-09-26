@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ImportMatch } from '@prisma/client';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { normalizeTitle } from '../sources/normalize-title';
 import { CatalogCandidate, CatalogCategory } from '../sources/source.types';
@@ -51,7 +52,10 @@ export function titleSimilarity(left: string, right: string) {
 
 @Injectable()
 export class ImportMatcherService {
-  constructor(private readonly connectors: ConnectorRegistryService) {}
+  constructor(
+    private readonly connectors: ConnectorRegistryService,
+    private readonly site: SiteSettingsService,
+  ) {}
 
   async match(
     input: MatchInput,
@@ -78,7 +82,13 @@ export class ImportMatcherService {
     for (const query of titles.slice(0, 2)) {
       for (const category of searchCategories[input.kind] ?? []) {
         const exactOnly = category === 'tv' || category === 'movie';
-        const page = await this.connectors.search(category, query, 1, { adult });
+        const page = await this.connectors.search(
+          category,
+          query,
+          1,
+          { adult },
+          await this.site.defaultSource(category),
+        );
         for (const item of page.results) {
           const score = Math.max(
             ...titles.flatMap((title) =>

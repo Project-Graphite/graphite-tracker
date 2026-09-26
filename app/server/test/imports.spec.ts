@@ -58,6 +58,8 @@ const page = (results: CatalogCandidate[]) => ({
 });
 
 describe('ImportMatcherService', () => {
+  const site = { defaultSource: (category: string) => Promise.resolve(`${category}-default`) };
+
   it('scores identical titles above near matches', () => {
     expect(titleSimilarity('Tower Story!', 'tower  story')).toBe(1);
     expect(titleSimilarity('Tower Story', 'Tower Stories')).toBeGreaterThan(0.6);
@@ -71,7 +73,7 @@ describe('ImportMatcherService', () => {
       search: vi.fn(),
     };
 
-    const result = await new ImportMatcherService(registry as never).match({
+    const result = await new ImportMatcherService(registry as never, site as never).match({
       kind: 'manga',
       title: 'Anything',
       trackerTitles: [],
@@ -100,7 +102,7 @@ describe('ImportMatcherService', () => {
       ),
     };
 
-    const result = await new ImportMatcherService(registry as never).match({
+    const result = await new ImportMatcherService(registry as never, site as never).match({
       kind: 'manga',
       title: 'Tower Story',
       trackerTitles: [],
@@ -109,6 +111,13 @@ describe('ImportMatcherService', () => {
 
     expect(result.match).toBe(ImportMatch.SUGGESTED);
     expect(result.options.map((option) => option.item.externalId)).toEqual(['manhwa', 'near']);
+    expect(registry.search).toHaveBeenCalledWith(
+      'manga',
+      'Tower Story',
+      1,
+      { adult: false },
+      'manga-default',
+    );
   });
 
   it('matches ordinary TV and films only on an identical title', async () => {
@@ -124,7 +133,7 @@ describe('ImportMatcherService', () => {
       ),
     };
 
-    const result = await new ImportMatcherService(registry as never).match({
+    const result = await new ImportMatcherService(registry as never, site as never).match({
       kind: 'anime',
       title: 'Graphite Days',
       trackerTitles: [],

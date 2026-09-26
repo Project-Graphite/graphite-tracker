@@ -149,4 +149,49 @@ describe('Discover filters', () => {
     expect(values('sort')).toEqual(['', 'popularity.desc', 'vote_average.desc', 'first_air_date.desc']);
     expect(values('status')).toContain('returning');
   });
+
+  it("offers the site default source's sorts when the reader has not picked a source", async () => {
+    const fetchMock = vi.fn((input: string) => {
+      const url = String(input);
+      if (url.endsWith('/site')) {
+        return Promise.resolve(json({ adultContentEnabled: true, defaultSources: { anime: 'tmdb' } }));
+      }
+      if (url.includes('/catalog/sources')) {
+        return Promise.resolve(
+          json([
+            { ...mangaSource('anilist', 'AniList'), categories: ['anime'] },
+            { ...mangaSource('tmdb', 'TMDB'), categories: ['movie', 'tv', 'anime'] },
+          ]),
+        );
+      }
+      if (url.includes('/catalog/')) {
+        return Promise.resolve(
+          json({ page: 1, totalPages: 1, totalResults: 0, results: [], attribution: 'Test' }),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 401 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/discover/anime/popular']}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </MemoryRouter>,
+      ),
+    );
+
+    expect(
+      [...container.querySelectorAll<HTMLOptionElement>('select[name="sort"] option')].map(
+        ({ value }) => value,
+      ),
+    ).toEqual(['', 'popularity.desc', 'vote_average.desc', 'first_air_date.desc']);
+    expect(
+      fetchMock.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes('/catalog/anime/popular')),
+    ).toEqual(['/api/v1/catalog/anime/popular?page=1']);
+  });
 });
