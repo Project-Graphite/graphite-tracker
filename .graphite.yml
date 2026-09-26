@@ -7,7 +7,7 @@ projects:
     tags: [react, nestjs, prisma, postgresql, tmdb, rawg]
     owner: amrmscll
     authors: [AmrMsCLL]
-    status: wip
+    status: live
     listed: true
     showcase:
       contributions:
