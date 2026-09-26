@@ -191,10 +191,15 @@ export function DiscoverPage({
             <input defaultValue={query} minLength={2} name="q" placeholder="Search by title" required />
           </label>
         )}
-        {(genres.data?.length ?? 0) > 0 && (
+        {(genres.loading || (genres.data?.length ?? 0) > 0) && (
           <label className="field-label">
             Genre
-            <select defaultValue={searchParams.get('genre') ?? ''} name="genre">
+            <select
+              defaultValue={searchParams.get('genre') ?? ''}
+              disabled={genres.loading}
+              key={genres.loading ? 'loading' : 'loaded'}
+              name="genre"
+            >
               <option value="">Any genre</option>
               {genres.data?.map((genre) => (
                 <option key={genre} value={genre}>{genre}</option>
@@ -301,8 +306,12 @@ export function DiscoverPage({
               <Attribution source={results.data} />
             </div>
             {results.data.results.length === 0 ? (
-              <EmptyState title="No titles found">
-                <p className="mt-2 mb-0 text-muted">Try broader filters or another search.</p>
+              <EmptyState title={results.data.totalPages > 1 ? 'Nothing on this page' : 'No titles found'}>
+                <p className="mt-2 mb-0 text-muted">
+                  {results.data.totalPages > 1
+                    ? 'The source pages its results before your filters apply. Try the next page or broader filters.'
+                    : 'Try broader filters or another search.'}
+                </p>
               </EmptyState>
             ) : (
               <CatalogGrid items={results.data.results} />
