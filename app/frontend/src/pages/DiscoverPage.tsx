@@ -15,6 +15,7 @@ import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { Icon } from '../components/Icon';
 import { YearPicker } from '../components/YearPicker';
 import { useFooterSource } from '../footerSource';
 import type { SourceSettings } from '../sources';
@@ -80,6 +81,7 @@ export function DiscoverPage({
   const navigate = useNavigate();
   const search = useCatalogSearch();
   const [searchError, setSearchError] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
   const page = pageFrom(searchParams.get('page'));
@@ -123,7 +125,8 @@ export function DiscoverPage({
     },
   );
   const statuses = statusOptions(category, section);
-  const hasFilters = filterKeys.some((key) => searchParams.get(key));
+  const activeFilters = filterKeys.filter((key) => searchParams.get(key)).length;
+  const hasFilters = activeFilters > 0;
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -181,7 +184,7 @@ export function DiscoverPage({
               aria-label={`Search ${categoryLabels[category]}`}
               defaultValue={query}
               name="q"
-              placeholder={`Search ${categoryLabels[category].toLowerCase()} or paste a link`}
+              placeholder={`Search ${categoryLabels[category]} or paste a link`}
               type="search"
             />
             <button className="primary-button shrink-0" disabled={search.opening} type="submit">
@@ -195,7 +198,7 @@ export function DiscoverPage({
           )}
         </form>
       </div>
-      <nav aria-label="Media categories" className="mt-7 flex flex-wrap gap-2">
+      <nav aria-label="Media categories" className="chip-row mt-7">
         {discoverCategories.map((item) => (
           <NavLink
             className={({ isActive }) =>
@@ -224,8 +227,20 @@ export function DiscoverPage({
           </span>
         )}
       </nav>
+      <button
+        aria-controls="discover-filters"
+        aria-expanded={filtersOpen}
+        className="secondary-button mt-5 inline-flex gap-2 px-3 py-2 text-sm sm:hidden"
+        onClick={() => setFiltersOpen((current) => !current)}
+        type="button"
+      >
+        <Icon name="filter" size={16} />
+        {filtersOpen ? 'Hide filters' : 'Filters'}
+        {activeFilters > 0 && <span className="count-badge static border-0">{activeFilters}</span>}
+      </button>
       <form
-        className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-6"
+        className={`mt-5 grid-cols-2 gap-3 sm:mt-6 sm:grid lg:grid-cols-6 ${filtersOpen ? 'grid' : 'hidden'}`}
+        id="discover-filters"
         key={`${category}:${section}:${searchParams.toString()}`}
         onSubmit={apply}
       >

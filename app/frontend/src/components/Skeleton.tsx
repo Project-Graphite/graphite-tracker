@@ -138,8 +138,8 @@ export function TitleSkeleton() {
   return (
     <Placeholder label="Loading title">
       <Skeleton className="h-3.5 w-32" />
-      <div aria-hidden="true" className="mt-8 grid gap-x-8 gap-y-6 md:grid-cols-[14rem_1fr]">
-        <Skeleton className="aspect-[2/3] max-w-40 rounded-lg md:max-w-none" />
+      <div aria-hidden="true" className="mt-8 grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-6 md:grid-cols-[14rem_1fr] md:gap-x-8">
+        <Skeleton className="aspect-[2/3] rounded-lg" />
         <div className="min-w-0">
           <Skeleton className="h-3 w-28" />
           <Skeleton className="mt-4 h-9 w-3/4 max-w-xl" />
@@ -150,8 +150,8 @@ export function TitleSkeleton() {
             <Skeleton className="h-7 w-16 rounded-full" />
           </div>
         </div>
-        <Skeleton className="h-36 rounded-xl" />
-        <div className="grid gap-2.5">
+        <Skeleton className="col-span-2 h-36 rounded-xl md:col-span-1" />
+        <div className="col-span-2 grid gap-2.5 md:col-span-1">
           <Skeleton className="h-6 w-32" />
           <Skeleton className="mt-2 h-3.5 w-full" />
           <Skeleton className="h-3.5 w-5/6" />

@@ -173,19 +173,19 @@ export function TitleDetailsPage() {
       )}
       {item.backdropUrl && (
         <div
-          className={`mt-6 aspect-[16/6] overflow-hidden rounded-2xl border border-line bg-line-soft ${hidden ? 'poster-blurred' : ''}`}
+          className={`mt-5 aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-line-soft sm:mt-6 md:aspect-[16/6] ${hidden ? 'poster-blurred' : ''}`}
         >
           <img alt="" className="fade-in poster-image h-full w-full object-cover" src={item.backdropUrl} />
         </div>
       )}
-      <div className="mt-8 grid gap-x-8 gap-y-6 md:grid-cols-[14rem_1fr] md:grid-rows-[auto_1fr]">
+      <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-6 sm:mt-8 md:grid-cols-[14rem_1fr] md:gap-x-8">
         <Poster
           blurred={hidden}
-          className="max-w-40 md:col-start-1 md:row-start-1 md:max-w-none"
+          className="col-start-1 row-start-1 md:row-span-2"
           posterUrl={item.posterUrl}
           title={item.title}
         />
-        <header className="min-w-0 md:col-start-2 md:row-start-1">
+        <header className="col-start-2 row-start-1 min-w-0 self-end md:self-start">
           <p className="eyebrow">
             {categoryLabels[item.category]} · {item.releaseDate?.slice(0, 4) ?? 'date unknown'}
             {item.adult && ' · 18+'}
@@ -202,17 +202,19 @@ export function TitleDetailsPage() {
               </>
             )}
           </p>
-          <h1 className="page-title">{item.title}</h1>
+          <h1 className="page-title break-words max-md:text-[1.55rem]">{item.title}</h1>
           {item.originalTitle !== item.title && (
-            <p className="mt-3 mb-0 text-muted">{item.originalTitle}</p>
+            <p className="mt-2 mb-0 text-muted md:mt-3">{item.originalTitle}</p>
           )}
+        </header>
+        <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2">
           {item.alternateTitles && item.alternateTitles.length > 0 && (
-            <p className="mono-sm mt-2 mb-0 text-faint">
+            <p className="mono-sm mt-0 mb-0 text-faint">
               Also known as {item.alternateTitles.slice(0, 6).join(' · ')}
             </p>
           )}
           {item.tagline && <p className="mt-6 mb-0 text-lg text-muted">{item.tagline}</p>}
-          <div className="mt-6 flex flex-wrap items-baseline gap-2 border-y border-line py-4">
+          <div className="mt-5 flex flex-wrap items-baseline gap-2 border-y border-line py-4 md:mt-6">
             {item.rating ? (
               <>
                 <strong className="text-2xl font-medium">{item.rating.toFixed(1)}</strong>
@@ -252,11 +254,11 @@ export function TitleDetailsPage() {
               ))}
             </div>
           )}
-        </header>
-        <div className="md:col-start-1 md:row-start-2">
+        </div>
+        <div className="col-span-2 row-start-3 md:col-span-1 md:col-start-1">
           <LibraryPanel item={item} lookup={lookup} />
         </div>
-        <div className="min-w-0 md:col-start-2 md:row-start-2">
+        <div className="col-span-2 row-start-4 min-w-0 md:col-span-1 md:col-start-2 md:row-start-3">
           <section>
             <h2 className="m-0 text-xl font-medium">Overview</h2>
             <p className="mt-3 max-w-3xl whitespace-pre-line text-muted">

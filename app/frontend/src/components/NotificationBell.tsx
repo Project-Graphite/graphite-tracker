@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { errorMessage, type Page } from '../api';
 import { useInbox, type InboxNotification } from '../inbox';
+import { useDismiss } from '../useDismiss';
 import { useResource } from '../useResource';
 import { Icon } from './Icon';
 import { NotificationList } from './NotificationList';
@@ -13,22 +14,8 @@ export function NotificationBell() {
   const [error, setError] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const recent = useResource<Page<InboxNotification>>(open ? '/me/inbox?page=1' : null, true);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('pointerdown', close);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, root, close);
 
   async function markAllRead() {
     setError('');
@@ -81,12 +68,12 @@ export function NotificationBell() {
                 new episodes, chapters and releases here.
               </p>
             ) : (
-              <NotificationList notifications={recent.data.results.slice(0, 8)} onOpen={() => setOpen(false)} />
+              <NotificationList notifications={recent.data.results.slice(0, 8)} onOpen={close} />
             )}
           </div>
           <Link
             className="mono-sm block border-t border-line px-4 py-3 text-center text-muted no-underline hover:text-ink"
-            onClick={() => setOpen(false)}
+            onClick={close}
             to="/notifications"
           >
             See all notifications

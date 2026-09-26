@@ -37,8 +37,11 @@ export function YearPicker({
     const selected =
       listbox.current?.querySelector<HTMLElement>('[aria-selected="true"]') ??
       listbox.current?.querySelector<HTMLElement>('[role="option"]');
-    selected?.focus();
-    selected?.scrollIntoView({ block: 'center' });
+    const panel = listbox.current;
+    if (selected && panel) {
+      panel.scrollTop = selected.offsetTop - (panel.clientHeight - selected.offsetHeight) / 2;
+      selected.focus({ preventScroll: true });
+    }
     const close = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };

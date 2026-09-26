@@ -59,11 +59,11 @@ export function SettingsLayout() {
       <p className="eyebrow">@{user.handle}</p>
       <h1 className="page-title">{user.displayName}</h1>
       <OwnerTabs handle={user.handle} />
-      <nav aria-label="Settings" className="mt-6 flex gap-2 overflow-x-auto pb-1">
+      <nav aria-label="Settings" className="chip-row mt-6">
         {settingsSections.map(([section, label]) => (
           <NavLink
             className={({ isActive }) =>
-              `secondary-button shrink-0 px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
+              `secondary-button px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
             }
             end
             key={section}
