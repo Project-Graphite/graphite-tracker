@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { looksAdult } from '../adult-content';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
+import { creditGroups } from '../credits';
 import { rankByRelevanceAndPopularity } from '../game-ranking';
 import { platformReleaseSignals } from '../release-signals';
 import {
@@ -54,9 +55,15 @@ interface IgdbGame {
   release_dates?: IgdbReleaseDate[];
   themes?: number[];
   url?: string;
+  involved_companies?: Array<{ company?: IgdbNamed; developer?: boolean; publisher?: boolean }>;
 }
 
 const eroticTheme = 42;
+const detailFields = [
+  'involved_companies.company.name',
+  'involved_companies.developer',
+  'involved_companies.publisher',
+];
 
 interface TwitchToken {
   access_token: string;
@@ -137,14 +144,22 @@ export class IgdbService {
       : `slug = "${this.escape(externalId.replace(/^slug:/, ''))}"`;
     const games = await this.request<IgdbGame[]>(
       'games',
-      `${this.fields()} where ${selector}; limit 1;`,
+      `${this.fields(detailFields)} where ${selector}; limit 1;`,
     );
     const game = games[0];
     if (!game) {
       throw new NotFoundException('IGDB game not found');
     }
+    const companies = (role: 'developer' | 'publisher') =>
+      (game.involved_companies ?? [])
+        .filter((involved) => involved[role])
+        .map((involved) => involved.company?.name);
     return {
       ...this.normalize(game),
+      credits: creditGroups([
+        ['Developed by', companies('developer')],
+        ['Published by', companies('publisher')],
+      ]),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
@@ -290,8 +305,8 @@ export class IgdbService {
     };
   }
 
-  private fields() {
-    return 'fields name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,themes,url;';
+  private fields(extra: string[] = []) {
+    return `fields ${extra.map((field) => `${field},`).join('')}name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,themes,url;`;
   }
 
   private escape(value: string) {

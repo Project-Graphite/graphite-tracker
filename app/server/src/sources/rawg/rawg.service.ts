@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { looksAdult } from '../adult-content';
 import { ConnectorHttpService } from '../connector-http.service';
+import { creditGroups } from '../credits';
 import { rankByRelevanceAndPopularity } from '../game-ranking';
 import { platformReleaseSignals } from '../release-signals';
 import {
@@ -45,6 +46,8 @@ interface RawgGame {
   platforms?: RawgPlatform[];
   esrb_rating?: RawgNamed | null;
   tags?: RawgNamed[];
+  developers?: RawgNamed[];
+  publishers?: RawgNamed[];
 }
 
 const adultTags = new Set([
@@ -140,6 +143,10 @@ export class RawgService {
           externalId: String(related.id),
           title: related.name,
         })),
+      ]),
+      credits: creditGroups([
+        ['Developed by', game.developers?.map((company) => company.name) ?? []],
+        ['Published by', game.publishers?.map((company) => company.name) ?? []],
       ]),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,

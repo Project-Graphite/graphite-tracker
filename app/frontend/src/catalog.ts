@@ -32,6 +32,17 @@ export interface CatalogCapabilities {
   >;
 }
 
+export interface CatalogCredit {
+  role: string;
+  names: string[];
+}
+
+export interface CatalogCastMember {
+  name: string;
+  character: string | null;
+  imageUrl: string | null;
+}
+
 export interface CatalogCandidate {
   source: string;
   externalId: string;
@@ -64,6 +75,8 @@ export interface CatalogCandidate {
     title: string;
   }>;
   deepLinks?: Array<{ label: string; url: string }>;
+  credits?: CatalogCredit[];
+  cast?: CatalogCastMember[];
 }
 
 export interface Attribution {

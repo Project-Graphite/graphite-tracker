@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { looksAdult } from '../adult-content';
 import { ConnectorHttpService } from '../connector-http.service';
+import { creditGroups } from '../credits';
 import { today } from '../release-signals';
 import {
   TmdbMovieResult,
@@ -108,11 +109,10 @@ export class TmdbService {
   }
 
   async movieDetails(externalId: string) {
-    const movie = await this.title<TmdbMovieResult>(
-      `/movie/${encodeURIComponent(externalId)}`,
-    );
+    const movie = await this.movieWithCredits(externalId);
     return {
       ...this.normalizeMovie(movie),
+      ...this.movieCredits(movie),
       attribution: this.descriptor.attribution,
     };
   }
@@ -253,11 +253,10 @@ export class TmdbService {
       return this.movieDetails(externalId);
     }
     if (category === 'tv') {
+      const show = await this.showWithCredits(externalId);
       return {
-        ...this.normalizeTv(
-          await this.title<TmdbTvResult>(`/tv/${encodeURIComponent(externalId)}`),
-          'tv',
-        ),
+        ...this.normalizeTv(show, 'tv'),
+        ...this.showCredits(show),
         attribution: this.descriptor.attribution,
       };
     }
@@ -268,8 +267,8 @@ export class TmdbService {
       }
       const record =
         mediaType === 'movie'
-          ? await this.title<TmdbMovieResult>(`/movie/${encodeURIComponent(id)}`)
-          : await this.title<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`);
+          ? await this.movieWithCredits(id)
+          : await this.showWithCredits(id);
       if (
         !this.isAnime(
           record.original_language,
@@ -281,8 +280,14 @@ export class TmdbService {
       }
       const item =
         mediaType === 'movie'
-          ? this.normalizeAnimeMovie(record as TmdbMovieResult)
-          : this.normalizeTv(record as TmdbTvResult, 'anime');
+          ? {
+              ...this.normalizeAnimeMovie(record as TmdbMovieResult),
+              ...this.movieCredits(record as TmdbMovieResult),
+            }
+          : {
+              ...this.normalizeTv(record as TmdbTvResult, 'anime'),
+              ...this.showCredits(record as TmdbTvResult),
+            };
       return { ...item, attribution: this.descriptor.attribution };
     }
     throw new NotFoundException('TMDB does not support this category');
@@ -450,6 +455,70 @@ export class TmdbService {
         supportsReleaseNotifications: true,
       },
     };
+  }
+
+  private movieWithCredits(id: string) {
+    return this.request<TmdbMovieResult>(`/movie/${encodeURIComponent(id)}`, {
+      append_to_response: 'credits',
+    });
+  }
+
+  private showWithCredits(id: string) {
+    return this.request<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`, {
+      append_to_response: 'aggregate_credits',
+    });
+  }
+
+  private movieCredits(movie: TmdbMovieResult): Pick<CatalogCandidate, 'credits' | 'cast'> {
+    const crew = movie.credits?.crew ?? [];
+    const names = (matches: (person: (typeof crew)[number]) => boolean) =>
+      crew.filter(matches).map((person) => person.name);
+    return {
+      credits: creditGroups([
+        ['Directed by', names((person) => person.job === 'Director')],
+        ['Written by', names((person) => person.department === 'Writing')],
+        ['Music by', names((person) => person.job === 'Original Music Composer')],
+        ['Studios', movie.production_companies?.map((company) => company.name) ?? []],
+      ]),
+      cast: this.castMembers(
+        (movie.credits?.cast ?? []).map((person) => ({ ...person, character: person.character })),
+      ),
+    };
+  }
+
+  private showCredits(show: TmdbTvResult): Pick<CatalogCandidate, 'credits' | 'cast'> {
+    const crew = show.aggregate_credits?.crew ?? [];
+    return {
+      credits: creditGroups([
+        ['Created by', show.created_by?.map((person) => person.name) ?? []],
+        [
+          'Directed by',
+          crew
+            .filter((person) => person.jobs?.some(({ job }) => job === 'Series Director'))
+            .map((person) => person.name),
+        ],
+        ['Network', show.networks?.map((network) => network.name) ?? []],
+        ['Studios', show.production_companies?.map((company) => company.name) ?? []],
+      ]),
+      cast: this.castMembers(
+        (show.aggregate_credits?.cast ?? []).map((person) => ({
+          ...person,
+          character: person.roles?.[0]?.character,
+        })),
+      ),
+    };
+  }
+
+  private castMembers(
+    people: Array<{ name: string; character?: string; profile_path: string | null }>,
+  ) {
+    return people.slice(0, 15).map((person) => ({
+      name: person.name,
+      character: person.character || null,
+      imageUrl: person.profile_path
+        ? `https://image.tmdb.org/t/p/w185${person.profile_path}`
+        : null,
+    }));
   }
 
   private normalizeMovieList(response: TmdbSearchResponse) {

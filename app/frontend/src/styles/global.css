@@ -328,6 +328,17 @@ body {
     display: none;
   }
 
+  .cast-row {
+    display: grid;
+    grid-auto-columns: 6.5rem;
+    grid-auto-flow: column;
+    gap: 1rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    padding-bottom: 0.75rem;
+  }
+
   @media (min-width: 40rem) {
     .catalog-row {
       grid-auto-columns: calc((100% - 2rem) / 3);

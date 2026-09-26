@@ -1,3 +1,22 @@
+interface TmdbNamed {
+  id: number;
+  name: string;
+}
+
+interface TmdbPerson extends TmdbNamed {
+  profile_path: string | null;
+}
+
+export interface TmdbCredits {
+  cast: Array<TmdbPerson & { character?: string }>;
+  crew: Array<TmdbPerson & { job: string; department: string }>;
+}
+
+export interface TmdbAggregateCredits {
+  cast: Array<TmdbPerson & { roles?: Array<{ character: string }> }>;
+  crew: Array<TmdbPerson & { jobs?: Array<{ job: string }> }>;
+}
+
 export interface TmdbMovieResult {
   id: number;
   adult?: boolean;
@@ -15,6 +34,8 @@ export interface TmdbMovieResult {
   tagline?: string;
   vote_average?: number;
   vote_count?: number;
+  production_companies?: TmdbNamed[];
+  credits?: TmdbCredits;
 }
 
 export interface TmdbTvResult {
@@ -43,6 +64,10 @@ export interface TmdbTvResult {
   tagline?: string;
   vote_average?: number;
   vote_count?: number;
+  created_by?: TmdbNamed[];
+  networks?: TmdbNamed[];
+  production_companies?: TmdbNamed[];
+  aggregate_credits?: TmdbAggregateCredits;
 }
 
 export interface TmdbTvSearchResponse {

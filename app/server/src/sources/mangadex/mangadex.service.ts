@@ -6,6 +6,7 @@ import {
 import { looksAdult } from '../adult-content';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
+import { creditGroups } from '../credits';
 import { today } from '../release-signals';
 import {
   CatalogCandidate,
@@ -126,8 +127,16 @@ export class MangaDexService {
     if (item.category !== category) {
       throw new NotFoundException('MangaDex title does not match this category');
     }
+    const people = (type: string) =>
+      response.data.relationships
+        .filter((relationship) => relationship.type === type)
+        .map((relationship) => relationship.attributes?.name);
     return {
       ...item,
+      credits: creditGroups([
+        ['Story by', people('author')],
+        ['Art by', people('artist')],
+      ]),
       chapterCount: aggregate
         ? this.latestMarker(
             Object.values(aggregate.volumes).flatMap((volume) =>

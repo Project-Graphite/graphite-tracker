@@ -12,6 +12,7 @@ import {
 } from '../catalog';
 import { Attribution } from '../components/Attribution';
 import { AddToListButton } from '../components/CatalogCard';
+import { Credits } from '../components/Credits';
 import { EmptyState } from '../components/EmptyState';
 import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
@@ -230,6 +231,7 @@ export function TitleDetailsPage() {
               {item.synopsis || 'No synopsis available.'}
             </p>
           </section>
+          <Credits item={item} />
           {item.platforms && item.platforms.length > 0 && (
             <section className="mt-8">
               <h2 className="m-0 text-xl font-medium">Platforms</h2>
