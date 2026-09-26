@@ -1,5 +1,5 @@
-import type { FormEvent } from 'react';
-import { Link, NavLink, useSearchParams } from 'react-router';
+import { useState, type FormEvent } from 'react';
+import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -19,10 +19,9 @@ import { useFooterSource } from '../footerSource';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 
-const sections: Array<{ id: CatalogSection; label: string }> = [
+const sections: Array<{ id: Exclude<CatalogSection, 'search'>; label: string }> = [
   { id: 'recent', label: 'Recent' },
   { id: 'popular', label: 'Popular' },
-  { id: 'search', label: 'Search' },
 ];
 
 const filterKeys = ['genre', 'year', 'status', 'sort', 'source'] as const;
@@ -77,7 +76,9 @@ export function DiscoverPage({
   section: CatalogSection;
 }) {
   const auth = useAuth();
+  const navigate = useNavigate();
   const search = useCatalogSearch();
+  const [searchError, setSearchError] = useState('');
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
   const page = pageFrom(searchParams.get('page'));
@@ -127,11 +128,27 @@ export function DiscoverPage({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const next = new URLSearchParams();
-    for (const key of ['q', ...filterKeys]) {
+    if (section === 'search') next.set('q', query);
+    for (const key of filterKeys) {
       const value = String(form.get(key) ?? '').trim();
       if (value) next.set(key, value);
     }
-    void search.submit(next.get('q') ?? '', () => `/discover/${category}/${section}?${next.toString()}`);
+    navigate(`/discover/${category}/${section}?${next.toString()}`);
+  }
+
+  function searchTitles(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = String(new FormData(event.currentTarget).get('q')).trim();
+    if (value.length < 2) {
+      setSearchError('Enter at least two characters of a title, or paste a link.');
+      return;
+    }
+    setSearchError('');
+    void search.submit(
+      value,
+      (title) =>
+        `/discover/${category}/search?q=${encodeURIComponent(title)}${searchParams.get('source') ? `&source=${encodeURIComponent(source)}` : ''}`,
+    );
   }
 
   function pageHref(nextPage: number) {
@@ -144,8 +161,39 @@ export function DiscoverPage({
 
   return (
     <div className="page-enter">
-      <p className="eyebrow">Unified catalogue</p>
-      <h1 className="page-title">Discover {categoryLabels[category]}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+        <div className="min-w-0">
+          <p className="eyebrow">Unified catalogue</p>
+          <h1 className="page-title">Discover {categoryLabels[category]}</h1>
+        </div>
+        <form
+          className="grid w-full gap-2 sm:w-[26rem]"
+          key={`${category}:${query}`}
+          noValidate
+          onSubmit={searchTitles}
+          role="search"
+        >
+          <div className="flex gap-2">
+            <input
+              aria-describedby={searchError || search.error ? 'discover-search-error' : undefined}
+              aria-invalid={Boolean(searchError || search.error)}
+              aria-label={`Search ${categoryLabels[category]}`}
+              defaultValue={query}
+              name="q"
+              placeholder={`Search ${categoryLabels[category].toLowerCase()} or paste a link`}
+              type="search"
+            />
+            <button className="primary-button shrink-0" disabled={search.opening} type="submit">
+              {search.opening ? 'Opening…' : 'Search'}
+            </button>
+          </div>
+          {(searchError || search.error) && (
+            <p className="error-message m-0" id="discover-search-error">
+              {searchError || search.error}
+            </p>
+          )}
+        </form>
+      </div>
       <nav aria-label="Media categories" className="mt-7 flex flex-wrap gap-2">
         {discoverCategories.map((item) => (
           <NavLink
@@ -153,30 +201,33 @@ export function DiscoverPage({
               `secondary-button px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
             }
             key={item}
-            to={`/discover/${item}/${section}`}
+            to={
+              section === 'search' && query
+                ? `/discover/${item}/search?q=${encodeURIComponent(query)}`
+                : `/discover/${item}/${section}`
+            }
           >
             {categoryLabels[item]}
           </NavLink>
         ))}
       </nav>
-      <nav aria-label="Discovery section" className="mt-5 flex gap-2 border-b border-line">
+      <nav aria-label="Discovery section" className="mt-5 flex items-end gap-2 border-b border-line">
         {sections.map(({ id, label }) => (
           <NavLink className="tab-link -mb-px" key={id} to={`/discover/${category}/${id}`}>
             {label}
           </NavLink>
         ))}
+        {section === 'search' && query && (
+          <span aria-current="page" className="tab-link active -mb-px min-w-0 truncate">
+            “{query}”
+          </span>
+        )}
       </nav>
       <form
         className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-6"
         key={`${category}:${section}:${searchParams.toString()}`}
         onSubmit={apply}
       >
-        {section === 'search' && (
-          <label className="field-label col-span-2">
-            Title
-            <input defaultValue={query} minLength={2} name="q" placeholder="Search by title or paste a source link" required />
-          </label>
-        )}
         {(genres.loading || (genres.data?.length ?? 0) > 0) && (
           <label className="field-label">
             Genre
@@ -249,12 +300,13 @@ export function DiscoverPage({
           )}
         </div>
       </form>
-      {search.error && <p className="error-message mt-4 max-w-3xl">{search.error}</p>}
       {error && <p className="error-message mt-6 max-w-3xl">{error}</p>}
       {section === 'search' && query.length < 2 ? (
         <div className="mt-10">
           <EmptyState title={`Search ${categoryLabels[category]}`}>
-            <p className="mt-2 mb-0 text-muted">Enter at least two characters of a title.</p>
+            <p className="mt-2 mb-0 text-muted">
+              Use the search above: enter at least two characters of a title, or paste a source link.
+            </p>
           </EmptyState>
         </div>
       ) : results.loading || !sourcesReady ? (
