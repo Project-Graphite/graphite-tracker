@@ -3,8 +3,9 @@ import { Link, NavLink, Outlet } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Dialog } from '../components/Dialog';
-import { FormSkeleton } from '../components/Skeleton';
+import { FormSkeleton, LinesSkeleton } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
+import { useSiteSettings } from '../site';
 import { useResource } from '../useResource';
 
 export interface Me {
@@ -64,6 +65,7 @@ export function SettingsLayout() {
 export function ProfileSettingsPage() {
   const auth = useAuth();
   const me = useResource<Me>('/me', true);
+  const site = useSiteSettings();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [confirmingAdult, setConfirmingAdult] = useState(false);
@@ -169,56 +171,71 @@ export function ProfileSettingsPage() {
       </section>
       <section>
         <h2 className="m-0 text-xl font-medium">Content</h2>
-        <p className="mt-2 text-sm text-muted">
-          Adult titles stay out of search, discovery, imports and title pages until you turn this
-          on. Titles already in your library are kept either way.
-        </p>
-        <div className="mt-5 grid gap-3">
-          <Toggle
-            checked={data.showAdultContent}
-            description="Adult films, erotica and pornographic manga, and adult-only games, as labelled by each source. Results marked 18+ come from this setting."
-            label="Show adult content"
-            onChange={(checked) =>
-              checked ? setConfirmingAdult(true) : void send('/me', { showAdultContent: false })
-            }
-          />
-          <Toggle
-            checked={data.blurAdultContent}
-            description="Posters and backdrops of 18+ titles stay blurred until you hover over them or choose to show them."
-            disabled={!data.showAdultContent}
-            label="Blur adult artwork"
-            onChange={(checked) => void send('/me', { blurAdultContent: checked })}
-          />
-        </div>
-        {confirmingAdult && (
-          <Dialog eyebrow="Content" onClose={() => setConfirmingAdult(false)} title="Show adult content?">
-            <div className="mt-6 grid gap-4 text-sm text-muted">
-              <p className="m-0">
-                Search, discovery and title pages will include adult films, erotica and pornographic
-                manga, and adult-only games. Each one is marked 18+, and its artwork stays blurred
-                while the blur option is on.
-              </p>
-              <p className="m-0">
-                Sources label this content themselves, so the filter is best effort in both
-                directions. Turning it on confirms that you are an adult and want to see it.
-              </p>
+        {!site.data ? (
+          site.error ? (
+            <p className="error-message mt-4">{site.error}</p>
+          ) : (
+            <LinesSkeleton className="mt-4 max-w-xl" label="Loading content settings" lines={2} />
+          )
+        ) : !site.data.adultContentEnabled ? (
+          <p className="notice mt-4">
+            Adult content is turned off on Graphite Tracker, so adult titles stay out of search,
+            discovery, imports and title pages for everyone. Titles already in your library are kept.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-muted">
+              Adult titles stay out of search, discovery, imports and title pages until you turn this
+              on. Titles already in your library are kept either way.
+            </p>
+            <div className="mt-5 grid gap-3">
+              <Toggle
+                checked={data.showAdultContent}
+                description="Adult films, erotica and pornographic manga, and adult-only games, as labelled by each source. Results marked 18+ come from this setting."
+                label="Show adult content"
+                onChange={(checked) =>
+                  checked ? setConfirmingAdult(true) : void send('/me', { showAdultContent: false })
+                }
+              />
+              <Toggle
+                checked={data.blurAdultContent}
+                description="Posters and backdrops of 18+ titles stay blurred until you hover over them or choose to show them."
+                disabled={!data.showAdultContent}
+                label="Blur adult artwork"
+                onChange={(checked) => void send('/me', { blurAdultContent: checked })}
+              />
             </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button className="secondary-button" onClick={() => setConfirmingAdult(false)} type="button">
-                Cancel
-              </button>
-              <button
-                className="primary-button"
-                onClick={() => {
-                  setConfirmingAdult(false);
-                  void send('/me', { showAdultContent: true });
-                }}
-                type="button"
-              >
-                Show adult content
-              </button>
-            </div>
-          </Dialog>
+            {confirmingAdult && (
+              <Dialog eyebrow="Content" onClose={() => setConfirmingAdult(false)} title="Show adult content?">
+                <div className="mt-6 grid gap-4 text-sm text-muted">
+                  <p className="m-0">
+                    Search, discovery and title pages will include adult films, erotica and pornographic
+                    manga, and adult-only games. Each one is marked 18+, and its artwork stays blurred
+                    while the blur option is on.
+                  </p>
+                  <p className="m-0">
+                    Sources label this content themselves, so the filter is best effort in both
+                    directions. Turning it on confirms that you are an adult and want to see it.
+                  </p>
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button className="secondary-button" onClick={() => setConfirmingAdult(false)} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      setConfirmingAdult(false);
+                      void send('/me', { showAdultContent: true });
+                    }}
+                    type="button"
+                  >
+                    Show adult content
+                  </button>
+                </div>
+              </Dialog>
+            )}
+          </>
         )}
       </section>
     </div>

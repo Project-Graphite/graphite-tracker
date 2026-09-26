@@ -25,6 +25,7 @@ function serviceWith(session: Record<string, unknown> | null, rotated = 1) {
     new JwtService(),
     new ConfigService({ AUTH_ACCESS_TOKEN_SECRET: 'test-secret' }),
     {} as never,
+    { adultContent: (preference: boolean) => Promise.resolve(preference) } as never,
   );
   return { refreshSession, service };
 }

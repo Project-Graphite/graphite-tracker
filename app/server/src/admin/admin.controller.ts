@@ -14,6 +14,7 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RateLimit } from '../redis/rate-limit.guard';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { AdminGuard, SystemManagerGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import {
@@ -25,6 +26,7 @@ import {
   SetReviewHiddenDto,
   SetUserActiveDto,
   SetUserRoleDto,
+  UpdateSiteSettingsDto,
 } from './dto/admin.dto';
 
 @Controller('admin')
@@ -33,6 +35,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly auth: AuthService,
+    private readonly site: SiteSettingsService,
   ) {}
 
   @Get('reports')
@@ -96,5 +99,13 @@ export class AdminController {
   ) {
     await this.auth.confirmPassword(user.id, input.password);
     await this.admin.setUserRole(user.id, id, input.role);
+  }
+
+  @Patch('site')
+  @UseGuards(SystemManagerGuard)
+  @RateLimit('site-settings', 10, 3_600)
+  async updateSite(@CurrentUser() user: AuthenticatedUser, @Body() input: UpdateSiteSettingsDto) {
+    await this.auth.confirmPassword(user.id, input.password);
+    return this.site.update({ adultContentEnabled: input.adultContentEnabled });
   }
 }

@@ -17,6 +17,7 @@ import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
 import { LinesSkeleton, TitleSkeleton } from '../components/Skeleton';
 import { TitleReviews } from '../components/TitleReviews';
+import { useSiteSettings } from '../site';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
 
@@ -91,6 +92,7 @@ function Facts({ item }: { item: CatalogDetails }) {
 export function TitleDetailsPage() {
   const auth = useAuth();
   const blur = useAdultBlur();
+  const site = useSiteSettings();
   const [revealed, setRevealed] = useState(false);
   const { category: categoryParam, externalId = '' } = useParams();
   const [searchParams] = useSearchParams();
@@ -129,8 +131,14 @@ export function TitleDetailsPage() {
           <div className="mt-6">
             <EmptyState title="Title not found">
               <p className="mt-2 mb-0 text-muted">
-                This title is not available from its source, or it is adult content hidden by your{' '}
-                <Link className="rule-link" to="/settings">content settings</Link>.
+                {site.data?.adultContentEnabled === false ? (
+                  'This title is not available from its source, or it is adult content, which Graphite Tracker does not show.'
+                ) : (
+                  <>
+                    This title is not available from its source, or it is adult content hidden by your{' '}
+                    <Link className="rule-link" to="/settings">content settings</Link>.
+                  </>
+                )}
               </p>
             </EmptyState>
           </div>

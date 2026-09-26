@@ -12,6 +12,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -37,6 +38,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
+    private readonly site: SiteSettingsService,
   ) {}
 
   async register(input: RegisterDto) {
@@ -282,7 +284,7 @@ export class AuthService {
         handle: user.handle,
         displayName: user.displayName,
         role: user.role.toLowerCase(),
-        showAdultContent: user.showAdultContent,
+        showAdultContent: await this.site.adultContent(user.showAdultContent),
         blurAdultContent: user.blurAdultContent,
       },
     };

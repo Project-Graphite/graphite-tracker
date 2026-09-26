@@ -20,6 +20,7 @@ import { Worker } from 'node:worker_threads';
 import { CatalogItemsService } from '../catalog/catalog-items.service';
 import { LibraryService } from '../library/library.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory } from '../sources/source.types';
 import type { ParsedBackup } from './backup-parser';
@@ -44,6 +45,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     private readonly catalogItems: CatalogItemsService,
     private readonly library: LibraryService,
     private readonly matcher: ImportMatcherService,
+    private readonly site: SiteSettingsService,
   ) {}
 
   async onModuleInit() {
@@ -358,6 +360,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         where: { id: batchId },
         select: { user: { select: { showAdultContent: true } } },
       });
+      const adult = await this.site.adultContent(user.showAdultContent);
       for (;;) {
         const pending = await this.prisma.importCandidate.findMany({
           where: { batchId, match: ImportMatch.PENDING },
@@ -366,7 +369,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         });
         if (pending.length === 0) break;
         for (const candidate of pending) {
-          const found = await this.find(candidate, user.showAdultContent);
+          const found = await this.find(candidate, adult);
           const updated = await this.prisma.importCandidate.updateMany({
             where: { id: candidate.id },
             data: {

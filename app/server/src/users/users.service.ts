@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SiteSettingsService } from '../site/site-settings.service';
 import { UpdatePrivacyDto, UpdateProfileDto } from './dto/users.dto';
 
 const sourceKey = { select: { source: { select: { key: true } } } } as const;
@@ -7,7 +8,10 @@ const titleOnly = { select: { category: true, canonicalTitle: true } } as const;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly site: SiteSettingsService,
+  ) {}
 
   async me(userId: string) {
     const [user, privacy] = await Promise.all([
@@ -25,13 +29,16 @@ export class UsersService {
       bio: user.bio,
       timeZone: user.timeZone,
       role: user.role.toLowerCase(),
-      showAdultContent: user.showAdultContent,
+      showAdultContent: await this.site.adultContent(user.showAdultContent),
       blurAdultContent: user.blurAdultContent,
       privacy,
     };
   }
 
   async updateProfile(userId: string, input: UpdateProfileDto) {
+    if (input.showAdultContent && !(await this.site.get()).adultContentEnabled) {
+      throw new ForbiddenException('Adult content is turned off on Graphite Tracker');
+    }
     await this.prisma.user.update({
       where: { id: userId },
       data: {

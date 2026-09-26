@@ -56,6 +56,15 @@ export class SetUserActiveDto {
   active!: boolean;
 }
 
+export class UpdateSiteSettingsDto {
+  @IsBoolean()
+  adultContentEnabled!: boolean;
+
+  @IsString()
+  @MaxLength(128)
+  password!: string;
+}
+
 export class SetUserRoleDto {
   @IsIn(['admin', 'member'])
   role!: 'admin' | 'member';

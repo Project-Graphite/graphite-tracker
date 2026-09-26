@@ -65,6 +65,7 @@ function setup(overrides: Record<string, object> = {}) {
     new JwtService(),
     new ConfigService({ AUTH_ACCESS_TOKEN_SECRET: 'test-secret' }),
     mail as never,
+    { adultContent: (preference: boolean) => Promise.resolve(preference) } as never,
   );
   return { mail, prisma, service };
 }

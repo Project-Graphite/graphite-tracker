@@ -2,11 +2,13 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { errorMessage, type Page } from '../api';
 import { useAuth, type UserRole } from '../auth';
-import { Dialog } from '../components/Dialog';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
-import { ListSkeleton } from '../components/Skeleton';
+import { PasswordDialog } from '../components/PasswordDialog';
+import { LinesSkeleton, ListSkeleton } from '../components/Skeleton';
+import { Toggle } from '../components/Toggle';
 import { itemHref, reportReasons, type ItemSummary } from '../reviews';
+import { useSiteSettings, type SiteSettings } from '../site';
 import { useResource, type Resource } from '../useResource';
 
 interface ModeratedReview {
@@ -65,6 +67,7 @@ const tabs = {
   reviews: 'Reviews',
   users: 'Users',
   notifications: 'Notifications',
+  site: 'Site',
 } as const;
 type Tab = keyof typeof tabs;
 
@@ -98,59 +101,73 @@ function RoleDialog({
   onSaved: () => void;
 }) {
   const auth = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const appointing = account.role === 'member';
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const password = String(new FormData(event.currentTarget).get('password'));
-    if (!password) {
-      setError('Enter your password to confirm.');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      await auth.request(`/admin/users/${account.id}/role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role: appointing ? 'admin' : 'member', password }),
-      });
-      onSaved();
-      onClose();
-    } catch (reason) {
-      setError(errorMessage(reason, 'Could not change this role'));
-      setBusy(false);
-    }
-  }
-
   return (
-    <Dialog
+    <PasswordDialog
+      confirmLabel={appointing ? 'Make administrator' : 'Remove administrator'}
       eyebrow="Administrators"
       onClose={onClose}
-      title={appointing ? `Make ${account.displayName} an administrator?` : `Remove ${account.displayName} as administrator?`}
+      onConfirm={async (password) => {
+        await auth.request(`/admin/users/${account.id}/role`, {
+          method: 'PATCH',
+          body: JSON.stringify({ role: appointing ? 'admin' : 'member', password }),
+        });
+        onSaved();
+      }}
+      title={
+        appointing
+          ? `Make ${account.displayName} an administrator?`
+          : `Remove ${account.displayName} as administrator?`
+      }
     >
-      <form className="mt-6 grid gap-5" noValidate onSubmit={(event) => void save(event)}>
-        <p className="m-0 text-sm text-muted">
-          {appointing
-            ? 'Administrators handle reports, hide and restore reviews, deactivate members and see private profiles and reviews.'
-            : 'They keep their account, library and reviews, and lose access to the admin page straight away.'}
-        </p>
-        <label className="field-label">
-          Your password
-          <input autoComplete="current-password" name="password" type="password" />
-        </label>
-        {error && <p className="error-message m-0">{error}</p>}
-        <div className="flex justify-end gap-3">
-          <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
-            Cancel
-          </button>
-          <button className="primary-button" disabled={busy} type="submit">
-            {busy ? 'Saving…' : appointing ? 'Make administrator' : 'Remove administrator'}
-          </button>
-        </div>
-      </form>
-    </Dialog>
+      <p className="m-0">
+        {appointing
+          ? 'Administrators handle reports, hide and restore reviews, deactivate members and see private profiles and reviews.'
+          : 'They keep their account, library and reviews, and lose access to the admin page straight away.'}
+      </p>
+    </PasswordDialog>
+  );
+}
+
+function SitePanel() {
+  const auth = useAuth();
+  const site = useSiteSettings();
+  const [confirming, setConfirming] = useState<boolean>();
+
+  if (site.error) return <p className="error-message">{site.error}</p>;
+  if (!site.data) return <LinesSkeleton className="max-w-3xl" label="Loading site settings" lines={2} />;
+
+  return (
+    <div className="fade-in grid max-w-3xl gap-3">
+      <Toggle
+        checked={site.data.adultContentEnabled}
+        description="When this is off, adult titles stay out of search, discovery, imports and title pages for every reader, whatever their own setting says, and the reader setting is hidden."
+        label="Allow adult content"
+        onChange={setConfirming}
+      />
+      {confirming !== undefined && (
+        <PasswordDialog
+          confirmLabel={confirming ? 'Allow adult content' : 'Turn adult content off'}
+          eyebrow="Site"
+          onClose={() => setConfirming(undefined)}
+          onConfirm={async (password) => {
+            const next = await auth.request<SiteSettings>('/admin/site', {
+              method: 'PATCH',
+              body: JSON.stringify({ adultContentEnabled: confirming, password }),
+            });
+            site.mutate(() => next);
+          }}
+          title={confirming ? 'Allow adult content again?' : 'Turn adult content off for everyone?'}
+        >
+          <p className="m-0">
+            {confirming
+              ? 'Readers who turned adult content on in their settings will see it again.'
+              : 'Readers keep their own setting, and it applies again if you allow adult content later.'}
+          </p>
+        </PasswordDialog>
+      )}
+    </div>
   );
 }
 
@@ -198,7 +215,10 @@ export function AdminPage() {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
   const [changingRole, setChangingRole] = useState<Account>();
-  const tab = (Object.keys(tabs) as Tab[]).find((key) => key === searchParams.get('tab')) ?? 'reports';
+  const visibleTabs = (Object.keys(tabs) as Tab[]).filter(
+    (key) => key !== 'site' || auth.user?.role === 'system_manager',
+  );
+  const tab = visibleTabs.find((key) => key === searchParams.get('tab')) ?? 'reports';
   const page = Number(searchParams.get('page')) || 1;
   const query = searchParams.get('query') ?? '';
   const status =
@@ -208,7 +228,9 @@ export function AdminPage() {
       ? `/admin/users?page=${page}${query ? `&query=${encodeURIComponent(query)}` : ''}`
       : tab === 'notifications'
         ? `/admin/notifications?page=${page}`
-        : `/admin/${tab}?status=${status}&page=${page}`;
+        : tab === 'site'
+          ? null
+          : `/admin/${tab}?status=${status}&page=${page}`;
   const reports = useResource<Page<Report>>(tab === 'reports' ? path : null, true);
   const reviews = useResource<Page<ModeratedReview>>(tab === 'reviews' ? path : null, true);
   const users = useResource<Page<Account>>(tab === 'users' ? path : null, true);
@@ -240,14 +262,14 @@ export function AdminPage() {
       <p className="eyebrow">Moderation</p>
       <h1 className="page-title">Admin</h1>
       <nav aria-label="Admin sections" className="mt-7 mb-6 flex gap-2 overflow-x-auto border-b border-line">
-        {(Object.entries(tabs) as Array<[Tab, string]>).map(([key, label]) => (
+        {visibleTabs.map((key) => (
           <Link
             aria-current={key === tab ? 'page' : undefined}
             className="tab-link"
             key={key}
             to={`/admin?tab=${key}`}
           >
-            {label}
+            {tabs[key]}
           </Link>
         ))}
       </nav>
@@ -405,6 +427,7 @@ export function AdminPage() {
           </Listing>
         </>
       )}
+      {tab === 'site' && <SitePanel />}
     </div>
   );
 }

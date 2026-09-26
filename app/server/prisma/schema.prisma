@@ -490,3 +490,11 @@ model ActivityEvent {
   @@index([userId, createdAt])
   @@map("activity_events")
 }
+
+model SiteSettings {
+  id                  Int      @id @default(1)
+  adultContentEnabled Boolean  @default(true) @map("adult_content_enabled")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

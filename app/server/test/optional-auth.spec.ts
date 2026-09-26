@@ -9,6 +9,7 @@ import { CurrentUser } from '../src/auth/current-user.decorator';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
 import { OptionalJwtAuthGuard } from '../src/auth/optional-jwt-auth.guard';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { SiteSettingsService } from '../src/site/site-settings.service';
 
 const secret = 'test-access-secret';
 
@@ -33,6 +34,10 @@ describe('OptionalJwtAuthGuard', () => {
         JwtStrategy,
         OptionalJwtAuthGuard,
         { provide: ConfigService, useValue: new ConfigService({ AUTH_ACCESS_TOKEN_SECRET: secret }) },
+        {
+          provide: SiteSettingsService,
+          useValue: { adultContent: (preference: boolean) => Promise.resolve(preference) },
+        },
         {
           provide: PrismaService,
           useValue: {

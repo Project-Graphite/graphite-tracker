@@ -139,6 +139,7 @@ describe('ImportsService', () => {
       {} as never,
       library as never,
       {} as never,
+      { adultContent: (preference: boolean) => Promise.resolve(preference) } as never,
     );
   }
 

@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { UserRole } from '@prisma/client';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { SiteSettingsService } from '../site/site-settings.service';
 
 interface AccessTokenPayload {
   sub: string;
@@ -14,6 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly site: SiteSettingsService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -33,7 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id,
       isAdmin: user.role !== UserRole.MEMBER,
       isSystemManager: user.role === UserRole.SYSTEM_MANAGER,
-      showAdultContent: user.showAdultContent,
+      showAdultContent: await this.site.adultContent(user.showAdultContent),
     };
   }
 }
