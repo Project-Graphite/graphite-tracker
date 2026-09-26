@@ -1,18 +1,16 @@
-import { useState, type FormEvent } from 'react';
-import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
-import { apiRequest, errorMessage } from '../api';
+import type { FormEvent } from 'react';
+import { Link, NavLink, useSearchParams } from 'react-router';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
   countLabel,
   discoverCategories,
-  titleHref,
-  type CatalogCategory,
   type CatalogResponse,
   type CatalogSection,
   type ConnectorDescriptor,
   type DiscoverCategory,
 } from '../catalog';
+import { useCatalogSearch } from '../catalogSearch';
 import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
@@ -79,9 +77,8 @@ export function DiscoverPage({
   section: CatalogSection;
 }) {
   const auth = useAuth();
-  const navigate = useNavigate();
+  const search = useCatalogSearch();
   const [searchParams] = useSearchParams();
-  const [urlError, setUrlError] = useState('');
   const query = searchParams.get('q')?.trim() ?? '';
   const page = pageFrom(searchParams.get('page'));
   const settings = useResource<SourceSettings>(
@@ -134,30 +131,13 @@ export function DiscoverPage({
       const value = String(form.get(key) ?? '').trim();
       if (value) next.set(key, value);
     }
-    navigate(`/discover/${category}/${section}?${next.toString()}`);
+    void search.submit(next.get('q') ?? '', () => `/discover/${category}/${section}?${next.toString()}`);
   }
 
   function pageHref(nextPage: number) {
     const next = new URLSearchParams(searchParams);
     next.set('page', String(nextPage));
     return `/discover/${category}/${section}?${next.toString()}`;
-  }
-
-  async function openFromUrl(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setUrlError('');
-    const url = String(new FormData(event.currentTarget).get('url')).trim();
-    try {
-      navigate(
-        titleHref(
-          await apiRequest<{ category: CatalogCategory; externalId: string; source: string }>(
-            `/catalog/recognize?url=${encodeURIComponent(url)}`,
-          ),
-        ),
-      );
-    } catch (reason) {
-      setUrlError(errorMessage(reason, 'This link was not recognized'));
-    }
   }
 
   const error = settings.error || publicSources.error || genres.error || results.error;
@@ -194,7 +174,7 @@ export function DiscoverPage({
         {section === 'search' && (
           <label className="field-label col-span-2">
             Title
-            <input defaultValue={query} minLength={2} name="q" placeholder="Search by title" required />
+            <input defaultValue={query} minLength={2} name="q" placeholder="Search by title or paste a source link" required />
           </label>
         )}
         {(genres.loading || (genres.data?.length ?? 0) > 0) && (
@@ -269,16 +249,7 @@ export function DiscoverPage({
           )}
         </div>
       </form>
-      {section === 'search' && (
-        <form className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" onSubmit={(event) => void openFromUrl(event)}>
-          <label className="field-label">
-            Open from a source link
-            <input name="url" placeholder="Paste a TMDB, MangaDex, IGDB or RAWG link" required type="url" />
-          </label>
-          <button className="secondary-button self-end" type="submit">Open</button>
-          {urlError && <p className="error-message m-0 sm:col-span-2">{urlError}</p>}
-        </form>
-      )}
+      {search.error && <p className="error-message mt-4 max-w-3xl">{search.error}</p>}
       {error && <p className="error-message mt-6 max-w-3xl">{error}</p>}
       {section === 'search' && query.length < 2 ? (
         <div className="mt-10">

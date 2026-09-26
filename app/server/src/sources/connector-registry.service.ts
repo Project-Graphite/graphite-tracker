@@ -151,7 +151,7 @@ export class ConnectorRegistryService {
         return { ...match, source: connector.descriptor.key };
       }
     }
-    throw new NotFoundException('No connector recognizes this URL');
+    throw new NotFoundException('This link is not from a supported source');
   }
 
   resolve(category: CatalogCategory, source?: string) {

@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import {
   catalogCategories,
   categoryLabels,
@@ -7,6 +7,7 @@ import {
   type CatalogCategory,
   type CatalogResponse,
 } from '../catalog';
+import { useCatalogSearch } from '../catalogSearch';
 import { CatalogRow } from '../components/CatalogRow';
 import { EmptyState } from '../components/EmptyState';
 import { useResource } from '../useResource';
@@ -38,33 +39,34 @@ function CategoryResults({ category, query }: { category: CatalogCategory; query
 }
 
 export function SearchPage() {
-  const navigate = useNavigate();
+  const search = useCatalogSearch();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
 
-  function search(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const next = String(new FormData(event.currentTarget).get('query')).trim();
-    navigate(`/search?q=${encodeURIComponent(next)}`);
+    void search.submit(next, (value) => `/search?q=${encodeURIComponent(value)}`);
   }
 
   return (
     <div className="page-enter">
       <p className="eyebrow">Unified catalogue</p>
       <h1 className="page-title">{query.length >= 2 ? `Results for “${query}”` : 'Search'}</h1>
-      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={search} role="search">
+      <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={submit} role="search">
         <input
           aria-label="Title"
           defaultValue={query}
           minLength={2}
           name="query"
-          placeholder="Search movies, TV, anime, manga, manhwa and games"
+          placeholder="Search every medium, or paste a TMDB, MangaDex, IGDB or RAWG link"
           required
           type="search"
         />
-        <button className="primary-button" type="submit">
-          Search
+        <button className="primary-button" disabled={search.opening} type="submit">
+          {search.opening ? 'Opening…' : 'Search'}
         </button>
+        {search.error && <p className="error-message m-0 sm:col-span-2">{search.error}</p>}
       </form>
       {query.length >= 2 ? (
         catalogCategories.map((category) => (
