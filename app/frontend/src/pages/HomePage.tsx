@@ -50,7 +50,7 @@ export function HomePage() {
             aria-label="Title"
             name="query"
             onInput={form.field('query').onInput}
-            placeholder="Search every medium, or paste a TMDB, MangaDex, IGDB or RAWG link"
+            placeholder="Search every medium, or paste a TMDB, MangaUpdates, MangaDex, IGDB or RAWG link"
             type="search"
           />
           <button className="primary-button" disabled={search.opening} type="submit">
