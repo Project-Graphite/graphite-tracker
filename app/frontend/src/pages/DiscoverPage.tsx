@@ -29,6 +29,15 @@ const sections: Array<{ id: Exclude<CatalogSection, 'search'>; label: string }> 
 const filterKeys = ['genre', 'year', 'status', 'sort', 'source'] as const;
 
 function statusOptions(category: DiscoverCategory, section: CatalogSection, source: string) {
+  if (category === 'anime' && source !== 'tmdb') {
+    return [
+      ['releasing', 'Airing'],
+      ['finished', 'Finished'],
+      ['not_yet_released', 'Not yet aired'],
+      ['hiatus', 'Hiatus'],
+      ['cancelled', 'Cancelled'],
+    ];
+  }
   if ((category === 'tv' || category === 'anime') && section !== 'search') {
     return [
       ['returning', 'Returning'],
@@ -63,7 +72,15 @@ function sortOptions(category: DiscoverCategory, section: CatalogSection, source
           ['rating', 'Rating'],
         ];
   }
-  const newest = category === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc';
+  if (category === 'anime' && source !== 'tmdb') {
+    return [
+      ['TRENDING_DESC', 'Trending'],
+      ['POPULARITY_DESC', 'Popularity'],
+      ['SCORE_DESC', 'Rating'],
+      ['START_DATE_DESC', 'Newest'],
+    ];
+  }
+  const newest =category === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc';
   return [
     ...(section === 'search' ? [] : [['popularity.desc', 'Popularity']]),
     ['vote_average.desc', 'Rating'],

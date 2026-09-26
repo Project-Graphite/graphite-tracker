@@ -87,4 +87,66 @@ describe('Discover filters', () => {
     expect(sorts()).toEqual(['', 'followedCount', 'latestUploadedChapter']);
     expect(container.querySelector('select[name="status"]')).not.toBeNull();
   });
+
+  it('offers AniList sorts and statuses for anime unless TMDB is chosen', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) => {
+        const url = String(input);
+        if (url.includes('/catalog/sources')) {
+          return Promise.resolve(
+            json([
+              { ...mangaSource('anilist', 'AniList'), categories: ['anime'] },
+              { ...mangaSource('tmdb', 'TMDB'), categories: ['movie', 'tv', 'anime'] },
+            ]),
+          );
+        }
+        if (url.includes('/catalog/')) {
+          return Promise.resolve(
+            json({ page: 1, totalPages: 1, totalResults: 0, results: [], attribution: 'Test' }),
+          );
+        }
+        return Promise.resolve(new Response(null, { status: 401 }));
+      }),
+    );
+    const values = (name: string) =>
+      [...container.querySelectorAll<HTMLOptionElement>(`select[name="${name}"] option`)].map(
+        ({ value }) => value,
+      );
+    const render = (path: string) =>
+      act(async () =>
+        root.render(
+          <MemoryRouter initialEntries={[path]}>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </MemoryRouter>,
+        ),
+      );
+
+    await render('/discover/anime/recent');
+
+    expect(values('sort')).toEqual([
+      '',
+      'TRENDING_DESC',
+      'POPULARITY_DESC',
+      'SCORE_DESC',
+      'START_DATE_DESC',
+    ]);
+    expect(values('status')).toEqual([
+      '',
+      'releasing',
+      'finished',
+      'not_yet_released',
+      'hiatus',
+      'cancelled',
+    ]);
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    await render('/discover/anime/recent?source=tmdb');
+
+    expect(values('sort')).toEqual(['', 'popularity.desc', 'vote_average.desc', 'first_air_date.desc']);
+    expect(values('status')).toContain('returning');
+  });
 });
