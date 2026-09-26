@@ -53,6 +53,18 @@ function DiscoverRoute() {
   );
 }
 
+function SettingsRedirect() {
+  const auth = useAuth();
+  const location = useLocation();
+  const { '*': section } = useParams();
+  return auth.user ? (
+    <Navigate
+      replace
+      to={`/users/${auth.user.handle}/settings${section ? `/${section}` : ''}${location.search}`}
+    />
+  ) : null;
+}
+
 function SignedOutLogin() {
   const auth = useAuth();
   const location = useLocation();
@@ -77,14 +89,15 @@ export function App() {
         <Route path="notifications" element={<Protected><NotificationsPage /></Protected>} />
         <Route path="import" element={<Protected><ImportPage /></Protected>} />
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
-        <Route path="settings" element={<Protected><SettingsLayout /></Protected>}>
+        <Route path="settings/*" element={<Protected><SettingsRedirect /></Protected>} />
+        <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
+        <Route path="users/:handle" element={<ProfilePage />} />
+        <Route path="users/:handle/settings" element={<Protected><SettingsLayout /></Protected>}>
           <Route index element={<ProfileSettingsPage />} />
           <Route path="account" element={<AccountSettingsPage />} />
           <Route path="notifications" element={<NotificationSettingsPage />} />
           <Route path="sources" element={<SourcesPage />} />
         </Route>
-        <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
-        <Route path="users/:handle" element={<ProfilePage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
         <Route path="credits" element={<CreditsPage />} />

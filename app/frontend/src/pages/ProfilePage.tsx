@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, NavLink, useParams, useSearchParams } from 'react-router';
 import { useAdultBlur } from '../adultContent';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
@@ -59,6 +59,19 @@ interface Rating {
   rating: number;
   updatedAt: string;
   item: ItemSummary;
+}
+
+export function OwnerTabs({ handle }: { handle: string }) {
+  return (
+    <nav aria-label="Your profile" className="mt-7 flex gap-2 border-b border-line">
+      <NavLink className="tab-link -mb-px" end to={`/users/${handle}`}>
+        Profile
+      </NavLink>
+      <NavLink className="tab-link -mb-px" to={`/users/${handle}/settings`}>
+        Settings
+      </NavLink>
+    </nav>
+  );
 }
 
 const sectionLabels: Record<Section, string> = {
@@ -310,12 +323,15 @@ export function ProfilePage() {
       <p className="eyebrow">@{data.handle}</p>
       <h1 className="page-title">{data.displayName}</h1>
       {auth.user?.handle === data.handle && (
-        <p className="notice mt-5 max-w-3xl">
-          This is how other people see your profile.{' '}
-          <Link className="rule-link" to="/settings">
-            Change what is shown
-          </Link>
-        </p>
+        <>
+          <OwnerTabs handle={data.handle} />
+          <p className="notice mt-5 max-w-3xl">
+            This is how other people see your profile.{' '}
+            <Link className="rule-link" to={`/users/${data.handle}/settings`}>
+              Change what is shown
+            </Link>
+          </p>
+        </>
       )}
       {data.privateSections && (
         <p className="notice mt-5 max-w-3xl">

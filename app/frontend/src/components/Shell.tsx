@@ -88,9 +88,6 @@ export function Shell() {
                       <NavLink className={navClass} to={`/users/${auth.user.handle}`}>
                         profile
                       </NavLink>
-                      <NavLink className={navClass} to="/settings">
-                        settings
-                      </NavLink>
                       {auth.user.role !== 'member' && (
                         <NavLink className={navClass} to="/admin">
                           admin

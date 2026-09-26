@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, Navigate, NavLink, Outlet, useParams } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Dialog } from '../components/Dialog';
@@ -7,6 +7,7 @@ import { TextAreaField, TextField } from '../components/Field';
 import { FormSkeleton, LinesSkeleton } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { useSiteSettings } from '../site';
+import { OwnerTabs } from './ProfilePage';
 import { useResource } from '../useResource';
 import { atMost, required, useFormErrors } from '../validation';
 
@@ -37,25 +38,40 @@ const sections: Array<[Exclude<PrivacySetting, 'isPublic'>, string, string]> = [
   ['showReviews', 'Reviews', 'Your public reviews. New reviews start public when this is on.'],
 ];
 
+const settingsSections = [
+  ['', 'Profile and privacy'],
+  ['account', 'Account'],
+  ['notifications', 'Notifications'],
+  ['sources', 'Sources'],
+] as const;
 
 export function SettingsLayout() {
+  const auth = useAuth();
+  const { handle = '' } = useParams();
+  const user = auth.user;
+  if (!user) return null;
+  if (handle.toLowerCase() !== user.handle) {
+    return <Navigate replace to={`/users/${handle}`} />;
+  }
+
   return (
     <div className="page-enter">
-      <p className="eyebrow">Your account</p>
-      <h1 className="page-title">Settings</h1>
-      <nav aria-label="Settings" className="mt-7 flex gap-2 overflow-x-auto border-b border-line">
-        <NavLink className="tab-link" end to="/settings">
-          Profile and privacy
-        </NavLink>
-        <NavLink className="tab-link" to="/settings/account">
-          Account
-        </NavLink>
-        <NavLink className="tab-link" to="/settings/notifications">
-          Notifications
-        </NavLink>
-        <NavLink className="tab-link" to="/settings/sources">
-          Sources
-        </NavLink>
+      <p className="eyebrow">@{user.handle}</p>
+      <h1 className="page-title">{user.displayName}</h1>
+      <OwnerTabs handle={user.handle} />
+      <nav aria-label="Settings" className="mt-6 flex gap-2 overflow-x-auto pb-1">
+        {settingsSections.map(([section, label]) => (
+          <NavLink
+            className={({ isActive }) =>
+              `secondary-button shrink-0 px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
+            }
+            end
+            key={section}
+            to={`/users/${user.handle}/settings${section ? `/${section}` : ''}`}
+          >
+            {label}
+          </NavLink>
+        ))}
       </nav>
       <div className="mt-8">
         <Outlet />
@@ -142,7 +158,7 @@ export function ProfileSettingsPage() {
             </button>
             {saved && <span className="mono-sm text-faint">Saved.</span>}
             <Link className="rule-link mono-sm" to={`/users/${data.handle}`}>
-              View your public profile
+              See your profile as others do
             </Link>
           </div>
         </form>
