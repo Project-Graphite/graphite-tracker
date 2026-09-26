@@ -10,7 +10,6 @@ import {
   titleHref,
   type CatalogDetails,
 } from '../catalog';
-import { Attribution } from '../components/Attribution';
 import { AddToListButton } from '../components/CatalogCard';
 import { Credits } from '../components/Credits';
 import { EmptyState } from '../components/EmptyState';
@@ -18,6 +17,7 @@ import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
 import { LinesSkeleton, TitleSkeleton } from '../components/Skeleton';
 import { TitleReviews } from '../components/TitleReviews';
+import { useFooterSource } from '../footerSource';
 import { useSiteSettings } from '../site';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
@@ -111,6 +111,20 @@ export function TitleDetailsPage() {
     true,
   );
   const entry = !auth.user ? null : lookup.data ? (lookup.data[0] ?? null) : undefined;
+  useFooterSource(
+    details.data && {
+      attribution: details.data.attribution,
+      attributionUrl: details.data.attributionUrl,
+      links: [
+        ...(details.data.deepLinks ?? []),
+        ...(entry?.item.sources ?? []).flatMap((attached) =>
+          attached.key !== details.data?.source && attached.url
+            ? [{ label: `View on ${attached.name}`, url: attached.url }]
+            : [],
+        ),
+      ],
+    },
+  );
 
   if (!category) {
     return <Navigate replace to="/discover/movie/recent" />;
@@ -291,21 +305,6 @@ export function TitleDetailsPage() {
               </ul>
             </section>
           )}
-          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-            {item.deepLinks?.map((link) => (
-              <a className="secondary-button" href={link.url} key={link.url} rel="noreferrer" target="_blank">
-                {link.label}
-              </a>
-            ))}
-            {entry?.item.sources
-              .filter((source) => source.key !== item.source && source.url)
-              .map((source) => (
-                <a className="secondary-button" href={source.url ?? undefined} key={source.key} rel="noreferrer" target="_blank">
-                  View on {source.name}
-                </a>
-              ))}
-            <Attribution source={item} />
-          </div>
           <TitleReviews entry={entry} item={item} />
         </div>
       </div>

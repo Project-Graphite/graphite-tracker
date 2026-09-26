@@ -3,13 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogResponse } from '../catalog';
-import { Attribution } from '../components/Attribution';
 import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { LibraryCard } from '../components/LibraryCard';
 import { Pagination } from '../components/Pagination';
 import { posterGridClass } from '../components/Poster';
 import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { useFooterSource } from '../footerSource';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
 
@@ -82,6 +82,12 @@ export function TrackGamesPage() {
     auth.user ? '/library?category=game' : null,
     true,
   );
+  useFooterSource(
+    results.data && {
+      attribution: results.data.attribution,
+      attributionUrl: results.data.attributionUrl,
+    },
+  );
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -133,7 +139,6 @@ export function TrackGamesPage() {
                 : countLabel(results.data.totalResults, 'result')}{' '}
               for “{query}”
             </h2>
-            <Attribution source={results.data} />
           </div>
           {results.data.results.length === 0 ? (
             <EmptyState title="No games found">

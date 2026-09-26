@@ -13,11 +13,11 @@ import {
   type ConnectorDescriptor,
   type DiscoverCategory,
 } from '../catalog';
-import { Attribution } from '../components/Attribution';
 import { CatalogGrid } from '../components/CatalogCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { useFooterSource } from '../footerSource';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 
@@ -116,6 +116,12 @@ export function DiscoverPage({
   const canLoad = sourcesReady && (section !== 'search' || query.length >= 2);
   const results = useResource<CatalogResponse>(
     canLoad ? `/catalog/${category}/${section}?${parameters.toString()}` : null,
+  );
+  useFooterSource(
+    results.data && {
+      attribution: results.data.attribution,
+      attributionUrl: results.data.attributionUrl,
+    },
   );
   const statuses = statusOptions(category, section);
   const hasFilters = filterKeys.some((key) => searchParams.get(key));
@@ -303,7 +309,6 @@ export function DiscoverPage({
                     ? 'Recently released'
                     : 'Popular now'}
               </h2>
-              <Attribution source={results.data} />
             </div>
             {results.data.results.length === 0 ? (
               <EmptyState title={results.data.totalPages > 1 ? 'Nothing on this page' : 'No titles found'}>
