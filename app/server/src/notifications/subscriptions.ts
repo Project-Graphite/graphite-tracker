@@ -2,9 +2,14 @@ import { DigestCadence, LibraryState, MediaCategory, Prisma, ReleaseKind } from 
 import { effectiveSourceEntry, SourcePreferences } from '../library/effective-source';
 import { ReleaseSignal } from '../sources/source.types';
 
-export const subscribedEntryWhere = {
+export const followedEntryWhere = {
   notificationsEnabled: true,
   state: { in: [LibraryState.PLANNED, LibraryState.IN_PROGRESS] },
+  user: { isActive: true },
+} satisfies Prisma.LibraryEntryWhereInput;
+
+export const subscribedEntryWhere = {
+  ...followedEntryWhere,
   user: {
     isActive: true,
     notificationPreference: { is: { enabled: true, suspendedAt: null } },
@@ -25,8 +30,8 @@ export const releaseKinds: Record<ReleaseSignal['kind'], ReleaseKind> = {
   release_date: ReleaseKind.RELEASE_DATE,
 };
 
-export function wantsRelease(
-  entry: SubscribedEntry,
+export function followsRelease(
+  entry: Omit<SubscribedEntry, 'user'>,
   marker: { sourceEntryId: string; platform: string | null },
   preferences: SourcePreferences,
 ) {
@@ -34,10 +39,20 @@ export function wantsRelease(
   return (
     entry.notificationsEnabled &&
     (entry.state === LibraryState.PLANNED || entry.state === LibraryState.IN_PROGRESS) &&
-    (entry.user.notificationPreference?.categories.includes(category) ?? false) &&
     effectiveSourceEntry(sourceEntries, entry.preferredSourceId, category, preferences)?.id ===
       marker.sourceEntryId &&
     (!marker.platform || entry.platforms.includes(marker.platform))
+  );
+}
+
+export function wantsRelease(
+  entry: SubscribedEntry,
+  marker: { sourceEntryId: string; platform: string | null },
+  preferences: SourcePreferences,
+) {
+  return (
+    (entry.user.notificationPreference?.categories.includes(entry.catalogItem.category) ?? false) &&
+    followsRelease(entry, marker, preferences)
   );
 }
 

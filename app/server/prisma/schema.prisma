@@ -134,6 +134,7 @@ model User {
   activity        ActivityEvent[]
   notificationPreference NotificationPreference?
   notificationEvents     NotificationEvent[]
+  inboxNotifications     InboxNotification[]
 
   @@map("users")
 }
@@ -268,6 +269,7 @@ model ReleaseMarker {
   createdAt     DateTime            @default(now()) @map("created_at")
   sourceEntry   SourceEntry         @relation(fields: [sourceEntryId], references: [id], onDelete: Cascade)
   events        NotificationEvent[]
+  inboxNotifications InboxNotification[]
 
   @@unique([sourceEntryId, key])
   @@map("release_markers")
@@ -290,6 +292,23 @@ model NotificationEvent {
   @@index([state, userId])
   @@index([libraryEntryId])
   @@map("notification_events")
+}
+
+model InboxNotification {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  releaseMarkerId String        @map("release_marker_id") @db.Uuid
+  libraryEntryId  String        @map("library_entry_id") @db.Uuid
+  readAt          DateTime?     @map("read_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  releaseMarker   ReleaseMarker @relation(fields: [releaseMarkerId], references: [id], onDelete: Cascade)
+  libraryEntry    LibraryEntry  @relation(fields: [libraryEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, releaseMarkerId])
+  @@index([userId, createdAt])
+  @@index([libraryEntryId])
+  @@map("inbox_notifications")
 }
 
 model LibraryEntry {
@@ -318,6 +337,7 @@ model LibraryEntry {
   importedSources      ImportedSourceReference[]
   activity             ActivityEvent[]
   notificationEvents   NotificationEvent[]
+  inboxNotifications   InboxNotification[]
 
   @@unique([userId, catalogItemId])
   @@index([userId, state])

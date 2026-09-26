@@ -15,6 +15,7 @@ import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -73,6 +74,7 @@ export function App() {
         <Route path="games" element={<TrackGamesPage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="library" element={<Protected><LibraryPage /></Protected>} />
+        <Route path="notifications" element={<Protected><NotificationsPage /></Protected>} />
         <Route path="import" element={<Protected><ImportPage /></Protected>} />
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
         <Route path="settings" element={<Protected><SettingsLayout /></Protected>}>

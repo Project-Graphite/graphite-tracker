@@ -46,6 +46,11 @@ export function NotificationSettingsPage() {
       <section>
         <h2 className="m-0 text-xl font-medium">Release emails</h2>
         <p className="mt-2 text-sm text-muted">
+          Titles you turn release notifications on for in your library always appear in your{' '}
+          <Link className="rule-link" to="/notifications">notifications</Link>, with a pop-up while you
+          are browsing. Emails are extra and optional.
+        </p>
+        <p className="mt-2 text-sm text-muted">
           One email collects new episodes, chapters and releases for the titles you turn
           notifications on for in your library, while they are planned or in progress. Digests arrive
           after 08:00 in the <Link className="rule-link" to="/settings/account">time zone</Link> you

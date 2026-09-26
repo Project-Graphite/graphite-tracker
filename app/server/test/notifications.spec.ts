@@ -157,6 +157,7 @@ describe('ReleaseMonitorService', () => {
       },
       libraryEntry: { findMany: vi.fn().mockResolvedValue(options.subscribers ?? []) },
       notificationEvent: { createMany: vi.fn() },
+      inboxNotification: { createMany: vi.fn() },
       $transaction: vi.fn((queries: unknown[]) => Promise.all(queries)),
     };
     const connectors = { releases: vi.fn().mockResolvedValue([episode(2, 7), episode(2, 8)]) };
@@ -177,6 +178,7 @@ describe('ReleaseMonitorService', () => {
       expect.objectContaining({ skipDuplicates: true }),
     );
     expect(prisma.notificationEvent.createMany).not.toHaveBeenCalled();
+    expect(prisma.inboxNotification.createMany).not.toHaveBeenCalled();
     expect(prisma.sourceEntry.update).toHaveBeenLastCalledWith({
       where: { id: 'tmdb-entry' },
       data: { releasesCheckedAt: expect.any(Date) },
@@ -205,6 +207,28 @@ describe('ReleaseMonitorService', () => {
     });
   });
 
+  it('puts each new release in the inbox of every follower, whatever their email settings', async () => {
+    const { monitor, prisma } = monitorWith({
+      checkedAt: new Date('2026-09-26T06:00:00Z'),
+      markers: [{ key: 'episode:2x7', kind: ReleaseKind.EPISODE, ordinal: 20_007 }],
+      subscribers: [
+        subscriber(),
+        subscriber({ id: 'entry-2', userId: 'user-2', preferredSourceId: 'other' }),
+        subscriber({ id: 'entry-3', userId: 'user-3', user: { notificationPreference: null } }),
+      ],
+    });
+
+    await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
+
+    expect(prisma.inboxNotification.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: 'user-1', libraryEntryId: 'entry-1', releaseMarkerId: 'marker-0' },
+        { userId: 'user-3', libraryEntryId: 'entry-3', releaseMarkerId: 'marker-0' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
   it('treats a title unchecked for over a week as a fresh start', async () => {
     const { monitor, prisma } = monitorWith({
       checkedAt: new Date('2026-09-01T00:00:00Z'),
@@ -214,6 +238,7 @@ describe('ReleaseMonitorService', () => {
     await monitor.refreshDue(new Date('2026-09-26T12:00:00Z'));
 
     expect(prisma.notificationEvent.createMany).not.toHaveBeenCalled();
+    expect(prisma.inboxNotification.createMany).not.toHaveBeenCalled();
   });
 
   it('leaves a title for the next run when its source fails', async () => {

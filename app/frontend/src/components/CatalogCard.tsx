@@ -10,6 +10,7 @@ import {
   type LibraryEntry,
   type LibraryState,
 } from '../library';
+import { useSnackbar } from '../snackbar';
 import { useLibraryStates } from '../useLibraryStates';
 import { Dialog } from './Dialog';
 import { Poster, posterGridClass } from './Poster';
@@ -24,6 +25,7 @@ function AddToListDialog({
   onClose: () => void;
 }) {
   const auth = useAuth();
+  const show = useSnackbar();
   const [state, setState] = useState<LibraryState>('planned');
   const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,6 +48,7 @@ function AddToListDialog({
           }),
         }),
       );
+      show({ message: `${item.title} added to your library`, detail: stateLabel(item.category, state) });
       onClose();
     } catch (reason) {
       setError(errorMessage(reason, 'Could not add this title'));

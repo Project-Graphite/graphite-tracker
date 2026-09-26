@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { loadSourcePreferences } from '../library/effective-source';
+import { loadSourcePreferences, SourcePreferences } from '../library/effective-source';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectorRegistryService } from '../sources/connector-registry.service';
 import { CatalogCategory } from '../sources/source.types';
 import {
+  followedEntryWhere,
+  followsRelease,
   newSignals,
   releaseKinds,
   subscribedEntryWhere,
@@ -38,7 +40,7 @@ export class ReleaseMonitorService {
           { releasesAttemptedAt: null },
           { releasesAttemptedAt: { lt: new Date(now.getTime() - refreshIntervalMs) } },
         ],
-        catalogItem: { libraryEntries: { some: subscribedEntryWhere } },
+        catalogItem: { libraryEntries: { some: followedEntryWhere } },
       },
       include: monitoredEntryInclude,
       orderBy: { releasesAttemptedAt: { sort: 'asc', nulls: 'first' } },
@@ -103,23 +105,42 @@ export class ReleaseMonitorService {
     catalogItemId: string,
     markers: Array<{ id: string; sourceEntryId: string; platform: string | null }>,
   ) {
-    const subscribers = await this.prisma.libraryEntry.findMany({
-      where: { catalogItemId, ...subscribedEntryWhere },
-      include: subscriptionInclude,
+    const [followers, subscribers] = await Promise.all([
+      this.prisma.libraryEntry.findMany({
+        where: { catalogItemId, ...followedEntryWhere },
+        include: subscriptionInclude,
+      }),
+      this.prisma.libraryEntry.findMany({
+        where: { catalogItemId, ...subscribedEntryWhere },
+        include: subscriptionInclude,
+      }),
+    ]);
+    const releasesFor = async (
+      entries: typeof followers,
+      wants: (entry: (typeof followers)[number], marker: (typeof markers)[number], preferences: SourcePreferences) => boolean,
+    ) => {
+      const rows = [];
+      for (const entry of entries) {
+        const preferences = await loadSourcePreferences(this.prisma, entry.userId);
+        rows.push(
+          ...markers
+            .filter((marker) => wants(entry, marker, preferences))
+            .map((marker) => ({
+              userId: entry.userId,
+              libraryEntryId: entry.id,
+              releaseMarkerId: marker.id,
+            })),
+        );
+      }
+      return rows;
+    };
+    await this.prisma.inboxNotification.createMany({
+      data: await releasesFor(followers, followsRelease),
+      skipDuplicates: true,
     });
-    const events = [];
-    for (const subscriber of subscribers) {
-      const preferences = await loadSourcePreferences(this.prisma, subscriber.userId);
-      events.push(
-        ...markers
-          .filter((marker) => wantsRelease(subscriber, marker, preferences))
-          .map((marker) => ({
-            userId: subscriber.userId,
-            libraryEntryId: subscriber.id,
-            releaseMarkerId: marker.id,
-          })),
-      );
-    }
-    await this.prisma.notificationEvent.createMany({ data: events, skipDuplicates: true });
+    await this.prisma.notificationEvent.createMany({
+      data: await releasesFor(subscribers, wantsRelease),
+      skipDuplicates: true,
+    });
   }
 }

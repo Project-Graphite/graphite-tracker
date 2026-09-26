@@ -10,6 +10,7 @@ import {
   type LibraryState,
 } from '../library';
 import type { NotificationPreferences } from '../notifications';
+import { useSnackbar } from '../snackbar';
 import { useResource } from '../useResource';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -145,6 +146,7 @@ export function LibraryEntryEditor({
   onRemove: () => void;
 }) {
   const auth = useAuth();
+  const show = useSnackbar();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState(false);
@@ -320,6 +322,7 @@ export function LibraryEntryEditor({
           onClose={() => setRemoving(false)}
           onConfirm={async () => {
             await auth.request(`/library/${entry.id}`, { method: 'DELETE' });
+            show({ message: `${entry.item.title} removed from your library` });
             onRemove();
           }}
           title={`Remove ${entry.item.title}?`}

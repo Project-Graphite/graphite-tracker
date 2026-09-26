@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DigestService } from './digest.service';
+import { InboxService } from './inbox.service';
 import { ReleaseMonitorService } from './release-monitor.service';
 
 const runIntervalMs = 15 * 60 * 1000;
@@ -13,6 +14,7 @@ export class NotificationsScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly monitor: ReleaseMonitorService,
     private readonly digests: DigestService,
+    private readonly inbox: InboxService,
   ) {}
 
   onModuleInit() {
@@ -32,6 +34,7 @@ export class NotificationsScheduler implements OnModuleInit, OnModuleDestroy {
       await this.monitor.refreshDue();
       await this.digests.sendDue();
       await this.digests.removeOld();
+      await this.inbox.removeOld();
     } catch (error) {
       this.logger.error('Notification run failed; retrying on the next run', error);
     } finally {
