@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#0d0d0f"/>
-  <path d="M10 22.5 L16 7.5 L22 22.5 Z" fill="none" stroke="#e8e8ea" stroke-width="2.2" stroke-linejoin="round"/>
-  <path d="M12.4 17.5 H19.6" stroke="#e8e8ea" stroke-width="2.2" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512"><title>Project Graphite</title><rect width="64" height="64" rx="14" fill="#0c0c0e"/><g transform="translate(18.50 15.00) scale(0.9)" fill="none" stroke="#e8e8ea" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.62 25 L0 40 M24.38 25 L30 40"/><path d="M15 0 L8.25 18 H21.75 Z" fill="#e8e8ea"/></g></svg>

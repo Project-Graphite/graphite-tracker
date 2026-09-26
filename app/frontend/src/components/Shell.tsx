@@ -130,7 +130,23 @@ export function Shell() {
             </a>
             <header className="sticky top-0 z-20 border-b border-line-soft bg-paper/90 backdrop-blur-md">
               <div className="shell flex h-16 items-center gap-6">
-                <Link className="shrink-0 text-lg font-semibold tracking-tight text-ink no-underline" to="/">
+                <Link
+                  className="flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-tight text-ink no-underline"
+                  to="/"
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="h-[1.15em] w-[0.9em] shrink-0"
+                    viewBox="-3 -3 36 46"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5.62 25 L0 40 M24.38 25 L30 40" />
+                    <path d="M15 0 L8.25 18 H21.75 Z" fill="currentColor" />
+                  </svg>
                   Graphite Tracker
                 </Link>
                 <nav aria-label="Primary" className="mono-sm hidden items-center gap-6 md:flex">
