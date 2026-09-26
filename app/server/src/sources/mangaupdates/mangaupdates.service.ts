@@ -225,7 +225,8 @@ export class MangaUpdatesService {
       ratingCount: series.rating_votes,
       adult:
         genres.some((genre) => adultGenres.includes(genre)) ||
-        (genres.includes('Ecchi') && series.rating_votes < 400) ||
+        (genres.some((genre) => genre === 'Ecchi' || genre === 'Harem') &&
+          series.rating_votes < 400) ||
         looksAdult([series.title, ...alternateTitles], synopsis, []),
       lgbtq: genres.some((genre) => lgbtqGenres.includes(genre)),
       chapterCount: series.latest_chapter || null,

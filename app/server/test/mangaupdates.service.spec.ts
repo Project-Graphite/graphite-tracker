@@ -150,15 +150,25 @@ describe('MangaUpdatesService', () => {
     await expect(service.genres()).resolves.toEqual(['Action', 'Romance']);
   });
 
-  it('marks ecchi series adult until they are widely read', async () => {
-    const ecchi = (series_id: number, rating_votes: number) => ({
-      record: { ...record, series_id, rating_votes, genres: [{ genre: 'Ecchi' }] },
+  it('marks ecchi and harem series adult until they are widely read', async () => {
+    const series = (series_id: number, genre: string, rating_votes: number) => ({
+      record: { ...record, series_id, rating_votes, genres: [{ genre }] },
       hit_title: record.title,
     });
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(() =>
-        Promise.resolve(json({ ...searchResponse, results: [ecchi(1, 12), ecchi(2, 1_400)] })),
+        Promise.resolve(
+          json({
+            ...searchResponse,
+            results: [
+              series(1, 'Ecchi', 12),
+              series(2, 'Ecchi', 1_400),
+              series(3, 'Harem', 7),
+              series(4, 'Harem', 2_442),
+            ],
+          }),
+        ),
       ),
     );
     const service = new MangaUpdatesService(genreCache() as never, new ConnectorHttpService());
@@ -168,6 +178,8 @@ describe('MangaUpdatesService', () => {
     expect(page.results.map(({ externalId, adult }) => `${externalId}:${adult}`)).toEqual([
       '1:true',
       '2:false',
+      '3:true',
+      '4:false',
     ]);
   });
 
