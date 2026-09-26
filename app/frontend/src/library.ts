@@ -15,6 +15,7 @@ export interface CatalogMetadata {
   chapterCount?: number | null;
   volumeCount?: number | null;
   platforms?: string[];
+  adult?: boolean;
 }
 
 export interface LibraryEntry {

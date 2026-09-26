@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
+import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import {
   catalogCategories,
@@ -88,6 +90,8 @@ function Facts({ item }: { item: CatalogDetails }) {
 
 export function TitleDetailsPage() {
   const auth = useAuth();
+  const blur = useAdultBlur();
+  const [revealed, setRevealed] = useState(false);
   const { category: categoryParam, externalId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const source = searchParams.get('source');
@@ -115,6 +119,7 @@ export function TitleDetailsPage() {
     </Link>
   );
   const item = details.data;
+  const hidden = blur(item?.adult) && !revealed;
 
   if (details.error) {
     return (
@@ -144,16 +149,35 @@ export function TitleDetailsPage() {
         <p className="notice mt-5">This source is unavailable. Showing cached details.</p>
       )}
       {item.backdropUrl && (
-        <div className="mt-6 aspect-[16/6] overflow-hidden rounded-2xl border border-line bg-line-soft">
-          <img alt="" className="fade-in h-full w-full object-cover" src={item.backdropUrl} />
+        <div
+          className={`mt-6 aspect-[16/6] overflow-hidden rounded-2xl border border-line bg-line-soft ${hidden ? 'poster-blurred' : ''}`}
+        >
+          <img alt="" className="fade-in poster-image h-full w-full object-cover" src={item.backdropUrl} />
         </div>
       )}
       <div className="mt-8 grid gap-x-8 gap-y-6 md:grid-cols-[14rem_1fr] md:grid-rows-[auto_1fr]">
-        <Poster className="max-w-40 md:col-start-1 md:row-start-1 md:max-w-none" posterUrl={item.posterUrl} title={item.title} />
+        <Poster
+          blurred={hidden}
+          className="max-w-40 md:col-start-1 md:row-start-1 md:max-w-none"
+          posterUrl={item.posterUrl}
+          title={item.title}
+        />
         <header className="min-w-0 md:col-start-2 md:row-start-1">
           <p className="eyebrow">
             {categoryLabels[item.category]} · {item.releaseDate?.slice(0, 4) ?? 'date unknown'}
             {item.adult && ' · 18+'}
+            {blur(item.adult) && (
+              <>
+                {' · '}
+                <button
+                  className="text-button mono-sm"
+                  onClick={() => setRevealed((current) => !current)}
+                  type="button"
+                >
+                  {revealed ? 'hide artwork' : 'show artwork'}
+                </button>
+              </>
+            )}
           </p>
           <h1 className="page-title">{item.title}</h1>
           {item.originalTitle !== item.title && (

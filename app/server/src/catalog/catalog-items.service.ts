@@ -99,6 +99,7 @@ export class CatalogItemsService {
           platforms: item.platforms,
           releaseDates: item.releaseDates,
           relationships: item.relationships,
+          adult: item.adult,
         }),
       ) as Prisma.InputJsonValue,
     };

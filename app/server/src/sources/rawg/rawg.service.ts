@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { looksAdult } from '../adult-content';
 import { ConnectorHttpService } from '../connector-http.service';
 import { rankByRelevanceAndPopularity } from '../game-ranking';
 import { platformReleaseSignals } from '../release-signals';
@@ -46,7 +47,15 @@ interface RawgGame {
   tags?: RawgNamed[];
 }
 
-const adultTags = new Set(['nsfw', 'sexual-content', 'hentai']);
+const adultTags = new Set([
+  'nsfw',
+  'sexual-content',
+  'hentai',
+  'adult',
+  'erotic',
+  'porn',
+  'pornographic',
+]);
 
 interface RawgPage {
   count: number;
@@ -173,14 +182,12 @@ export class RawgService {
         : {}),
       ...(filters.sort ? { ordering: this.ordering(filters.sort) } : {}),
     });
-    const results = response.results
-      .map((game) => this.normalize(game))
-      .filter((game) => filters.adult || !game.adult);
+    const results = response.results.map((game) => this.normalize(game));
     const offset = ((page - 1) * 20) % window;
     return {
       page,
       totalPages: Math.max(1, Math.ceil(response.count / 20)),
-      totalResults: results.length === response.results.length ? response.count : null,
+      totalResults: response.count,
       results: (parameters.search
         ? rankByRelevanceAndPopularity(results, parameters.search)
         : results
@@ -245,7 +252,12 @@ export class RawgService {
   private adult(game: RawgGame) {
     return (
       game.esrb_rating?.slug === 'adults-only' ||
-      (game.tags ?? []).some((tag) => adultTags.has(tag.slug))
+      (game.tags ?? []).some((tag) => adultTags.has(tag.slug)) ||
+      looksAdult(
+        [game.name, game.name_original ?? ''],
+        game.description_raw ?? '',
+        (game.tags ?? []).map((tag) => tag.name),
+      )
     );
   }
 

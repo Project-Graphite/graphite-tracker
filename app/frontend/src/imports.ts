@@ -44,6 +44,7 @@ export interface ImportCandidate {
     title: string;
     releaseDate: string | null;
     posterUrl: string | null;
+    adult: boolean;
   }>;
   existing: LibraryEntry | null;
 }

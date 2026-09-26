@@ -7,8 +7,12 @@ Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, 
 - **Accounts:** registration with email verification and resendable links, sign-in with rotating
   refresh sessions, and password reset by email.
 - **Catalogue:** per-category Discover pages with recent and popular views and genre, year, status
-  and sort filters; games are search only, on `/games`; title details with links to every attached
-  source. Adult titles are filtered out of lists and title details.
+  and sort filters; a home search that covers every category at once on `/search`; games are search
+  only, on `/games`; title details with links to every attached source. Adult titles are filtered
+  out of search, discovery, title pages, imports and pasted links by default, using each source's
+  own labels plus keyword checks on titles, synopses and tags. A reader can allow them in settings
+  after confirming; they are then marked 18+ and their artwork stays blurred unless the blur
+  option is turned off.
 - **Library:** planned, in progress, completed and dropped lists with per-category progress
   (seasons and episodes, chapters and volumes, or hours, completion and platforms), searchable and
   paginated.
@@ -26,8 +30,9 @@ Graphite Tracker is a self-hosted tracker for movies, television, anime, manga, 
   in-progress titles, with a master switch, per-category and per-title switches, and daily or
   Monday-weekly delivery after 08:00 in the reader's time zone. Every digest carries signed
   one-click unsubscribe links, and three permanently refused deliveries suspend the digests.
-- **Settings:** profile and privacy on `/settings`; email change with reverification, password
-  change, time zone, JSON data export and account deletion on `/settings/account`; release emails
+- **Settings:** profile, privacy and adult-content options on `/settings`; email change with
+  reverification, password change, time zone, JSON data export and account deletion on
+  `/settings/account`; release emails
   on `/settings/notifications`; enabled sources and global or per-category source preferences on
   `/settings/sources`.
 - **Moderation:** the administrator's `/admin` page resolves reports by dismissing them or hiding

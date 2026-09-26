@@ -18,6 +18,7 @@ import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SearchPage } from './pages/SearchPage';
 import { ProfileSettingsPage, SettingsLayout } from './pages/SettingsPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { TitleDetailsPage } from './pages/TitleDetailsPage';
@@ -70,6 +71,7 @@ export function App() {
         <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
         <Route path="games" element={<TrackGamesPage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="library" element={<Protected><LibraryPage /></Protected>} />
         <Route path="import" element={<Protected><ImportPage /></Protected>} />
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />

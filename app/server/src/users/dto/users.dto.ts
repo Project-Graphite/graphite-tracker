@@ -40,6 +40,10 @@ export class UpdateProfileDto {
   @IsOptionalNotNull()
   @IsBoolean()
   showAdultContent?: boolean;
+
+  @IsOptionalNotNull()
+  @IsBoolean()
+  blurAdultContent?: boolean;
 }
 
 export class UpdatePrivacyDto {

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
+import { useAdultBlur } from '../adultContent';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels, countLabel } from '../catalog';
@@ -153,6 +154,7 @@ function ActivityList({ handle }: { handle: string }) {
 
 function LibraryGrid({ handle }: { handle: string }) {
   const [searchParams] = useSearchParams();
+  const blur = useAdultBlur();
   const state = libraryStates.find((value) => value === searchParams.get('state'));
   return (
     <>
@@ -179,7 +181,12 @@ function LibraryGrid({ handle }: { handle: string }) {
           <div className={posterGridClass}>
             {entries.map((entry) => (
               <article className="min-w-0" key={entry.id}>
-                <Poster href={itemHref(entry.item)} posterUrl={entry.item.posterUrl} title={entry.item.title} />
+                <Poster
+                  blurred={blur(entry.item.adult)}
+                  href={itemHref(entry.item)}
+                  posterUrl={entry.item.posterUrl}
+                  title={entry.item.title}
+                />
                 <h3 className="mt-3 mb-0 line-clamp-2 text-sm font-medium">
                   <ItemLink item={entry.item} />
                 </h3>

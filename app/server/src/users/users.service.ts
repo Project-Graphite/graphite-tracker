@@ -26,6 +26,7 @@ export class UsersService {
       timeZone: user.timeZone,
       isAdmin: user.isAdmin,
       showAdultContent: user.showAdultContent,
+      blurAdultContent: user.blurAdultContent,
       privacy,
     };
   }
@@ -38,6 +39,7 @@ export class UsersService {
         bio: input.bio,
         timeZone: input.timeZone,
         showAdultContent: input.showAdultContent,
+        blurAdultContent: input.blurAdultContent,
       },
     });
     return this.me(userId);

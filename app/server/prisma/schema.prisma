@@ -111,6 +111,7 @@ model User {
   isActive            Boolean             @default(true) @map("is_active")
   isAdmin             Boolean             @default(false) @map("is_admin")
   showAdultContent    Boolean             @default(false) @map("show_adult_content")
+  blurAdultContent    Boolean             @default(true) @map("blur_adult_content")
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
   privacy             ProfilePrivacy?

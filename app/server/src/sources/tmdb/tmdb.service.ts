@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { looksAdult } from '../adult-content';
 import { ConnectorHttpService } from '../connector-http.service';
 import { today } from '../release-signals';
 import {
@@ -382,7 +383,9 @@ export class TmdbService {
           ? movie.vote_average
           : null,
       ratingCount: movie.vote_count ?? 0,
-      adult: movie.adult === true,
+      adult:
+        movie.adult === true ||
+        looksAdult([movie.title, movie.original_title], movie.overview, []),
       deepLinks: [
         {
           label: 'View on TMDB',
@@ -429,7 +432,8 @@ export class TmdbService {
           ? show.vote_average
           : null,
       ratingCount: show.vote_count ?? 0,
-      adult: show.adult === true,
+      adult:
+        show.adult === true || looksAdult([show.name, show.original_name], show.overview, []),
       seasonCount: show.number_of_seasons ?? null,
       episodeCount: show.number_of_episodes ?? null,
       deepLinks: [

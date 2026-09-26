@@ -384,13 +384,13 @@ describe('Source connectors', () => {
       'themes !=',
     );
 
-    const safeRawg = await rawg.search('game', 'game', 1, {});
-    expect(safeRawg.results.map(({ title }) => title)).toEqual(['Safe Game']);
-    expect(safeRawg.totalResults).toBeNull();
+    const rawgPage = await rawg.search('game', 'game', 1, {});
+    expect(rawgPage.results.map(({ title, adult }) => `${title}:${adult}`)).toEqual([
+      'Safe Game:false',
+      'Adult Game:true',
+    ]);
+    expect(rawgPage.totalResults).toBe(2);
     expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('page_size')).toBe('40');
-    const allRawg = await rawg.search('game', 'game', 1, { adult: true });
-    expect(allRawg.results).toHaveLength(2);
-    expect(allRawg.totalResults).toBe(2);
 
     await tmdb.search('movie', 'film', 1, {});
     expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('include_adult')).toBe('false');
@@ -413,14 +413,19 @@ describe('Source connectors', () => {
     expect(adultManhwa.results[0]).toMatchObject({ adult: true });
   });
 
-  it('hides adult details from readers who did not opt in, after the cache', async () => {
+  it('hides adult titles from readers who did not opt in, after the cache', async () => {
     const config = new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'tmdb-token' });
     const http = new ConnectorHttpService();
+    const film = { id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true };
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
+      vi.fn((input: URL) =>
         Promise.resolve(
-          json({ id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true }),
+          json(
+            input.pathname.includes('/search/')
+              ? { page: 1, total_pages: 1, total_results: 1, results: [film] }
+              : film,
+          ),
         ),
       ),
     );
@@ -437,6 +442,14 @@ describe('Source connectors', () => {
     await expect(registry.details('movie', '7', undefined, true)).resolves.toMatchObject({
       title: 'Adult Film',
       adult: true,
+    });
+    await expect(registry.search('movie', 'film', 1, {})).resolves.toMatchObject({
+      results: [],
+      totalResults: null,
+    });
+    await expect(registry.search('movie', 'film', 1, { adult: true })).resolves.toMatchObject({
+      results: [{ title: 'Adult Film', adult: true }],
+      totalResults: 1,
     });
   });
 

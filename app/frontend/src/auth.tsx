@@ -17,6 +17,7 @@ interface User {
   displayName: string;
   isAdmin: boolean;
   showAdultContent: boolean;
+  blurAdultContent: boolean;
 }
 
 interface Session {
@@ -39,7 +40,9 @@ interface AuthContextValue {
   logout(): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
   deleteAccount(password: string): Promise<void>;
-  updateUser(changes: Partial<Pick<User, 'displayName' | 'showAdultContent'>>): void;
+  updateUser(
+    changes: Partial<Pick<User, 'displayName' | 'showAdultContent' | 'blurAdultContent'>>,
+  ): void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

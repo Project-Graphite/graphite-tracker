@@ -37,6 +37,7 @@ export interface ItemSummary {
   releaseDate: string | null;
   source: string | null;
   externalId: string | null;
+  adult: boolean;
 }
 
 export const reviewBodyLimit = 10_000;

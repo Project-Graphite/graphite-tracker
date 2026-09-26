@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useAdultBlur } from '../adultContent';
 import { categoryLabels } from '../catalog';
 import {
   entryHref,
@@ -23,6 +24,7 @@ export function LibraryCard({
   onRemove: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const blur = useAdultBlur();
   const href = entryHref(entry);
   const summary = [stateLabel(entry.item.category, entry.state), progressSummary(entry.progress)]
     .filter(Boolean)
@@ -51,7 +53,7 @@ export function LibraryCard({
     <>
       {layout === 'grid' ? (
         <article className="flex h-full min-w-0 flex-col">
-          <Poster href={href} posterUrl={entry.item.posterUrl} title={entry.item.title} />
+          <Poster blurred={blur(entry.item.metadata.adult)} href={href} posterUrl={entry.item.posterUrl} title={entry.item.title} />
           <h3 className="mt-3 mb-0 line-clamp-2 text-sm leading-snug font-medium">{title}</h3>
           <p className="mono-sm mt-1 mb-0 text-faint">{meta}</p>
           <p className="mt-1 mb-3 text-sm text-muted">{summary}</p>
@@ -59,7 +61,7 @@ export function LibraryCard({
         </article>
       ) : (
         <article className="grid grid-cols-[3.5rem_1fr_auto] items-center gap-4 border-b border-line-soft py-3">
-          <Poster href={href} posterUrl={entry.item.posterUrl} title={entry.item.title} />
+          <Poster blurred={blur(entry.item.metadata.adult)} href={href} posterUrl={entry.item.posterUrl} title={entry.item.title} />
           <div className="min-w-0">
             <h3 className="m-0 truncate text-base font-medium">{title}</h3>
             <p className="mono-sm mt-1 mb-0 text-faint">{meta}</p>

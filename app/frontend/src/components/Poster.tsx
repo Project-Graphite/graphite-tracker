@@ -15,7 +15,7 @@ function PosterImage({ posterUrl, title }: { posterUrl: string; title: string })
   return (
     <img
       alt={`Poster for ${title}`}
-      className={`h-full w-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      className={`poster-image h-full w-full object-cover ${loaded ? 'opacity-100' : 'opacity-0'}`}
       loading="lazy"
       onLoad={() => setLoaded(true)}
       ref={image}
@@ -26,24 +26,31 @@ function PosterImage({ posterUrl, title }: { posterUrl: string; title: string })
 }
 
 export function Poster({
+  blurred = false,
   className = '',
   href,
   posterUrl,
   title,
 }: {
+  blurred?: boolean;
   className?: string;
   href?: string;
   posterUrl: string | null;
   title: string;
 }) {
-  const image = posterUrl ? (
-    <PosterImage key={posterUrl} posterUrl={posterUrl} title={title} />
-  ) : (
-    <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
-      {title}
-    </span>
+  const image = (
+    <>
+      {posterUrl ? (
+        <PosterImage key={posterUrl} posterUrl={posterUrl} title={title} />
+      ) : (
+        <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
+          {title}
+        </span>
+      )}
+      {blurred && <span className="poster-badge">18+</span>}
+    </>
   );
-  const frame = `block aspect-[2/3] overflow-hidden rounded-lg border border-line bg-line-soft ${className}`;
+  const frame = `relative block aspect-[2/3] overflow-hidden rounded-lg border border-line bg-line-soft ${blurred ? 'poster-blurred' : ''} ${className}`;
   return href ? (
     <Link
       aria-hidden="true"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { errorMessage, type Page } from '../api';
+import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import { categoryLabels } from '../catalog';
 import { EmptyState } from '../components/EmptyState';
@@ -52,11 +53,17 @@ function CandidateRow({
 }) {
   const reviewable =
     batchState === 'ready' && (candidate.match === 'exact' || candidate.match === 'suggested');
+  const blur = useAdultBlur();
   const chosen = candidate.choice === null ? undefined : candidate.options[candidate.choice];
   const unit = candidate.kind === 'manga' ? 'Ch.' : 'Ep.';
   return (
     <li className="grid list-none gap-4 border-b border-line-soft py-5 sm:grid-cols-[4rem_1fr]">
-      <Poster className="hidden sm:block" posterUrl={chosen?.posterUrl ?? null} title={chosen?.title ?? candidate.title} />
+      <Poster
+        blurred={blur(chosen?.adult)}
+        className="hidden sm:block"
+        posterUrl={chosen?.posterUrl ?? null}
+        title={chosen?.title ?? candidate.title}
+      />
       <div className="min-w-0">
         <p className="mono-sm m-0 text-faint">
           {[

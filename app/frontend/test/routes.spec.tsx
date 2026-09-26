@@ -65,4 +65,41 @@ describe('App routes', () => {
     expect(container.textContent).not.toContain('Loading your session…');
     await act(async () => restore(new Response(null, { status: 401 })));
   });
+
+  it('searches every category from the home form, which has no category selector', async () => {
+    await render('/');
+
+    const form = container.querySelector('form[role="search"]');
+    expect(form).not.toBeNull();
+    expect(form?.querySelector('select')).toBeNull();
+    expect(form?.getAttribute('action')).toBeNull();
+  });
+
+  it('shows one row per category on the search page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          String(input).includes('/catalog/')
+            ? new Response(
+                JSON.stringify({ page: 1, totalPages: 1, totalResults: 0, results: [], attribution: 'Test' }),
+                { status: 200, headers: { 'Content-Type': 'application/json' } },
+              )
+            : new Response(null, { status: 401 }),
+        ),
+      ),
+    );
+
+    await render('/search?q=zelda');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(container.textContent).toContain('Results for “zelda”');
+    for (const label of ['Movies', 'TV', 'Anime', 'Manga', 'Manhwa', 'Games']) {
+      expect(container.querySelector('h2')?.textContent).toBeDefined();
+      expect([...container.querySelectorAll('h2')].map((heading) => heading.textContent)).toContain(label);
+    }
+    expect(container.textContent).toContain('No matches.');
+  });
 });

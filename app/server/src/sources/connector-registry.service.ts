@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { withoutAdult } from './adult-content';
 import { ConnectorCacheService } from './connector-cache.service';
 import { IgdbService } from './igdb/igdb.service';
 import { MangaDexService } from './mangadex/mangadex.service';
@@ -64,7 +65,10 @@ export class ConnectorRegistryService {
       ['search', category, query, page, filters],
       300,
       86_400,
-      () => connector.search(category, query, page, filters),
+      () =>
+        connector
+          .search(category, query, page, filters)
+          .then((result) => withoutAdult(result, filters.adult)),
     );
     return { ...result.value, stale: result.stale };
   }
@@ -82,7 +86,10 @@ export class ConnectorRegistryService {
       ['browse', category, section, page, filters],
       section === 'popular' ? 900 : 300,
       86_400,
-      () => connector.browse(category, section, page, filters),
+      () =>
+        connector
+          .browse(category, section, page, filters)
+          .then((result) => withoutAdult(result, filters.adult)),
     );
     return { ...result.value, stale: result.stale };
   }

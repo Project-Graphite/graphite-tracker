@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { looksAdult } from '../adult-content';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
 import { today } from '../release-signals';
@@ -261,18 +262,20 @@ export class MangaDexService {
       (relationship) => relationship.type === 'cover_art',
     )?.attributes?.fileName;
     const title = this.localized(manga.attributes.title);
+    const alternateTitles = manga.attributes.altTitles
+      .flatMap((alternate) => Object.values(alternate))
+      .filter((alternate, index, alternates) =>
+        Boolean(alternate && alternate !== title && alternates.indexOf(alternate) === index),
+      );
+    const synopsis = this.localized(manga.attributes.description);
     return {
       source: 'mangadex',
       externalId: manga.id,
       category,
       title,
       originalTitle: title,
-      alternateTitles: manga.attributes.altTitles
-        .flatMap((alternate) => Object.values(alternate))
-        .filter((alternate, index, alternates) =>
-          Boolean(alternate && alternate !== title && alternates.indexOf(alternate) === index),
-        ),
-      synopsis: this.localized(manga.attributes.description),
+      alternateTitles,
+      synopsis,
       posterUrl: cover
         ? `https://uploads.mangadex.org/covers/${manga.id}/${cover}.256.jpg`
         : null,
@@ -287,7 +290,9 @@ export class MangaDexService {
       tagline: null,
       rating: null,
       ratingCount: 0,
-      adult: !safeContentRatings.includes(manga.attributes.contentRating),
+      adult:
+        !safeContentRatings.includes(manga.attributes.contentRating) ||
+        looksAdult([title, ...alternateTitles], synopsis, []),
       chapterCount: manga.attributes.lastChapter
         ? Number(manga.attributes.lastChapter) || null
         : null,

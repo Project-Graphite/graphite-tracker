@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { looksAdult } from '../adult-content';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
 import { rankByRelevanceAndPopularity } from '../game-ranking';
@@ -258,7 +259,13 @@ export class IgdbService {
       tagline: null,
       rating: game.total_rating ? game.total_rating / 10 : null,
       ratingCount: game.total_rating_count ?? 0,
-      adult: game.themes?.includes(eroticTheme) === true,
+      adult:
+        game.themes?.includes(eroticTheme) === true ||
+        looksAdult(
+          [game.name, ...(game.alternative_names?.map((alternate) => alternate.name) ?? [])],
+          game.summary ?? game.storyline ?? '',
+          [],
+        ),
       platforms: game.platforms?.map((platform) => platform.name) ?? [],
       releaseDates:
         game.release_dates?.flatMap((release) =>

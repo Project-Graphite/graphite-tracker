@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
+import { Dialog } from '../components/Dialog';
 import { FormSkeleton } from '../components/Skeleton';
+import { Toggle } from '../components/Toggle';
 import { useResource } from '../useResource';
 
 export interface Me {
@@ -12,6 +14,7 @@ export interface Me {
   bio: string | null;
   timeZone: string;
   showAdultContent: boolean;
+  blurAdultContent: boolean;
   privacy: Record<PrivacySetting, boolean>;
 }
 
@@ -63,6 +66,7 @@ export function ProfileSettingsPage() {
   const me = useResource<Me>('/me', true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [confirmingAdult, setConfirmingAdult] = useState(false);
 
   async function send(path: string, body: object) {
     setError('');
@@ -70,7 +74,11 @@ export function ProfileSettingsPage() {
     try {
       const next = await auth.request<Me>(path, { method: 'PATCH', body: JSON.stringify(body) });
       me.mutate(() => next);
-      auth.updateUser({ displayName: next.displayName, showAdultContent: next.showAdultContent });
+      auth.updateUser({
+        displayName: next.displayName,
+        showAdultContent: next.showAdultContent,
+        blurAdultContent: next.blurAdultContent,
+      });
       return true;
     } catch (reason) {
       setError(errorMessage(reason, 'Could not save your settings'));
@@ -165,21 +173,53 @@ export function ProfileSettingsPage() {
           Adult titles stay out of search, discovery, imports and title pages until you turn this
           on. Titles already in your library are kept either way.
         </p>
-        <label className="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
-          <input
+        <div className="mt-5 grid gap-3">
+          <Toggle
             checked={data.showAdultContent}
-            className="mt-1"
-            onChange={(event) => void send('/me', { showAdultContent: event.target.checked })}
-            type="checkbox"
+            description="Adult films, erotica and pornographic manga, and adult-only games, as labelled by each source. Results marked 18+ come from this setting."
+            label="Show adult content"
+            onChange={(checked) =>
+              checked ? setConfirmingAdult(true) : void send('/me', { showAdultContent: false })
+            }
           />
-          <span>
-            <span className="block font-medium">Show adult content</span>
-            <span className="text-sm text-muted">
-              Adult films, erotica and pornographic manga, and adult-only games, as labelled by
-              each source. Results marked 18+ come from this setting.
-            </span>
-          </span>
-        </label>
+          <Toggle
+            checked={data.blurAdultContent}
+            description="Posters and backdrops of 18+ titles stay blurred until you hover over them or choose to show them."
+            disabled={!data.showAdultContent}
+            label="Blur adult artwork"
+            onChange={(checked) => void send('/me', { blurAdultContent: checked })}
+          />
+        </div>
+        {confirmingAdult && (
+          <Dialog eyebrow="Content" onClose={() => setConfirmingAdult(false)} title="Show adult content?">
+            <div className="mt-6 grid gap-4 text-sm text-muted">
+              <p className="m-0">
+                Search, discovery and title pages will include adult films, erotica and pornographic
+                manga, and adult-only games. Each one is marked 18+, and its artwork stays blurred
+                while the blur option is on.
+              </p>
+              <p className="m-0">
+                Sources label this content themselves, so the filter is best effort in both
+                directions. Turning it on confirms that you are an adult and want to see it.
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="secondary-button" onClick={() => setConfirmingAdult(false)} type="button">
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setConfirmingAdult(false);
+                  void send('/me', { showAdultContent: true });
+                }}
+                type="button"
+              >
+                Show adult content
+              </button>
+            </div>
+          </Dialog>
+        )}
       </section>
     </div>
   );

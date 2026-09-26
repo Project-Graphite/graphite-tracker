@@ -14,6 +14,7 @@ export function catalogItemSummary(
     title: item.canonicalTitle,
     posterUrl: item.posterPath,
     releaseDate: item.releaseDate,
+    adult: (item.metadata as { adult?: unknown } | null)?.adult === true,
     source: entry?.source.key ?? null,
     externalId: entry?.externalId ?? null,
   };

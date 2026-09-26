@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useAdultBlur } from '../adultContent';
 import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { catalogRef, titleHref, type CatalogCandidate } from '../catalog';
@@ -131,10 +132,11 @@ export function CatalogCard({
   libraryReady: boolean;
   onAdded: (entry: LibraryEntry) => void;
 }) {
+  const blur = useAdultBlur();
   const href = titleHref(item);
   return (
     <article className="flex h-full min-w-0 flex-col">
-      <Poster href={href} posterUrl={item.posterUrl} title={item.title} />
+      <Poster blurred={blur(item.adult)} href={href} posterUrl={item.posterUrl} title={item.title} />
       <h3 className="mt-3 mb-0 line-clamp-2 text-sm leading-snug font-medium">
         <Link className="text-ink no-underline hover:underline" to={href}>
           {item.title}
