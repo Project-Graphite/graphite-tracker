@@ -55,9 +55,11 @@
   scrollbar-gutter: stable;
 }
 
-* {
-  scrollbar-color: var(--color-line) transparent;
-  scrollbar-width: thin;
+@layer base {
+  * {
+    scrollbar-color: var(--color-line) transparent;
+    scrollbar-width: thin;
+  }
 }
 
 @supports not (scrollbar-color: auto) {
@@ -676,6 +678,27 @@ body {
       right: 0.75rem;
       left: 0.75rem;
       width: auto;
+    }
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .cast-row {
+      padding-bottom: 0;
+      scrollbar-width: none;
+    }
+
+    .cast-row::-webkit-scrollbar {
+      display: none;
     }
   }
 

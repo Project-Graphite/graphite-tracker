@@ -215,29 +215,31 @@ export function DiscoverPage({
           </NavLink>
         ))}
       </nav>
-      <nav aria-label="Discovery section" className="mt-5 flex items-end gap-2 border-b border-line">
-        {sections.map(({ id, label }) => (
-          <NavLink className="tab-link -mb-px" key={id} to={`/discover/${category}/${id}`}>
-            {label}
-          </NavLink>
-        ))}
-        {section === 'search' && query && (
-          <span aria-current="page" className="tab-link active -mb-px min-w-0 truncate">
-            “{query}”
-          </span>
-        )}
-      </nav>
-      <button
-        aria-controls="discover-filters"
-        aria-expanded={filtersOpen}
-        className="secondary-button mt-5 inline-flex gap-2 px-3 py-2 text-sm sm:hidden"
-        onClick={() => setFiltersOpen((current) => !current)}
-        type="button"
-      >
-        <Icon name="filter" size={16} />
-        {filtersOpen ? 'Hide filters' : 'Filters'}
-        {activeFilters > 0 && <span className="count-badge static border-0">{activeFilters}</span>}
-      </button>
+      <div className="mt-5 flex items-center gap-2 border-b border-line">
+        <nav aria-label="Discovery section" className="flex min-w-0 items-end gap-2 self-end">
+          {sections.map(({ id, label }) => (
+            <NavLink className="tab-link -mb-px" key={id} to={`/discover/${category}/${id}`}>
+              {label}
+            </NavLink>
+          ))}
+          {section === 'search' && query && (
+            <span aria-current="page" className="tab-link active -mb-px min-w-0 truncate">
+              “{query}”
+            </span>
+          )}
+        </nav>
+        <button
+          aria-controls="discover-filters"
+          aria-expanded={filtersOpen}
+          className="secondary-button ml-auto inline-flex shrink-0 gap-2 px-3 py-1.5 text-sm sm:hidden"
+          onClick={() => setFiltersOpen((current) => !current)}
+          type="button"
+        >
+          <Icon name="filter" size={16} />
+          {filtersOpen ? 'Hide filters' : 'Filters'}
+          {activeFilters > 0 && <span className="count-badge static border-0">{activeFilters}</span>}
+        </button>
+      </div>
       <form
         className={`mt-5 grid-cols-2 gap-3 sm:mt-6 sm:grid lg:grid-cols-6 ${filtersOpen ? 'grid' : 'hidden'}`}
         id="discover-filters"

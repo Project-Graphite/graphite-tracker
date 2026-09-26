@@ -261,7 +261,7 @@ export function AdminPage() {
     <div className="page-enter">
       <p className="eyebrow">Moderation</p>
       <h1 className="page-title">Admin</h1>
-      <nav aria-label="Admin sections" className="mt-7 mb-6 flex gap-2 overflow-x-auto border-b border-line">
+      <nav aria-label="Admin sections" className="scroll-x mt-7 mb-6 flex gap-2 border-b border-line">
         {visibleTabs.map((key) => (
           <Link
             aria-current={key === tab ? 'page' : undefined}

@@ -353,7 +353,7 @@ export function ProfilePage() {
           )}
           {View ? (
             <>
-              <nav aria-label="Profile sections" className="mt-10 mb-6 flex gap-2 overflow-x-auto border-b border-line">
+              <nav aria-label="Profile sections" className="scroll-x mt-10 mb-6 flex gap-2 border-b border-line">
                 {visible.map((section) => (
                   <Link
                     aria-current={section === tab ? 'page' : undefined}

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 
-const firstYear = 1870;
+const firstYear = 1950;
 const lastYear = new Date().getFullYear() + 2;
 
 const decades = Array.from(

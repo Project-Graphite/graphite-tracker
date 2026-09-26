@@ -295,7 +295,7 @@ export function ImportBatchPage() {
       )}
       {(detail.state === 'ready' || detail.state === 'applied') && (
         <>
-          <nav aria-label="Import entries" className="mt-10 flex gap-2 overflow-x-auto border-b border-line">
+          <nav aria-label="Import entries" className="scroll-x mt-10 flex gap-2 border-b border-line">
             {tabs.filter((tab) => tab.match !== 'conflict' || detail.state === 'ready').map((tab) => (
               <button
                 aria-current={match === tab.match ? 'page' : undefined}
