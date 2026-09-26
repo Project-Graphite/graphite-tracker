@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { CatalogRefreshService } from '../catalog/catalog-refresh.service';
 import { DigestService } from './digest.service';
 import { InboxService } from './inbox.service';
 import { ReleaseMonitorService } from './release-monitor.service';
@@ -12,6 +13,7 @@ export class NotificationsScheduler implements OnModuleInit, OnModuleDestroy {
   private running = false;
 
   constructor(
+    private readonly catalog: CatalogRefreshService,
     private readonly monitor: ReleaseMonitorService,
     private readonly digests: DigestService,
     private readonly inbox: InboxService,
@@ -31,6 +33,7 @@ export class NotificationsScheduler implements OnModuleInit, OnModuleDestroy {
     if (this.running) return;
     this.running = true;
     try {
+      await this.catalog.refreshDue();
       await this.monitor.refreshDue();
       await this.digests.sendDue();
       await this.digests.removeOld();

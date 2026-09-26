@@ -1,5 +1,5 @@
 import { DigestCadence, LibraryState, MediaCategory, Prisma, ReleaseKind } from '@prisma/client';
-import { effectiveSourceEntry, SourcePreferences } from '../library/effective-source';
+import { releaseSourceEntry, SourcePreferences } from '../library/effective-source';
 import { ReleaseSignal } from '../sources/source.types';
 
 export const followedEntryWhere = {
@@ -39,7 +39,7 @@ export function followsRelease(
   return (
     entry.notificationsEnabled &&
     (entry.state === LibraryState.PLANNED || entry.state === LibraryState.IN_PROGRESS) &&
-    effectiveSourceEntry(sourceEntries, entry.preferredSourceId, category, preferences)?.id ===
+    releaseSourceEntry(sourceEntries, entry.preferredSourceId, category, preferences)?.id ===
       marker.sourceEntryId &&
     (!marker.platform || entry.platforms.includes(marker.platform))
   );
@@ -65,12 +65,14 @@ export function newSignals(
   for (const { kind, ordinal } of existing) {
     if (ordinal !== null) highest.set(kind, Math.max(highest.get(kind) ?? ordinal, ordinal));
   }
-  return signals.filter(
-    (signal) =>
+  return signals.filter((signal) => {
+    const fresh =
       !keys.has(signal.key) &&
       (signal.ordinal === undefined ||
-        signal.ordinal > (highest.get(releaseKinds[signal.kind]) ?? Number.NEGATIVE_INFINITY)),
-  );
+        signal.ordinal > (highest.get(releaseKinds[signal.kind]) ?? Number.NEGATIVE_INFINITY));
+    keys.add(signal.key);
+    return fresh;
+  });
 }
 
 const digestHour = 8;

@@ -3,13 +3,23 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.set('trust proxy', 1);
+  app.disable('x-powered-by');
   app.setGlobalPrefix('api/v1');
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    response.set({
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      ...(request.secure ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}),
+    });
+    next();
+  });
   app.use(cookieParser());
   app.enableShutdownHooks();
   app.useGlobalPipes(

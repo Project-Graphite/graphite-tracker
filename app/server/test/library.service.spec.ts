@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { LibraryState, MediaCategory } from '@prisma/client';
+import { LibraryState, MediaCategory, Prisma } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
@@ -131,6 +131,98 @@ describe('LibraryService', () => {
       service.update('user-id', 'entry-id', { notificationsEnabled: true }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  const presented = {
+    id: 'entry-id',
+    state: LibraryState.PLANNED,
+    notificationsEnabled: false,
+    isPrivate: false,
+    progressSeason: null,
+    progressEpisode: null,
+    progressChapter: null,
+    progressVolume: null,
+    hoursPlayed: null,
+    completionPercentage: null,
+    platforms: [],
+    preferredSource: null,
+    preferredSourceId: null,
+    importedSources: [],
+    catalogItem: {
+      id: 'item-id',
+      category: MediaCategory.GAME,
+      canonicalTitle: 'Graphite Quest',
+      posterPath: null,
+      releaseDate: null,
+      metadata: {},
+      sourceEntries: [],
+    },
+  };
+  const noSourcePreferences = {
+    globalSourcePreference: { findFirst: vi.fn().mockResolvedValue(null) },
+    categorySourcePreference: { findMany: vi.fn().mockResolvedValue([]) },
+  };
+
+  it('turns game release notifications off when the last platform is removed', async () => {
+    const update = vi.fn().mockResolvedValue(presented);
+    const service = new LibraryService(
+      {
+        ...noSourcePreferences,
+        libraryEntry: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'entry-id',
+            userId: 'user-id',
+            catalogItemId: 'item-id',
+            state: LibraryState.PLANNED,
+            notificationsEnabled: true,
+            platforms: ['PC'],
+            catalogItem: {
+              category: MediaCategory.GAME,
+              metadata: {
+                capabilities: { progressUnits: ['hours', 'percentage'] },
+                platforms: ['PC'],
+              },
+            },
+          }),
+          update,
+        },
+      } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await service.update('user-id', 'entry-id', { platforms: [] });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ platforms: [], notificationsEnabled: false }),
+      }),
+    );
+  });
+
+  it('adds a title once when another request stores it at the same moment', async () => {
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
+      )
+      .mockResolvedValueOnce(presented);
+    const service = new LibraryService(
+      { ...noSourcePreferences, $transaction: transaction } as never,
+      {
+        resolve: () => ({ descriptor: { key: 'rawg' } }),
+        details: vi.fn().mockResolvedValue({ externalId: '42' }),
+      } as never,
+      {} as never,
+    );
+
+    await expect(
+      service.create('user-id', { category: 'game', source: 'rawg', externalId: '42', state: 'planned' } as never),
+    ).resolves.toMatchObject({ id: 'entry-id' });
+    expect(transaction).toHaveBeenCalledTimes(2);
   });
 
   it('resolves the source by title, category and global preference before the default', () => {

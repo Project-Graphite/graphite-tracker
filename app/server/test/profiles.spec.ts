@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { ActivityKind } from '@prisma/client';
+import { ActivityKind, ReviewVisibility } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
@@ -94,7 +94,9 @@ describe('ProfilesService privacy', () => {
         OR: [
           {
             kind: ActivityKind.RATED,
-            review: { is: { rating: { not: null }, hiddenAt: null } },
+            review: {
+              is: { rating: { not: null }, hiddenAt: null, visibility: ReviewVisibility.PUBLIC },
+            },
           },
         ],
       },
@@ -182,6 +184,51 @@ describe('ProfilesService privacy', () => {
     const admin = serviceFor(everything);
     await admin.service.library('reader', { page: 1 }, { id: 'admin-id', isAdmin: true } as never);
     expect(admin.prisma.libraryEntry.count).toHaveBeenCalledWith({ where: { userId: 'user-id' } });
+  });
+
+  it('keeps private ratings off the profile for everyone but administrators', async () => {
+    const everything = {
+      isPublic: true,
+      showLibrary: true,
+      showActivity: true,
+      showRatings: true,
+      showStatistics: true,
+    };
+    const publicOnly = { visibility: ReviewVisibility.PUBLIC };
+    const { prisma, service } = serviceFor(everything);
+
+    await service.profile('reader');
+    await service.library('reader', { page: 1 });
+    await service.activity('reader', 1);
+    await service.ratings('reader', 1);
+
+    expect(prisma.review.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining(publicOnly) }),
+    );
+    expect(prisma.review.count).toHaveBeenCalledWith({ where: expect.objectContaining(publicOnly) });
+    expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          catalogItem: {
+            include: expect.objectContaining({
+              reviews: expect.objectContaining({ where: expect.objectContaining(publicOnly) }),
+            }),
+          },
+        },
+      }),
+    );
+    expect(prisma.activityEvent.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        OR: expect.arrayContaining([
+          { kind: ActivityKind.RATED, review: { is: expect.objectContaining(publicOnly) } },
+        ]),
+      }),
+    });
+
+    const admin = serviceFor(everything);
+    await admin.service.ratings('reader', 1, { id: 'admin-id', isAdmin: true } as never);
+    const [[{ where }]] = admin.prisma.review.count.mock.calls as Array<[{ where: object }]>;
+    expect(where).not.toHaveProperty('visibility');
   });
 
   it('keeps rating statistics out when ratings are hidden', async () => {

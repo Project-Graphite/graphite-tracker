@@ -51,18 +51,20 @@ export class NotificationsService {
       });
       return { scope: claim.scope, title: entry?.catalogItem.canonicalTitle ?? null };
     }
-    const preference = await this.prisma.notificationPreference.upsert({
-      where: { userId: claim.sub },
-      update: {},
-      create: { userId: claim.sub },
-    });
-    await this.prisma.notificationPreference.update({
-      where: { userId: claim.sub },
-      data:
-        claim.scope === 'category'
-          ? { categories: preference.categories.filter((category) => category !== claim.category) }
-          : { enabled: false },
-    });
+    if (await this.prisma.user.findUnique({ where: { id: claim.sub }, select: { id: true } })) {
+      const preference = await this.prisma.notificationPreference.upsert({
+        where: { userId: claim.sub },
+        update: {},
+        create: { userId: claim.sub },
+      });
+      await this.prisma.notificationPreference.update({
+        where: { userId: claim.sub },
+        data:
+          claim.scope === 'category'
+            ? { categories: preference.categories.filter((category) => category !== claim.category) }
+            : { enabled: false },
+      });
+    }
     return claim.scope === 'category'
       ? { scope: claim.scope, category: claim.category.toLowerCase() }
       : { scope: claim.scope };

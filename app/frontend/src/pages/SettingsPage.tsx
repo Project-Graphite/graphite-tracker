@@ -35,7 +35,7 @@ const sections: Array<[Exclude<PrivacySetting, 'isPublic'>, string, string]> = [
   ['showLibrary', 'Library', 'Every title with its list and progress.'],
   ['showActivity', 'Activity', 'Recent additions, list changes, ratings and reviews from the sections you show.'],
   ['showRatings', 'Ratings', 'Your scores, including in the library and statistics.'],
-  ['showReviews', 'Reviews', 'Your public reviews. New reviews start public when this is on.'],
+  ['showReviews', 'Reviews', 'Your public reviews.'],
 ];
 
 const settingsSections = [

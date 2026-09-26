@@ -296,17 +296,16 @@ export class IgdbService {
           [],
         ),
       platforms: game.platforms?.map((platform) => platform.name) ?? [],
-      releaseDates:
-        game.release_dates?.flatMap((release) =>
-          release.date
-            ? [
-                {
-                  date: new Date(release.date * 1000).toISOString().slice(0, 10),
-                  platform: release.platform?.name ?? null,
-                },
-              ]
-            : [],
-        ) ?? [],
+      releaseDates: [
+        ...new Map(
+          (game.release_dates ?? []).flatMap((release) => {
+            if (!release.date) return [];
+            const date = new Date(release.date * 1000).toISOString().slice(0, 10);
+            const platform = release.platform?.name ?? null;
+            return [[`${date}:${platform}`, { date, platform }] as const];
+          }),
+        ).values(),
+      ],
       relationships,
       deepLinks: game.url ? [{ label: 'View on IGDB', url: game.url }] : [],
       capabilities: {

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityKind, Prisma } from '@prisma/client';
+import { ActivityKind, Prisma, ReviewVisibility } from '@prisma/client';
 import {
   catalogItemSummary,
   catalogItemSummaryInclude,
@@ -30,6 +30,14 @@ const sectionSettings = {
 
 function withoutPrivateEntries(userId: string, admin: boolean) {
   return admin ? {} : { catalogItem: { libraryEntries: { none: { userId, isPrivate: true } } } };
+}
+
+function shownRatingWhere(admin: boolean) {
+  return {
+    rating: { not: null },
+    hiddenAt: null,
+    ...(admin ? {} : { visibility: ReviewVisibility.PUBLIC }),
+  } satisfies Prisma.ReviewWhereInput;
 }
 
 function paged<T>(page: number, total: number, results: T[]) {
@@ -82,7 +90,7 @@ export class ProfilesService {
           ? [{ kind: { in: [ActivityKind.ADDED, ActivityKind.STATE_CHANGED] } }]
           : []),
         ...(admin || privacy.showRatings
-          ? [{ kind: ActivityKind.RATED, review: { is: { rating: { not: null }, hiddenAt: null } } }]
+          ? [{ kind: ActivityKind.RATED, review: { is: shownRatingWhere(admin) } }]
           : []),
         ...(admin || privacy.showReviews
           ? [{ kind: ActivityKind.REVIEWED, review: { is: admin ? readableReviewWhere(viewer) : publicReviewWhere } }]
@@ -135,7 +143,7 @@ export class ProfilesService {
             include: {
               ...catalogItemSummaryInclude,
               reviews: {
-                where: { userId: user.id, rating: { not: null }, hiddenAt: null },
+                where: { userId: user.id, ...shownRatingWhere(admin) },
                 select: { rating: true },
               },
             },
@@ -172,8 +180,7 @@ export class ProfilesService {
     const { user, admin } = await this.section(handle, 'showRatings', viewer);
     const where = {
       userId: user.id,
-      rating: { not: null },
-      hiddenAt: null,
+      ...shownRatingWhere(admin),
       ...withoutPrivateEntries(user.id, admin),
     };
     const [total, reviews] = await this.prisma.$transaction([
@@ -243,8 +250,7 @@ export class ProfilesService {
         ? this.prisma.review.aggregate({
             where: {
               userId,
-              rating: { not: null },
-              hiddenAt: null,
+              ...shownRatingWhere(admin),
               ...withoutPrivateEntries(userId, admin),
             },
             _avg: { rating: true },

@@ -14,14 +14,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { tmpdir } from 'node:os';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RateLimit } from '../redis/rate-limit.guard';
 import { maxBackupBytes } from './backup-parser';
 import { ApplyImportDto, DecideCandidateDto, ListCandidatesDto } from './dto/import.dto';
-import { ImportsService } from './imports.service';
+import { importUploadDirectory, ImportsService } from './imports.service';
 import { UuidPipe } from '../validation/uuid.pipe';
 
 @Controller('imports')
@@ -38,7 +37,7 @@ export class ImportsController {
   @RateLimit('imports', 10, 3_600)
   @UseInterceptors(
     FileInterceptor('file', {
-      dest: tmpdir(),
+      dest: importUploadDirectory,
       limits: { fileSize: maxBackupBytes, files: 1 },
     }),
   )

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -12,7 +13,7 @@ import { validate } from 'class-validator';
 import { createHash, randomBytes, scryptSync } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../src/auth/auth.service';
-import { MailService } from '../src/mail/mail.service';
+import { MailDeliveryError, MailService } from '../src/mail/mail.service';
 import { UpdateProfileDto } from '../src/users/dto/users.dto';
 
 const sendMail = vi.fn();
@@ -70,10 +71,20 @@ function setup(overrides: Record<string, object> = {}) {
   return { mail, prisma, service };
 }
 
-function sentToken(mail: { send: ReturnType<typeof vi.fn> }) {
-  const [message] = mail.send.mock.calls.at(-1) as [{ text: string }];
+function sentToken(mail: { send: ReturnType<typeof vi.fn> }, to?: string) {
+  const [message] = (
+    to ? mail.send.mock.calls.find(([sent]) => (sent as { to: string }).to === to) : mail.send.mock.calls.at(-1)
+  ) as [{ text: string }];
   return /token=([0-9a-f]{64})/.exec(message.text)?.[1] ?? '';
 }
+
+const refusedRecipient = () =>
+  new MailDeliveryError({
+    code: 'EENVELOPE',
+    responseCode: 550,
+    command: 'RCPT TO',
+    message: `Recipient command failed: 550 5.1.1 <${user.email}>: Recipient address rejected`,
+  });
 
 describe('Account email flows', () => {
   it('sends the verification link inside the registration transaction and never returns it', async () => {
@@ -102,6 +113,7 @@ describe('Account email flows', () => {
 
   it('fails registration when the verification email cannot be sent', async () => {
     const { mail, service } = setup();
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     mail.send.mockRejectedValue(new ServiceUnavailableException('Email delivery is not configured'));
 
     await expect(
@@ -112,9 +124,10 @@ describe('Account email flows', () => {
         password: 'correct horse battery',
       }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    warn.mockRestore();
   });
 
-  it('applies a confirmed email change and refuses reset links as verification', async () => {
+  it('applies a confirmed email change, cancels reset links to the old address and refuses reset links as verification', async () => {
     const { prisma, service } = setup();
     prisma.verificationToken.findUnique.mockResolvedValueOnce({
       userId: user.id,
@@ -130,7 +143,10 @@ describe('Account email flows', () => {
       data: { verifiedAt: expect.any(Date), email: 'new@example.com' },
     });
     expect(prisma.verificationToken.deleteMany).toHaveBeenCalledWith({
-      where: { userId: user.id, purpose: TokenPurpose.CHANGE_EMAIL },
+      where: {
+        userId: user.id,
+        purpose: { in: [TokenPurpose.CHANGE_EMAIL, TokenPurpose.RESET_PASSWORD] },
+      },
     });
 
     prisma.verificationToken.findUnique.mockResolvedValueOnce({
@@ -140,6 +156,35 @@ describe('Account email flows', () => {
       expiresAt: new Date(Date.now() + 60_000),
     });
     await expect(service.verifyEmail('b'.repeat(64))).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('removes only verification links when a new account confirms its address', async () => {
+    const { prisma, service } = setup();
+    prisma.verificationToken.findUnique.mockResolvedValueOnce({
+      userId: user.id,
+      purpose: TokenPurpose.VERIFY_EMAIL,
+      email: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.verifyEmail('e'.repeat(64));
+
+    expect(prisma.verificationToken.deleteMany).toHaveBeenCalledWith({
+      where: { userId: user.id, purpose: { in: [TokenPurpose.VERIFY_EMAIL] } },
+    });
+  });
+
+  it('answers a reset request the same way when the email cannot be sent, without logging the address', async () => {
+    const { mail, prisma, service } = setup();
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+    mail.send.mockRejectedValueOnce(refusedRecipient());
+
+    await expect(service.requestPasswordReset(user.email)).resolves.toBeUndefined();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('SMTP 550'));
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(user.email);
+    warn.mockRestore();
   });
 
   it('sends reset links only to existing active accounts and says nothing either way', async () => {
@@ -158,7 +203,7 @@ describe('Account email flows', () => {
     });
   });
 
-  it('resets the password, confirms the address and signs every device out', async () => {
+  it('resets the password, confirms the address, cancels pending email changes and signs every device out', async () => {
     const { prisma, service } = setup();
     prisma.verificationToken.findUnique.mockResolvedValueOnce({
       userId: user.id,
@@ -173,6 +218,12 @@ describe('Account email flows', () => {
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: user.id },
       data: { passwordHash: expect.stringMatching(/^[0-9a-f]{32}:[0-9a-f]{128}$/), verifiedAt: expect.any(Date) },
+    });
+    expect(prisma.verificationToken.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: user.id,
+        purpose: { in: [TokenPurpose.CHANGE_EMAIL, TokenPurpose.RESET_PASSWORD] },
+      },
     });
     expect(prisma.refreshSession.updateMany).toHaveBeenCalledWith({
       where: { userId: user.id, revokedAt: null },
@@ -206,6 +257,12 @@ describe('Account email flows', () => {
 
     const session = await service.changePassword(user.id, 'correct horse battery', 'a brand new password');
     expect(session.user.id).toBe(user.id);
+    expect(prisma.verificationToken.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: user.id,
+        purpose: { in: [TokenPurpose.CHANGE_EMAIL, TokenPurpose.RESET_PASSWORD] },
+      },
+    });
     expect(prisma.refreshSession.updateMany).toHaveBeenCalledWith({
       where: { userId: user.id, revokedAt: null },
       data: { revokedAt: expect.any(Date) },
@@ -216,7 +273,7 @@ describe('Account email flows', () => {
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: user.id } });
   });
 
-  it('sends an email change confirmation to the new address unless it is taken', async () => {
+  it('sends an email change confirmation to the new address unless it is taken, and warns the old one', async () => {
     const { mail, prisma, service } = setup();
     prisma.user.findUnique.mockResolvedValueOnce({ id: 'someone-else' });
 
@@ -230,9 +287,27 @@ describe('Account email flows', () => {
       data: expect.objectContaining({
         purpose: TokenPurpose.CHANGE_EMAIL,
         email: 'new@example.com',
-        tokenHash: digest(sentToken(mail)),
+        tokenHash: digest(sentToken(mail, 'new@example.com')),
       }),
     });
+    const [[warning]] = mail.send.mock.calls.filter(([sent]) => (sent as { to: string }).to === user.email) as [
+      [{ text: string }],
+    ];
+    expect(warning.text).toContain('https://tracker.example/forgot-password');
+    expect(warning.text).not.toContain('new@example.com');
+    expect(warning.text).not.toMatch(/token=/);
+  });
+
+  it('refuses an email change when the confirmation cannot be sent', async () => {
+    const { mail, service } = setup();
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    mail.send.mockRejectedValueOnce(refusedRecipient());
+
+    await expect(
+      service.requestEmailChange(user.id, 'new@example.com', 'correct horse battery'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 
   it('accepts IANA time zones only', async () => {
@@ -270,5 +345,26 @@ describe('MailService', () => {
       text: 'Hi',
     });
     expect(mail.link('/verify?token=abc')).toBe('https://tracker.example/verify?token=abc');
+  });
+
+  it('reports SMTP failures by code, status and command without the server response', async () => {
+    const mail = new MailService(
+      new ConfigService({ EMAIL_HOST: 'smtp.example', DEFAULT_FROM_EMAIL: 'tracker@example.com' }),
+    );
+    sendMail.mockRejectedValueOnce(
+      Object.assign(new Error(`Recipient command failed: 550 <${user.email}> rejected`), {
+        code: 'EENVELOPE',
+        responseCode: 550,
+        command: 'RCPT TO',
+        response: `550 <${user.email}> rejected`,
+      }),
+    );
+
+    const error = await mail.send({ to: user.email, subject: 'Hi', text: 'Hi' }).catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(MailDeliveryError);
+    expect(error).toMatchObject({ code: 'EENVELOPE', responseCode: 550, command: 'RCPT TO' });
+    expect((error as Error).message).toBe('Email delivery failed (EENVELOPE, SMTP 550, RCPT TO)');
+    expect(JSON.stringify(error)).not.toContain(user.email);
   });
 });
