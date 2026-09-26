@@ -244,15 +244,16 @@ export function DiscoverPage({
         key={`${category}:${section}:${searchParams.toString()}`}
         onSubmit={apply}
       >
-        {(genres.loading || (genres.data?.length ?? 0) > 0) && (
+        {genres.loading ? (
+          <div className="field-label">
+            <span>Genre</span>
+            <input name="genre" type="hidden" value={searchParams.get('genre') ?? ''} />
+            <Skeleton className="h-[3.1rem] rounded-lg" />
+          </div>
+        ) : (genres.data?.length ?? 0) > 0 && (
           <label className="field-label">
             Genre
-            <select
-              defaultValue={searchParams.get('genre') ?? ''}
-              disabled={genres.loading}
-              key={genres.loading ? 'loading' : 'loaded'}
-              name="genre"
-            >
+            <select defaultValue={searchParams.get('genre') ?? ''} name="genre">
               <option value="">Any genre</option>
               {genres.data?.map((genre) => (
                 <option key={genre} value={genre}>{genre}</option>

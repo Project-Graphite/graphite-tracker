@@ -8,7 +8,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Poster, posterGridClass } from '../components/Poster';
 import { ReviewCard } from '../components/ReviewCard';
-import { ListSkeleton, PageSkeleton, PosterGridSkeleton } from '../components/Skeleton';
+import { ListSkeleton, PosterGridSkeleton, ProfileSkeleton } from '../components/Skeleton';
 import {
   libraryStateLabels,
   libraryStates,
@@ -189,7 +189,7 @@ function LibraryGrid({ handle }: { handle: string }) {
         handle={handle}
         key={state}
         section="library"
-        skeleton={<PosterGridSkeleton label="Loading library" />}
+        skeleton={<PosterGridSkeleton action={false} label="Loading library" />}
       >
         {(entries) => (
           <div className={posterGridClass}>
@@ -310,7 +310,7 @@ export function ProfilePage() {
       <p className="error-message">{profile.error}</p>
     );
   }
-  if (!profile.data) return <PageSkeleton label="Loading profile" />;
+  if (!profile.data) return <ProfileSkeleton />;
   const { data } = profile;
   const visible = (Object.keys(sectionLabels) as Section[]).filter(
     (section) => data.sections?.[section],

@@ -15,7 +15,8 @@ import { Credits } from '../components/Credits';
 import { EmptyState } from '../components/EmptyState';
 import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
-import { LinesSkeleton, TitleSkeleton } from '../components/Skeleton';
+import { SmoothImage } from '../components/SmoothImage';
+import { Placeholder, Skeleton, TitleSkeleton } from '../components/Skeleton';
 import { TitleReviews } from '../components/TitleReviews';
 import { useFooterSource } from '../footerSource';
 import { useSiteSettings } from '../site';
@@ -37,7 +38,9 @@ function LibraryPanel({
       <h2 className="m-0 text-lg font-medium">Your library</h2>
       <div className="mt-4">
         {!auth.ready || lookup.loading ? (
-          <LinesSkeleton label="Loading your library entry" lines={2} />
+          <Placeholder label="Loading your library entry">
+            <Skeleton className="h-12 rounded-lg" />
+          </Placeholder>
         ) : !auth.user ? (
           <p className="m-0 text-sm text-muted">
             <Link className="rule-link" to="/login">Sign in</Link> to track this title.
@@ -163,7 +166,7 @@ export function TitleDetailsPage() {
       </div>
     );
   }
-  if (!item) return <TitleSkeleton />;
+  if (!item) return <TitleSkeleton backdrop={category !== 'manga' && category !== 'manhwa'} />;
 
   return (
     <article className="page-enter">
@@ -173,9 +176,9 @@ export function TitleDetailsPage() {
       )}
       {item.backdropUrl && (
         <div
-          className={`mt-5 aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-line-soft sm:mt-6 md:aspect-[16/6] ${hidden ? 'poster-blurred' : ''}`}
+          className={`relative mt-5 aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-line-soft sm:mt-6 md:aspect-[16/6] ${hidden ? 'poster-blurred' : ''}`}
         >
-          <img alt="" className="fade-in poster-image h-full w-full object-cover" src={item.backdropUrl} />
+          <SmoothImage alt="" key={item.backdropUrl} src={item.backdropUrl} />
         </div>
       )}
       <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-6 sm:mt-8 md:grid-cols-[14rem_1fr] md:gap-x-8">

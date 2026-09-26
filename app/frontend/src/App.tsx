@@ -3,7 +3,14 @@ import { Navigate, Route, Routes, useLocation, useParams, type Location } from '
 import { useAuth } from './auth';
 import { catalogSections, discoverCategories } from './catalog';
 import { Shell } from './components/Shell';
-import { PageSkeleton } from './components/Skeleton';
+import {
+  FormPanelSkeleton,
+  FormSkeleton,
+  ListSkeleton,
+  PageSkeleton,
+  PosterGridSkeleton,
+  TabsSkeleton,
+} from './components/Skeleton';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { DiscoverPage } from './pages/DiscoverPage';
@@ -27,11 +34,34 @@ import { TrackGamesPage } from './pages/TrackGamesPage';
 import { UnsubscribePage } from './pages/UnsubscribePage';
 import { VerifyPage } from './pages/VerifyPage';
 
-function Protected({ admin = false, children }: { admin?: boolean; children: ReactNode }) {
+const listPage = (
+  <PageSkeleton label="Loading your session">
+    <ListSkeleton rows={6} />
+  </PageSkeleton>
+);
+
+const tabbedPage = (
+  <PageSkeleton label="Loading your session">
+    <TabsSkeleton />
+    <div className="mt-8">
+      <FormSkeleton fields={3} />
+    </div>
+  </PageSkeleton>
+);
+
+function Protected({
+  admin = false,
+  children,
+  skeleton = listPage,
+}: {
+  admin?: boolean;
+  children: ReactNode;
+  skeleton?: ReactNode;
+}) {
   const auth = useAuth();
   const location = useLocation();
   if (!auth.ready) {
-    return <PageSkeleton label="Loading your session" />;
+    return skeleton;
   }
   if (!auth.user) {
     return <Navigate replace state={{ from: location }} to="/login" />;
@@ -69,7 +99,7 @@ function SignedOutLogin() {
   const auth = useAuth();
   const location = useLocation();
   if (!auth.ready) {
-    return <PageSkeleton label="Loading your session" />;
+    return <FormPanelSkeleton label="Loading your session" />;
   }
   const from = (location.state as { from?: Location } | null)?.from;
   return auth.user ? <Navigate replace to={from ?? '/'} /> : <LoginPage />;
@@ -85,14 +115,27 @@ export function App() {
         <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
         <Route path="games" element={<TrackGamesPage />} />
         <Route path="search" element={<SearchPage />} />
-        <Route path="library" element={<Protected><LibraryPage /></Protected>} />
+        <Route
+          path="library"
+          element={
+            <Protected
+              skeleton={
+                <PageSkeleton label="Loading your session">
+                  <PosterGridSkeleton label="Loading your library" />
+                </PageSkeleton>
+              }
+            >
+              <LibraryPage />
+            </Protected>
+          }
+        />
         <Route path="notifications" element={<Protected><NotificationsPage /></Protected>} />
         <Route path="import" element={<Protected><ImportPage /></Protected>} />
         <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
-        <Route path="settings/*" element={<Protected><SettingsRedirect /></Protected>} />
-        <Route path="admin" element={<Protected admin><AdminPage /></Protected>} />
+        <Route path="settings/*" element={<Protected skeleton={tabbedPage}><SettingsRedirect /></Protected>} />
+        <Route path="admin" element={<Protected admin skeleton={tabbedPage}><AdminPage /></Protected>} />
         <Route path="users/:handle" element={<ProfilePage />} />
-        <Route path="users/:handle/settings" element={<Protected><SettingsLayout /></Protected>}>
+        <Route path="users/:handle/settings" element={<Protected skeleton={tabbedPage}><SettingsLayout /></Protected>}>
           <Route index element={<ProfileSettingsPage />} />
           <Route path="account" element={<AccountSettingsPage />} />
           <Route path="notifications" element={<NotificationSettingsPage />} />

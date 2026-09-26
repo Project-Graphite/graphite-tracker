@@ -187,7 +187,13 @@ export function ImportBatchPage() {
 
 
   if (batch.error) return <p className="error-message">{batch.error}</p>;
-  if (!batch.data) return <PageSkeleton label="Loading import" />;
+  if (!batch.data) {
+    return (
+      <PageSkeleton label="Loading import">
+        <ListSkeleton rows={5} />
+      </PageSkeleton>
+    );
+  }
   const detail = batch.data;
   const total = Object.values(detail.matches).reduce((sum, count) => sum + (count ?? 0), 0);
   const pending = detail.matches.pending ?? 0;

@@ -1,4 +1,5 @@
 import type { CatalogCategory, CatalogDetails } from '../catalog';
+import { SmoothImage } from './SmoothImage';
 
 const headings: Record<CatalogCategory, string> = {
   movie: 'Cast & crew',
@@ -31,15 +32,9 @@ export function Credits({ item }: { item: CatalogDetails }) {
         <ul aria-label={item.category === 'anime' ? 'Voice cast' : 'Cast'} className="cast-row mt-6 mb-0 p-0">
           {cast.map((member, index) => (
             <li className="min-w-0 list-none snap-start" key={`${member.name}:${index}`}>
-              <div className="aspect-[2/3] overflow-hidden rounded-lg border border-line bg-line-soft">
+              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-line bg-line-soft">
                 {member.imageUrl ? (
-                  <img
-                    alt=""
-                    className="fade-in h-full w-full object-cover"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    src={member.imageUrl}
-                  />
+                  <SmoothImage alt="" src={member.imageUrl} />
                 ) : (
                   <span aria-hidden="true" className="flex h-full items-center justify-center text-2xl text-faint">
                     {member.name.charAt(0)}

@@ -7,7 +7,7 @@ import type { OwnReview, TitleReviews as TitleReviewsPage } from '../reviews';
 import { useResource } from '../useResource';
 import { ReviewCard } from './ReviewCard';
 import { ReviewEditor } from './ReviewEditor';
-import { LinesSkeleton, ListSkeleton } from './Skeleton';
+import { LinesSkeleton, ListSkeleton, Skeleton } from './Skeleton';
 
 const notInLibrary =
   'Add this title to your library and finish or drop it to rate and review it.';
@@ -107,6 +107,7 @@ export function TitleReviews({
     <section className="mt-12 border-t border-line pt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="m-0 text-xl font-medium">Reviews</h2>
+        {!summary && !reviews.error && <Skeleton className="h-3 w-40" />}
         {summary && (
           <p className="mono-sm m-0 text-faint">
             {summary.average === null
@@ -116,7 +117,9 @@ export function TitleReviews({
         )}
       </div>
       <div className="mt-5">
-        {!auth.user ? (
+        {!auth.ready || (auth.user && entry === undefined) ? (
+          <LinesSkeleton className="max-w-sm" label="Loading your review" lines={1} />
+        ) : !auth.user ? (
           <p className="m-0 text-sm text-muted">
             <Link className="rule-link" to="/login">Sign in</Link> to rate and review.
           </p>
@@ -126,7 +129,7 @@ export function TitleReviews({
           entry === null && <p className="mono-sm m-0 text-faint">{notInLibrary}</p>
         )}
       </div>
-      {reviews.loading && (
+      {!reviews.data && !reviews.error && (
         <div className="mt-4">
           <ListSkeleton label="Loading reviews" rows={2} />
         </div>

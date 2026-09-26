@@ -14,6 +14,7 @@ import { useSnackbar } from '../snackbar';
 import { useLibraryStates } from '../useLibraryStates';
 import { Dialog } from './Dialog';
 import { Poster, posterGridClass } from './Poster';
+import { actionSkeletonClass, Skeleton } from './Skeleton';
 
 function AddToListDialog({
   item,
@@ -111,6 +112,10 @@ export function AddToListButton({
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  if (!libraryReady) {
+    return <Skeleton className={actionSkeletonClass} />;
+  }
+
   if (entry) {
     return (
       <p className="mono-sm m-0 rounded-lg border border-line-soft px-3 py-2 text-center text-muted">
@@ -123,7 +128,6 @@ export function AddToListButton({
     <>
       <button
         className={className}
-        disabled={!libraryReady}
         onClick={() => (auth.user ? setOpen(true) : navigate('/login'))}
         type="button"
       >

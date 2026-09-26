@@ -10,6 +10,7 @@ import {
 import { useCatalogSearch } from '../catalogSearch';
 import { CatalogRow } from '../components/CatalogRow';
 import { EmptyState } from '../components/EmptyState';
+import { Skeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
 import { searchQuery, useFormErrors } from '../validation';
 
@@ -27,7 +28,7 @@ function CategoryResults({ category, query }: { category: CatalogCategory; query
           ? results.data.totalResults === null
             ? 'results'
             : countLabel(results.data.totalResults, 'result')
-          : 'searching'
+          : <Skeleton className="inline-block h-3 w-16 align-middle" />
       }
       items={results.data?.results.slice(0, 10)}
       link={{

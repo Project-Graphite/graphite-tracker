@@ -10,6 +10,7 @@ import { Attribution } from './Attribution';
 import { Icon, type IconName } from './Icon';
 import { NotificationBell } from './NotificationBell';
 import { OutageGate } from './Outage';
+import { Skeleton } from './Skeleton';
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link whitespace-nowrap no-underline ${isActive ? 'text-ink' : 'text-muted hover:text-ink'}`;
@@ -81,17 +82,24 @@ function MobileTabBar() {
 
   return (
     <nav aria-label="Main" className="tab-bar md:hidden">
-      {tabs.map((tab) => (
-        <Link
-          aria-current={tab.active ? 'page' : undefined}
-          className="tab-bar-item"
-          key={tab.label}
-          to={tab.to}
-        >
-          <Icon name={tab.icon} size={22} />
-          <span>{tab.label}</span>
-        </Link>
-      ))}
+      {tabs.map((tab, index) =>
+        index === tabs.length - 1 && !auth.ready ? (
+          <span aria-hidden="true" className="tab-bar-item" key="account">
+            <Skeleton className="h-[22px] w-[22px] rounded-full" />
+            <Skeleton className="h-2.5 w-10" />
+          </span>
+        ) : (
+          <Link
+            aria-current={tab.active ? 'page' : undefined}
+            className="tab-bar-item"
+            key={tab.label}
+            to={tab.to}
+          >
+            <Icon name={tab.icon} size={22} />
+            <span>{tab.label}</span>
+          </Link>
+        ),
+      )}
     </nav>
   );
 }
@@ -139,7 +147,12 @@ export function Shell() {
                   )}
                 </nav>
                 <div className="ml-auto flex items-center gap-2">
-                  {auth.user ? (
+                  {!auth.ready ? (
+                    <span aria-hidden="true" className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-9 w-9 rounded-full" />
+                    </span>
+                  ) : auth.user ? (
                     <>
                       <NotificationBell />
                       <AccountMenu onSignOut={() => void signOut()} />

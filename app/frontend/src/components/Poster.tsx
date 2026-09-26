@@ -1,29 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { SmoothImage } from './SmoothImage';
 
 export const posterGridClass =
   'grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
-
-function PosterImage({ posterUrl, title }: { posterUrl: string; title: string }) {
-  const image = useRef<HTMLImageElement>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (image.current?.complete && image.current.naturalWidth > 0) setLoaded(true);
-  }, []);
-
-  return (
-    <img
-      alt={`Poster for ${title}`}
-      className={`poster-image h-full w-full object-cover ${loaded ? 'opacity-100' : 'opacity-0'}`}
-      loading="lazy"
-      onLoad={() => setLoaded(true)}
-      ref={image}
-      referrerPolicy="no-referrer"
-      src={posterUrl}
-    />
-  );
-}
 
 export function Poster({
   blurred = false,
@@ -38,14 +17,17 @@ export function Poster({
   posterUrl: string | null;
   title: string;
 }) {
+  const placeholder = (
+    <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
+      {title}
+    </span>
+  );
   const image = (
     <>
       {posterUrl ? (
-        <PosterImage key={posterUrl} posterUrl={posterUrl} title={title} />
+        <SmoothImage alt={`Poster for ${title}`} fallback={placeholder} key={posterUrl} src={posterUrl} />
       ) : (
-        <span className="flex h-full items-center justify-center p-3 text-center text-sm text-muted">
-          {title}
-        </span>
+        placeholder
       )}
       {blurred && <span className="poster-badge">18+</span>}
     </>
