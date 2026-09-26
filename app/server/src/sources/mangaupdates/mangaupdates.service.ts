@@ -230,6 +230,7 @@ export class MangaUpdatesService {
       ratingCount: series.rating_votes,
       adult:
         genres.some((genre) => adultGenres.includes(genre)) ||
+        (genres.includes('Ecchi') && series.rating_votes < 400) ||
         looksAdult([series.title, ...alternateTitles], synopsis, []),
       chapterCount: series.latest_chapter || null,
       volumeCount: Number(series.status?.match(/(\d+) Volumes?/)?.[1]) || null,

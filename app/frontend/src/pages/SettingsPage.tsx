@@ -224,7 +224,6 @@ export function ProfileSettingsPage() {
             <div className="mt-5 grid gap-3">
               <Toggle
                 checked={data.showAdultContent}
-                description="Adult films, erotic and boys' love manga and manhwa, and adult, ecchi and boys' love games, as labelled by each source. Results marked 18+ come from this setting."
                 label="Show adult content"
                 onChange={(checked) =>
                   checked ? setConfirmingAdult(true) : void send('/me', { showAdultContent: false })

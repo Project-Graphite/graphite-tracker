@@ -147,6 +147,27 @@ describe('MangaUpdatesService', () => {
     await expect(service.genres()).resolves.toEqual(['Action', 'Romance']);
   });
 
+  it('marks ecchi series adult until they are widely read', async () => {
+    const ecchi = (series_id: number, rating_votes: number) => ({
+      record: { ...record, series_id, rating_votes, genres: [{ genre: 'Ecchi' }] },
+      hit_title: record.title,
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(json({ ...searchResponse, results: [ecchi(1, 12), ecchi(2, 1_400)] })),
+      ),
+    );
+    const service = new MangaUpdatesService(genreCache() as never, new ConnectorHttpService());
+
+    const page = await service.browse('manga', 'recent', 1, {});
+
+    expect(page.results.map(({ externalId, adult }) => `${externalId}:${adult}`)).toEqual([
+      '1:true',
+      '2:false',
+    ]);
+  });
+
   it('lists series that have no year or genres', async () => {
     vi.stubGlobal(
       'fetch',
