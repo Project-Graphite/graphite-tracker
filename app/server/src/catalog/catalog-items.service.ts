@@ -20,10 +20,14 @@ export class CatalogItemsService {
     transaction: Prisma.TransactionClient,
     candidate: CatalogCandidate,
     sourceId: string,
+    { partial = false }: { partial?: boolean } = {},
   ) {
     const existing = await transaction.sourceEntry.findUnique({
       where: { sourceId_externalId: { sourceId, externalId: candidate.externalId } },
     });
+    if (existing && partial) {
+      return transaction.catalogItem.findUniqueOrThrow({ where: { id: existing.catalogItemId } });
+    }
     if (existing) {
       return transaction.catalogItem.update({
         where: { id: existing.catalogItemId },
@@ -56,6 +60,7 @@ export class CatalogItemsService {
       sourceId,
       externalId: candidate.externalId,
       ...this.sourceData(candidate),
+      ...(partial ? { lastRefreshedAt: null } : {}),
     };
     if (sameWork.length === 1 && sameWork[0]) {
       return transaction.catalogItem.update({

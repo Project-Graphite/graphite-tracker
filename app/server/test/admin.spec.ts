@@ -63,7 +63,7 @@ describe('Administration', () => {
     expect(prisma.reviewReport.update).not.toHaveBeenCalled();
   });
 
-  it('lists public and private reviews that still have text, with their reports', async () => {
+  it('lists public and private reviews that still have text, and every open report', async () => {
     const reportCount = vi.fn();
     const reportFindMany = vi.fn();
     const reviewCount = vi.fn();
@@ -79,7 +79,7 @@ describe('Administration', () => {
     await service.reviews('private', 1);
     await service.reviews('hidden', 1);
 
-    const reportWhere = { resolution: null, review: { body: { not: null } } };
+    const reportWhere = { resolution: null };
     expect(reportCount).toHaveBeenCalledWith({ where: reportWhere });
     expect(reportFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: reportWhere }));
     expect(reviewCount.mock.calls.map(([args]) => (args as { where: object }).where)).toEqual([

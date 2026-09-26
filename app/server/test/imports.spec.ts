@@ -9,13 +9,13 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DecideCandidateDto } from '../src/imports/dto/import.dto';
 import { ImportMatcherService, titleSimilarity } from '../src/imports/import-matcher.service';
-import { ImportsService } from '../src/imports/imports.service';
+import { importUploadDirectory, ImportsService } from '../src/imports/imports.service';
 import { CatalogCandidate } from '../src/sources/source.types';
 
 function candidate(overrides: Partial<CatalogCandidate>): CatalogCandidate {
@@ -291,6 +291,72 @@ describe('ImportsService', () => {
     }
   });
 
+  it('deletes uploads a previous run left behind before taking new ones', async () => {
+    await mkdir(importUploadDirectory, { recursive: true });
+    const leftover = join(importUploadDirectory, 'left-behind');
+    await writeFile(leftover, 'backup');
+    const imports = service({
+      importBatch: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findMany: vi.fn().mockResolvedValue([]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    });
+
+    try {
+      await imports.onModuleInit();
+      await expect(access(leftover)).rejects.toThrow();
+    } finally {
+      imports.onModuleDestroy();
+    }
+  });
+
+  it.each([ImportState.PARSING, ImportState.MATCHING, ImportState.APPLYING])(
+    'refuses to delete an import while it is %s',
+    async (state) => {
+      const remove = vi.fn();
+      const imports = service({
+        importBatch: { findFirst: vi.fn().mockResolvedValue({ id: 'batch-id', state }), delete: remove },
+      });
+
+      await expect(imports.remove('user-id', 'batch-id')).rejects.toBeInstanceOf(BadRequestException);
+      expect(remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it('marks adult matches so the review can blur their covers', async () => {
+    const imports = service(
+      {
+        importBatch: { findFirst: vi.fn().mockResolvedValue({ id: 'batch-id' }) },
+        $transaction: (queries: Array<Promise<unknown>>) => Promise.all(queries),
+        importCandidate: {
+          count: vi.fn().mockResolvedValue(1),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'candidate-id',
+              kind: 'manga',
+              title: 'Tower Story',
+              sourceName: null,
+              progress: null,
+              state: LibraryState.PLANNED,
+              match: ImportMatch.SUGGESTED,
+              issue: null,
+              choice: 0,
+              decision: null,
+              outcome: null,
+              options: [{ score: 0.8, item: candidate({ adult: true }) }],
+            },
+          ]),
+        },
+      },
+      { bySources: vi.fn().mockResolvedValue([]) },
+    );
+
+    const page = await imports.candidates('user-id', 'batch-id', ImportMatch.SUGGESTED, 1);
+
+    expect(page.results[0]?.options[0]).toMatchObject({ adult: true });
+  });
+
   it('lists titles already in the library as conflicts in position order', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const imports = service(
@@ -391,6 +457,37 @@ describe('ImportsService', () => {
         }),
       };
     }
+
+    it('attaches matches without overwriting what the catalogue already stores', async () => {
+      const upsert = vi.fn().mockResolvedValue({ id: 'item-id' });
+      const transaction = { importCandidate: { update: vi.fn() } };
+      const findMany = vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ ...imported, choice: 0, options: [option] }])
+        .mockResolvedValue([]);
+      const imports = new ImportsService(
+        {
+          importCandidate: { findMany, updateMany: vi.fn() },
+          importBatch: { update: vi.fn() },
+          $transaction: (run: (client: object) => Promise<void>) => run(transaction),
+        } as never,
+        { list: () => [{ key: option.item.source, enabled: true }] } as never,
+        { sourceRecord: vi.fn().mockResolvedValue({ id: 'mangadex-source' }), upsert } as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      const internals = imports as unknown as {
+        applyCandidate(): Promise<string>;
+        applyChunks(userId: string, batchId: string, policy: ImportConflictPolicy): Promise<void>;
+      };
+      vi.spyOn(internals, 'applyCandidate').mockResolvedValue('added');
+
+      await internals.applyChunks('user-id', 'batch-id', ImportConflictPolicy.ADD_MISSING);
+
+      expect(upsert).toHaveBeenCalledWith(transaction, option.item, 'mangadex-source', { partial: true });
+    });
 
     it('adds a missing title with its progress and an inactive source reference', async () => {
       const { outcome, transaction } = applyWith(null, ImportConflictPolicy.ADD_MISSING);

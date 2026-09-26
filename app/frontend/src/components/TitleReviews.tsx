@@ -12,10 +12,6 @@ import { LinesSkeleton, ListSkeleton, Skeleton } from './Skeleton';
 const notInLibrary =
   'Add this title to your library and finish or drop it to rate and review it.';
 
-interface Privacy {
-  privacy: { isPublic: boolean; showReviews: boolean };
-}
-
 function YourReview({
   entry,
   itemId,
@@ -27,7 +23,6 @@ function YourReview({
 }) {
   const own = useResource<OwnReview | null>(`/items/${itemId}/review`, true);
   const review = own.data;
-  const me = useResource<Privacy>(review === null ? '/me' : null, true);
   const [editing, setEditing] = useState(false);
   const eligible = entry?.state === 'completed' || entry?.state === 'dropped';
 
@@ -46,9 +41,6 @@ function YourReview({
     return (
       <div className="rounded-xl border border-line bg-surface p-5">
         <ReviewEditor
-          defaultVisibility={
-            me.data?.privacy.isPublic && me.data.privacy.showReviews ? 'public' : 'private'
-          }
           itemId={itemId}
           onClose={() => setEditing(false)}
           onSaved={(saved) => {
@@ -75,7 +67,6 @@ function YourReview({
       )}
       <button
         className="secondary-button px-3 py-2 text-sm"
-        disabled={!review && !me.data && !me.error}
         onClick={() => setEditing(true)}
         type="button"
       >

@@ -88,16 +88,16 @@ function ProgressFields({
   return (
     <>
       {units.includes('season') && (
-        <NumberField label="Season" max={metadata.seasonCount} name="progressSeason" onCommit={onUpdate} value={entry.progress.season} />
+        <NumberField label="Season" name="progressSeason" onCommit={onUpdate} value={entry.progress.season} />
       )}
       {units.includes('episode') && (
-        <NumberField label="Episode" max={metadata.episodeCount} name="progressEpisode" onCommit={onUpdate} value={entry.progress.episode} />
+        <NumberField label="Episode" name="progressEpisode" onCommit={onUpdate} value={entry.progress.episode} />
       )}
       {units.includes('chapter') && (
-        <NumberField decimals label="Chapter" max={metadata.chapterCount} name="progressChapter" onCommit={onUpdate} value={entry.progress.chapter} />
+        <NumberField decimals label="Chapter" name="progressChapter" onCommit={onUpdate} value={entry.progress.chapter} />
       )}
       {units.includes('volume') && (
-        <NumberField decimals label="Volume" max={metadata.volumeCount} name="progressVolume" onCommit={onUpdate} value={entry.progress.volume} />
+        <NumberField decimals label="Volume" name="progressVolume" onCommit={onUpdate} value={entry.progress.volume} />
       )}
       {units.includes('hours') && (
         <NumberField decimals label="Hours played" name="hoursPlayed" onCommit={onUpdate} value={entry.progress.hours} />
@@ -151,6 +151,9 @@ export function LibraryEntryEditor({
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState(false);
   const unavailableSources = entry.item.sources.filter((source) => !source.active);
+  const unavailablePreferredSource = unavailableSources.find(
+    (source) => source.key === entry.preferredSource,
+  );
   const finished = entry.state === 'completed' || entry.state === 'dropped';
   const needsPlatform =
     entry.item.category === 'game' && entry.progress.platforms.length === 0;
@@ -272,6 +275,12 @@ export function LibraryEntryEditor({
                 Choose a platform first.
               </p>
             )
+          )}
+          {entry.notificationsEnabled && unavailablePreferredSource && (
+            <p className="mono-sm mt-1 mb-0 text-faint">
+              Paused while {unavailablePreferredSource.name} is unavailable. Choose another preferred
+              source or Automatic to get notifications from it instead.
+            </p>
           )}
           {entry.notificationsEnabled && emailsOff && (
             <p className="mono-sm mt-1 mb-0 text-faint">

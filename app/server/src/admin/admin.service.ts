@@ -63,7 +63,6 @@ export class AdminService {
   async reports(status: 'open' | 'resolved', page: number) {
     const where = {
       resolution: status === 'open' ? null : { not: null },
-      review: moderatedReviewWhere,
     };
     const [total, reports] = await this.prisma.$transaction([
       this.prisma.reviewReport.count({ where }),

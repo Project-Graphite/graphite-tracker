@@ -133,7 +133,7 @@ export class LibraryService {
       adult,
     );
     const state = libraryStates[input.state];
-    const entry = await this.prisma.$transaction(async (transaction) => {
+    const add = () => this.prisma.$transaction(async (transaction) => {
       const source = await this.catalogItems.sourceRecord(transaction, connector.descriptor);
       const item = await this.catalogItems.upsert(transaction, details, source.id);
       const existing = await transaction.libraryEntry.findUnique({
@@ -158,6 +158,12 @@ export class LibraryService {
           include: libraryEntryInclude,
         })
       );
+    });
+    const entry = await add().catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return add();
+      }
+      throw error;
     });
     return this.present(entry, await loadSourcePreferences(this.prisma, userId));
   }
@@ -196,6 +202,9 @@ export class LibraryService {
           : undefined;
     const finished =
       nextState === LibraryState.COMPLETED || nextState === LibraryState.DROPPED;
+    const withoutPlatforms =
+      current.catalogItem.category === MediaCategory.GAME &&
+      (input.platforms ?? current.platforms).length === 0;
     if (input.notificationsEnabled && finished) {
       throw new BadRequestException(
         'Notifications require a planned or in-progress state',
@@ -214,11 +223,7 @@ export class LibraryService {
         'Release notifications are only for titles that are still coming out',
       );
     }
-    if (
-      input.notificationsEnabled &&
-      current.catalogItem.category === MediaCategory.GAME &&
-      (input.platforms ?? current.platforms).length === 0
-    ) {
+    if (input.notificationsEnabled && withoutPlatforms) {
       throw new BadRequestException(
         'Select at least one game platform before enabling notifications',
       );
@@ -234,7 +239,7 @@ export class LibraryService {
         hoursPlayed: input.hoursPlayed,
         completionPercentage: input.completionPercentage,
         platforms: input.platforms,
-        notificationsEnabled: finished ? false : input.notificationsEnabled,
+        notificationsEnabled: finished || withoutPlatforms ? false : input.notificationsEnabled,
         isPrivate: input.isPrivate,
         preferredSourceId,
         startedAt:

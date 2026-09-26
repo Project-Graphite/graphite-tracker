@@ -139,7 +139,7 @@ describe('Source connectors', () => {
     expect(url.searchParams.get('order[year]')).toBe('desc');
   });
 
-  it('normalizes IGDB platforms, releases, and game relationships', async () => {
+  it('normalizes IGDB platforms, releases listed once per region, and game relationships', async () => {
     const cache = {
       getOrLoad: vi.fn().mockResolvedValue({
         value: { access_token: 'token', expires_in: 3600 },
@@ -159,6 +159,7 @@ describe('Source connectors', () => {
               first_release_date: 1_893_456_000,
               platforms: [{ id: 6, name: 'PC' }],
               release_dates: [
+                { date: 1_893_456_000, platform: { id: 6, name: 'PC' } },
                 { date: 1_893_456_000, platform: { id: 6, name: 'PC' } },
               ],
               franchises: [{ id: 8, name: 'Graphite' }],

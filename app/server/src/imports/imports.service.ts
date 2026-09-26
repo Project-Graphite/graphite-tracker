@@ -16,7 +16,8 @@ import {
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { mkdir, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { CatalogItemsService } from '../catalog/catalog-items.service';
@@ -33,6 +34,9 @@ const retentionMs = 7 * 24 * 60 * 60 * 1000;
 const parseTimeoutMs = 60_000;
 const candidatePageSize = 50;
 const primaryCategories: Record<string, CatalogCategory> = { manga: 'manga', anime: 'anime' };
+const workingStates: ImportState[] = [ImportState.PARSING, ImportState.MATCHING, ImportState.APPLYING];
+
+export const importUploadDirectory = join(tmpdir(), 'graphite-tracker-imports');
 
 type Candidate = Prisma.ImportCandidateGetPayload<object>;
 
@@ -53,6 +57,10 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
+    await mkdir(importUploadDirectory, { recursive: true });
+    for (const name of await readdir(importUploadDirectory)) {
+      await rm(join(importUploadDirectory, name), { force: true, recursive: true });
+    }
     await this.prisma.importBatch.updateMany({
       where: { state: ImportState.PARSING },
       data: {
@@ -210,6 +218,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
             title: item.title,
             releaseDate: item.releaseDate,
             posterUrl: item.posterUrl,
+            adult: item.adult,
           })),
           existing:
             (option &&
@@ -283,7 +292,10 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async remove(userId: string, id: string) {
-    await this.owned(userId, id);
+    const batch = await this.owned(userId, id);
+    if (workingStates.includes(batch.state)) {
+      throw new BadRequestException('Wait until this import finishes before deleting it');
+    }
     await this.prisma.importBatch.delete({ where: { id } });
   }
 
@@ -479,7 +491,9 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
               sourceId = (await this.catalogItems.sourceRecord(transaction, descriptor)).id;
               sourceIds.set(descriptor.key, sourceId);
             }
-            const item = await this.catalogItems.upsert(transaction, option.item, sourceId);
+            const item = await this.catalogItems.upsert(transaction, option.item, sourceId, {
+              partial: true,
+            });
             const outcome = applied.has(item.id)
               ? 'duplicate'
               : await this.applyCandidate(transaction, {
@@ -652,7 +666,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     await this.prisma.importBatch.deleteMany({
       where: {
         expiresAt: { lt: new Date() },
-        state: { notIn: [ImportState.PARSING, ImportState.MATCHING, ImportState.APPLYING] },
+        state: { notIn: workingStates },
       },
     });
   }
