@@ -9,6 +9,12 @@ projects:
     authors: [AmrMsCLL]
     status: wip
     listed: true
+    showcase:
+      contributions:
+        - github: AmrMsCLL
+          summary: >
+            Defined the test scenario and owns the deployment, infrastructure and acceptance
+            criteria used to validate the Graphite hosting path.
     deploy:
       kind: compose
       host: graphite-tracker.project-graphite.com
