@@ -55,6 +55,7 @@ export interface CatalogCandidate {
   rating: number | null;
   ratingCount: number;
   adult: boolean;
+  lgbtq?: boolean;
   capabilities: CatalogCapabilities;
   episodeCount?: number | null;
   seasonCount?: number | null;

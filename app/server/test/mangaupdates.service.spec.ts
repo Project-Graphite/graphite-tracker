@@ -90,9 +90,11 @@ describe('MangaUpdatesService', () => {
         'Hentai',
         'Lolicon',
         'Shotacon',
-        'Shounen Ai',
         'Smut',
+        'Shoujo Ai',
+        'Shounen Ai',
         'Yaoi',
+        'Yuri',
       ],
     });
     expect(body(request, 1)).toMatchObject({
@@ -142,6 +144,7 @@ describe('MangaUpdatesService', () => {
       type: ['Manhwa'],
       search: 'omniscient',
       genre: ['Romance'],
+      exclude_genre: ['Shoujo Ai', 'Shounen Ai', 'Yaoi', 'Yuri'],
     });
     expect(result.results[0]).toMatchObject({ adult: true, alternateTitles: [] });
     await expect(service.genres()).resolves.toEqual(['Action', 'Romance']);
@@ -192,7 +195,7 @@ describe('MangaUpdatesService', () => {
     });
   });
 
-  it('treats yaoi and shounen ai as adult genres only opted-in readers can pick', async () => {
+  it('keeps yaoi, shounen ai, yuri and shoujo ai away from every reader', async () => {
     const request = vi.fn().mockImplementation(() =>
       Promise.resolve(
         json({
@@ -206,23 +209,22 @@ describe('MangaUpdatesService', () => {
     vi.stubGlobal('fetch', request);
     const service = new MangaUpdatesService(genreCache() as never, new ConnectorHttpService());
 
-    await expect(
-      service.browse('manhwa', 'popular', 1, { genre: 'yaoi' }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    const result = await service.search('manhwa', 'omniscient', 1, {
-      genre: 'yaoi',
-      adult: true,
-    });
+    for (const adult of [false, true]) {
+      await expect(
+        service.browse('manhwa', 'popular', 1, { genre: 'yaoi', adult }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    }
+    const result = await service.search('manhwa', 'omniscient', 1, { adult: true });
 
-    expect(body(request)).toMatchObject({ genre: ['Yaoi'] });
-    expect(body(request)).not.toHaveProperty('exclude_genre');
-    expect(result.results[0]).toMatchObject({ adult: true });
+    expect(body(request)).toMatchObject({
+      exclude_genre: ['Shoujo Ai', 'Shounen Ai', 'Yaoi', 'Yuri'],
+    });
+    expect(result.results[0]).toMatchObject({ adult: false, lgbtq: true });
     await expect(service.genres('manhwa', true)).resolves.toEqual([
       'Action',
       'Hentai',
       'Romance',
       'Smut',
-      'Yaoi',
     ]);
   });
 

@@ -30,6 +30,7 @@ interface AniListMedia {
   genres: string[];
   averageScore: number | null;
   isAdult: boolean;
+  tags?: Array<{ name: string; rank: number }>;
   siteUrl: string;
   stats?: { scoreDistribution: Array<{ amount: number }> };
   studios?: { nodes: Array<{ name: string }> };
@@ -58,10 +59,18 @@ const mediaFields = `
   genres
   averageScore
   isAdult
+  tags { name rank }
   siteUrl
 `;
 
 const seasons = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
+const lgbtqTagRanks: Record<string, number> = {
+  Bisexual: 70,
+  "Boys' Love": 50,
+  'LGBTQ+ Themes': 70,
+  Transgender: 70,
+  Yuri: 50,
+};
 
 @Injectable()
 export class AniListService {
@@ -249,14 +258,15 @@ export class AniListService {
     }>(
       `query (
         $page: Int, $search: String, $sort: [MediaSort], $season: MediaSeason, $seasonYear: Int,
-        $genre: String, $status: MediaStatus, $isAdult: Boolean
+        $genre: String, $status: MediaStatus, $isAdult: Boolean, $tagNotIn: [String],
+        $minimumTagRank: Int
       ) {
         Page(page: $page, perPage: 20) {
           pageInfo { total lastPage }
           media(
             type: ANIME, countryOfOrigin: "JP", format_not: MUSIC, search: $search, sort: $sort,
             season: $season, seasonYear: $seasonYear, genre: $genre, status: $status,
-            isAdult: $isAdult
+            isAdult: $isAdult, tag_not_in: $tagNotIn, minimumTagRank: $minimumTagRank
           ) { ${mediaFields} }
         }
       }`,
@@ -268,6 +278,8 @@ export class AniListService {
         ...(genre ? { genre } : {}),
         ...(status ? { status } : {}),
         ...(filters.adult ? {} : { isAdult: false }),
+        tagNotIn: Object.keys(lgbtqTagRanks),
+        minimumTagRank: Math.max(...Object.values(lgbtqTagRanks)),
       },
     );
     return {
@@ -316,6 +328,10 @@ export class AniListService {
       rating: media.averageScore ? media.averageScore / 10 : null,
       ratingCount: 0,
       adult: media.isAdult || looksAdult([title, ...alternateTitles], synopsis, media.genres),
+      lgbtq: (media.tags ?? []).some((tag) => {
+        const rank = lgbtqTagRanks[tag.name];
+        return rank !== undefined && tag.rank >= rank;
+      }),
       episodeCount: media.episodes,
       seasonCount: null,
       deepLinks: [{ label: 'View on AniList', url: media.siteUrl }],

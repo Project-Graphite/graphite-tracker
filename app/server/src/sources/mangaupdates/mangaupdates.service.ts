@@ -38,15 +38,8 @@ interface MangaUpdatesSearch {
   results: Array<{ record: MangaUpdatesSeries; hit_title: string }>;
 }
 
-const adultGenres = [
-  'Adult',
-  'Hentai',
-  'Lolicon',
-  'Shotacon',
-  'Shounen Ai',
-  'Smut',
-  'Yaoi',
-];
+const adultGenres = ['Adult', 'Hentai', 'Lolicon', 'Shotacon', 'Smut'];
+const lgbtqGenres = ['Shoujo Ai', 'Shounen Ai', 'Yaoi', 'Yuri'];
 
 @Injectable()
 export class MangaUpdatesService {
@@ -136,7 +129,9 @@ export class MangaUpdatesService {
     );
     return value
       .map(({ genre }) => genre)
-      .filter((genre) => adult || !adultGenres.includes(genre))
+      .filter(
+        (genre) => !lgbtqGenres.includes(genre) && (adult || !adultGenres.includes(genre)),
+      )
       .sort((left, right) => left.localeCompare(right));
   }
 
@@ -189,7 +184,7 @@ export class MangaUpdatesService {
       ...(orderby ? { orderby } : {}),
       ...(filters.year ? { year: String(filters.year) } : {}),
       ...(genre ? { genre: [genre] } : {}),
-      ...(filters.adult ? {} : { exclude_genre: adultGenres }),
+      exclude_genre: filters.adult ? lgbtqGenres : [...adultGenres, ...lgbtqGenres],
     });
     return {
       page,
@@ -232,6 +227,7 @@ export class MangaUpdatesService {
         genres.some((genre) => adultGenres.includes(genre)) ||
         (genres.includes('Ecchi') && series.rating_votes < 400) ||
         looksAdult([series.title, ...alternateTitles], synopsis, []),
+      lgbtq: genres.some((genre) => lgbtqGenres.includes(genre)),
       chapterCount: series.latest_chapter || null,
       volumeCount: Number(series.status?.match(/(\d+) Volumes?/)?.[1]) || null,
       deepLinks: [{ label: 'View on MangaUpdates', url: series.url }],

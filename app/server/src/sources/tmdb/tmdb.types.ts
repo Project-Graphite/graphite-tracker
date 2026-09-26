@@ -21,6 +21,11 @@ export interface TmdbVideos {
   results: Array<{ key: string; name: string; site: string; type: string; official?: boolean }>;
 }
 
+export interface TmdbKeywords {
+  keywords?: TmdbNamed[];
+  results?: TmdbNamed[];
+}
+
 export interface TmdbMovieResult {
   id: number;
   adult?: boolean;
@@ -41,6 +46,7 @@ export interface TmdbMovieResult {
   production_companies?: TmdbNamed[];
   credits?: TmdbCredits;
   videos?: TmdbVideos;
+  keywords?: TmdbKeywords;
 }
 
 export interface TmdbTvResult {
@@ -74,6 +80,7 @@ export interface TmdbTvResult {
   production_companies?: TmdbNamed[];
   aggregate_credits?: TmdbAggregateCredits;
   videos?: TmdbVideos;
+  keywords?: TmdbKeywords;
 }
 
 export interface TmdbTvSearchResponse {

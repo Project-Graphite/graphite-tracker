@@ -169,6 +169,7 @@ describe('Source connectors', () => {
               franchises: [{ id: 8, name: 'Graphite' }],
               dlcs: [{ id: 43, name: 'Graphite Quest: More' }],
               expansions: [{ id: 44, name: 'Graphite Quest: Beyond' }],
+              keywords: [{ id: 9, name: 'lgbt' }],
               url: 'https://www.igdb.com/games/graphite-quest',
             },
           ]),
@@ -197,6 +198,7 @@ describe('Source connectors', () => {
         { type: 'dlc', externalId: '43', title: 'Graphite Quest: More' },
         { type: 'expansion', externalId: '44', title: 'Graphite Quest: Beyond' },
       ],
+      lgbtq: true,
     });
   });
 
@@ -339,7 +341,7 @@ describe('Source connectors', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('keeps boys love and other adult MangaDex tags away from readers who did not opt in', async () => {
+  it('keeps boys and girls love MangaDex tags from everyone and adult tags from readers who did not opt in', async () => {
     const request = vi.fn().mockImplementation(() =>
       Promise.resolve(
         json({
@@ -365,6 +367,7 @@ describe('Source connectors', () => {
           data: [
             { id: 'tag-romance', attributes: { name: { en: 'Romance' }, group: 'genre' } },
             { id: 'tag-bl', attributes: { name: { en: "Boys' Love" }, group: 'genre' } },
+            { id: 'tag-gl', attributes: { name: { en: "Girls' Love" }, group: 'genre' } },
             { id: 'tag-loli', attributes: { name: { en: 'Loli' }, group: 'theme' } },
             {
               id: 'tag-sexual-violence',
@@ -381,21 +384,23 @@ describe('Source connectors', () => {
 
     expect((request.mock.calls[0] as [URL])[0].searchParams.getAll('excludedTags[]')).toEqual([
       'tag-bl',
+      'tag-gl',
       'tag-loli',
       'tag-sexual-violence',
     ]);
-    expect(page.results[0]).toMatchObject({ genres: ["Boys' Love"], adult: true });
+    expect(page.results[0]).toMatchObject({ genres: ["Boys' Love"], lgbtq: true });
     await expect(service.genres()).resolves.toEqual(['Romance']);
-    await expect(
-      service.search('manhwa', 'tower', 1, { genre: "boys' love" }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    for (const adult of [false, true]) {
+      await expect(
+        service.search('manhwa', 'tower', 1, { genre: "boys' love", adult }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    }
 
-    await service.search('manhwa', 'tower', 1, { genre: "boys' love", adult: true });
+    await service.search('manhwa', 'tower', 1, { adult: true });
 
     const [adultUrl] = request.mock.calls.at(-1) as [URL];
-    expect(adultUrl.searchParams.getAll('includedTags[]')).toEqual(['tag-bl']);
-    expect(adultUrl.searchParams.getAll('excludedTags[]')).toEqual([]);
-    await expect(service.genres('manhwa', true)).resolves.toEqual(["Boys' Love", 'Romance']);
+    expect(adultUrl.searchParams.getAll('excludedTags[]')).toEqual(['tag-bl', 'tag-gl']);
+    await expect(service.genres('manhwa', true)).resolves.toEqual(['Romance']);
   });
 
   it('keeps adult titles out of lists unless the reader opted in, and asks the sources to do it', async () => {
@@ -413,7 +418,9 @@ describe('Source connectors', () => {
     const request = vi.fn().mockImplementation((input: URL) =>
       Promise.resolve(
         json(
-          input.hostname === 'api.themoviedb.org'
+          input.hostname === 'api.themoviedb.org' && input.pathname.endsWith('/keywords')
+            ? { id: 7, keywords: [] }
+            : input.hostname === 'api.themoviedb.org'
             ? { page: 1, total_pages: 1, total_results: 1, results: [{ id: 7, title: 'Adult Film', original_title: 'Adult Film', overview: '', adult: true }] }
             : input.hostname === 'api.mangadex.org' && input.pathname === '/manga/tag'
               ? { data: [] }
@@ -463,15 +470,23 @@ describe('Source connectors', () => {
       'Adult Game:true',
       'Hit Game:false',
       'Popular Adult Game:true',
-      'Tender Hearts:true',
+      'Tender Hearts:false',
     ]);
+    expect(rawgPage.results.find(({ title }) => title === 'Tender Hearts')).toMatchObject({
+      lgbtq: true,
+    });
     expect(rawgPage.totalResults).toBe(5);
     expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('page_size')).toBe('40');
 
+    const lastFilmSearch = () =>
+      request.mock.calls
+        .map(([url]) => url as URL)
+        .filter((url) => url.pathname === '/3/search/movie')
+        .at(-1);
     await tmdb.search('movie', 'film', 1, {});
-    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('include_adult')).toBe('false');
+    expect(lastFilmSearch()?.searchParams.get('include_adult')).toBe('false');
     const adultFilms = await tmdb.search('movie', 'film', 1, { adult: true });
-    expect((request.mock.calls.at(-1) as [URL])[0].searchParams.get('include_adult')).toBe('true');
+    expect(lastFilmSearch()?.searchParams.get('include_adult')).toBe('true');
     expect(adultFilms.results[0]).toMatchObject({ adult: true });
 
     await mangadex.search('manhwa', 'tower', 1, {});
@@ -529,6 +544,47 @@ describe('Source connectors', () => {
       results: [{ title: 'Adult Film', adult: true }],
       totalResults: 1,
     });
+  });
+
+  it('hides LGBTQ titles from every reader, including on title pages', async () => {
+    const config = new ConfigService({ TMDB_READ_ACCESS_TOKEN: 'tmdb-token' });
+    const http = new ConnectorHttpService();
+    const film = { id: 8, title: 'Pride Film', original_title: 'Pride Film', overview: '' };
+    const keywords = [{ id: 158718, name: 'lgbt' }];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: URL) =>
+        Promise.resolve(
+          json(
+            input.pathname.includes('/search/')
+              ? { page: 1, total_pages: 1, total_results: 1, results: [film] }
+              : input.pathname.endsWith('/keywords')
+                ? { id: 8, keywords }
+                : { ...film, keywords: { keywords } },
+          ),
+        ),
+      ),
+    );
+    const registry = new ConnectorRegistryService(
+      config,
+      new AniListService(igdbCache() as never, http),
+      new TmdbService(config, http),
+      new MangaUpdatesService(igdbCache() as never, http),
+      new MangaDexService(igdbCache() as never, http),
+      new IgdbService(config, igdbCache() as never, http),
+      new RawgService(config, http),
+      igdbCache() as never,
+    );
+
+    for (const adult of [false, true]) {
+      await expect(registry.search('movie', 'pride', 1, { adult })).resolves.toMatchObject({
+        results: [],
+        totalResults: null,
+      });
+      await expect(registry.details('movie', '8', undefined, adult)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    }
   });
 
   it('shares one cached search between spellings that differ only in case', async () => {

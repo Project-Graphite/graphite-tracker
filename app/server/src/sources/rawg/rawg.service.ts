@@ -69,12 +69,31 @@ const adultTags = new Set([
   'smut',
   'lewd',
   'ecchi',
+]);
+
+const lgbtqTags = new Set([
+  'lgbt',
+  'lgbtq',
+  'lgbtqia',
+  'gay',
+  'gay-romance',
+  'lesbian',
+  'queer',
+  'transgender',
+  'bisexual',
+  'nonbinary',
+  'sapphic',
   'yaoi',
+  'yuri',
   'bl',
+  'gl',
   'boys-love',
   'boys-love-2',
+  'girls-love',
   'shounen-ai',
+  'shoujo-ai',
   'bxb',
+  'gxg',
   'bara',
 ]);
 
@@ -261,6 +280,7 @@ export class RawgService {
           : null,
       ratingCount: game.ratings_count ?? 0,
       adult: this.adult(game),
+      lgbtq: (game.tags ?? []).some((tag) => lgbtqTags.has(tag.slug)),
       platforms: game.platforms?.map(({ platform }) => platform.name) ?? [],
       releaseDates:
         game.platforms

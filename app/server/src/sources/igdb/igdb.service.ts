@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { looksAdult } from '../adult-content';
+import { looksLgbtq } from '../lgbtq-content';
 import { ConnectorCacheService } from '../connector-cache.service';
 import { ConnectorHttpService } from '../connector-http.service';
 import { creditGroups } from '../credits';
@@ -55,6 +56,7 @@ interface IgdbGame {
   standalone_expansions?: IgdbNamed[];
   release_dates?: IgdbReleaseDate[];
   themes?: number[];
+  keywords?: IgdbNamed[];
   url?: string;
   involved_companies?: Array<{ company?: IgdbNamed; developer?: boolean; publisher?: boolean }>;
   videos?: Array<{ name?: string; video_id: string }>;
@@ -295,6 +297,7 @@ export class IgdbService {
           game.summary ?? game.storyline ?? '',
           [],
         ),
+      lgbtq: looksLgbtq(game.keywords?.map((keyword) => keyword.name) ?? []),
       platforms: game.platforms?.map((platform) => platform.name) ?? [],
       releaseDates: [
         ...new Map(
@@ -319,7 +322,7 @@ export class IgdbService {
   }
 
   private fields(extra: string[] = []) {
-    return `fields ${extra.map((field) => `${field},`).join('')}name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,themes,url;`;
+    return `fields ${extra.map((field) => `${field},`).join('')}name,alternative_names.name,summary,storyline,first_release_date,cover.image_id,artworks.image_id,genres.name,platforms.name,total_rating,total_rating_count,game_status.status,franchises.name,dlcs.name,expansions.name,standalone_expansions.name,release_dates.date,release_dates.platform.name,themes,keywords.name,url;`;
   }
 
   private escape(value: string) {

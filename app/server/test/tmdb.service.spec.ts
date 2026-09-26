@@ -38,6 +38,7 @@ describe('TmdbService', () => {
       rating: null,
       ratingCount: 0,
       adult: false,
+      lgbtq: false,
       deepLinks: [
         {
           label: 'View on TMDB',
@@ -165,7 +166,9 @@ describe('TmdbService', () => {
       '2026-09-01',
       '2026-08-01',
     ]);
-    const urls = fetchMock.mock.calls.map(([url]) => url as URL);
+    const urls = fetchMock.mock.calls
+      .map(([url]) => url as URL)
+      .filter((url) => !url.pathname.endsWith('/keywords'));
     const tvUrl = urls[0]!;
     const movieUrl = urls[1]!;
     const animeTvUrl = urls[2]!;

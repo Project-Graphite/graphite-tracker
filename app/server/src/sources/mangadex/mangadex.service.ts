@@ -66,7 +66,8 @@ interface MangaDexTags {
 
 const safeContentRatings = ['safe', 'suggestive'];
 const allContentRatings = [...safeContentRatings, 'erotica', 'pornographic'];
-const adultTags = ["Boys' Love", 'Incest', 'Loli', 'Sexual Violence', 'Shota'];
+const adultTags = ['Incest', 'Loli', 'Sexual Violence', 'Shota'];
+const lgbtqTags = ["Boys' Love", "Girls' Love"];
 
 @Injectable()
 export class MangaDexService {
@@ -261,15 +262,15 @@ export class MangaDexService {
       name: this.localized(attributes.name),
       group: attributes.group,
     }));
+    const hidden = (name: string) =>
+      lgbtqTags.includes(name) || (!adult && adultTags.includes(name));
     return {
       genres: new Map(
         tags
-          .filter(({ name, group }) => group === 'genre' && (adult || !adultTags.includes(name)))
+          .filter(({ name, group }) => group === 'genre' && !hidden(name))
           .map((tag) => [tag.name.toLowerCase(), tag] as const),
       ),
-      excluded: adult
-        ? []
-        : tags.filter(({ name }) => adultTags.includes(name)).map(({ id }) => id),
+      excluded: tags.filter(({ name }) => hidden(name)).map(({ id }) => id),
     };
   }
 
@@ -312,6 +313,7 @@ export class MangaDexService {
         !safeContentRatings.includes(manga.attributes.contentRating) ||
         genres.some((genre) => adultTags.includes(genre)) ||
         looksAdult([title, ...alternateTitles], synopsis, []),
+      lgbtq: genres.some((genre) => lgbtqTags.includes(genre)),
       chapterCount: manga.attributes.lastChapter
         ? Number(manga.attributes.lastChapter) || null
         : null,

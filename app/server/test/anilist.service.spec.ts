@@ -75,7 +75,13 @@ describe('AniListService', () => {
     const { query, variables } = sent(request);
     expect(query).toContain('countryOfOrigin: "JP"');
     expect(query).toContain('format_not: MUSIC');
-    expect(variables).toEqual({ page: 1, sort: ['POPULARITY_DESC'], isAdult: false });
+    expect(variables).toEqual({
+      page: 1,
+      sort: ['POPULARITY_DESC'],
+      isAdult: false,
+      tagNotIn: ['Bisexual', "Boys' Love", 'LGBTQ+ Themes', 'Transgender', 'Yuri'],
+      minimumTagRank: 70,
+    });
     expect(result).toMatchObject({ page: 1, totalPages: 250, totalResults: 5000 });
     expect(result.results[0]).toMatchObject({
       source: 'anilist',
@@ -117,6 +123,8 @@ describe('AniListService', () => {
       sort: ['SCORE_DESC'],
       seasonYear: 2019,
       isAdult: false,
+      tagNotIn: ['Bisexual', "Boys' Love", 'LGBTQ+ Themes', 'Transgender', 'Yuri'],
+      minimumTagRank: 70,
     });
   });
 
@@ -137,8 +145,35 @@ describe('AniListService', () => {
       search: 'frieren',
       genre: 'Slice of Life',
       status: 'RELEASING',
+      tagNotIn: ['Bisexual', "Boys' Love", 'LGBTQ+ Themes', 'Transgender', 'Yuri'],
+      minimumTagRank: 70,
     });
     await expect(service.genres()).resolves.toEqual(['Action', 'Slice of Life']);
+  });
+
+  it('flags anime whose LGBTQ tags are central rather than passing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          pageOf([
+            { ...media, id: 1, tags: [{ name: "Boys' Love", rank: 60 }] },
+            { ...media, id: 2, tags: [{ name: 'LGBTQ+ Themes', rank: 86 }] },
+            { ...media, id: 3, tags: [{ name: 'LGBTQ+ Themes', rank: 60 }] },
+            { ...media, id: 4, tags: [{ name: 'Yuri', rank: 46 }] },
+          ]),
+        ),
+      ),
+    );
+
+    const page = await anilist().browse('anime', 'popular', 1, {});
+
+    expect(page.results.map(({ externalId, lgbtq }) => `${externalId}:${lgbtq}`)).toEqual([
+      '1:true',
+      '2:true',
+      '3:false',
+      '4:false',
+    ]);
   });
 
   it.each([

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { looksAdult, withoutAdult } from '../src/sources/adult-content';
+import { looksAdult, withoutHidden } from '../src/sources/adult-content';
 import { CatalogPage } from '../src/sources/source.types';
 
 const page = (adultFlags: boolean[]): CatalogPage => ({
@@ -45,7 +45,6 @@ describe('looksAdult', () => {
     expect(looksAdult(['Quiet Streets (R18)'], '', [])).toBe(true);
     expect(looksAdult(['Nippon Ecchi Jigsaw'], '', [])).toBe(true);
     expect(looksAdult(["Dimitrescu's Lewd Castle"], '', [])).toBe(true);
-    expect(looksAdult(['Yaoi Fetch-Quest'], '', [])).toBe(true);
   });
 
   it('leaves mainstream titles alone', () => {
@@ -57,9 +56,9 @@ describe('looksAdult', () => {
   });
 });
 
-describe('withoutAdult', () => {
+describe('withoutHidden', () => {
   it('drops flagged results and withdraws the count for readers who did not opt in', () => {
-    const filtered = withoutAdult(page([false, true, false]), false);
+    const filtered = withoutHidden(page([false, true, false]), false);
 
     expect(filtered.results.map(({ externalId }) => externalId)).toEqual(['0', '2']);
     expect(filtered.totalResults).toBeNull();
@@ -67,9 +66,20 @@ describe('withoutAdult', () => {
   });
 
   it('keeps the count when nothing was dropped and passes pages through for opted-in readers', () => {
-    expect(withoutAdult(page([false, false]), false).totalResults).toBe(55);
-    const opted = withoutAdult(page([true, false]), true);
+    expect(withoutHidden(page([false, false]), false).totalResults).toBe(55);
+    const opted = withoutHidden(page([true, false]), true);
     expect(opted.results).toHaveLength(2);
     expect(opted.totalResults).toBe(55);
+  });
+
+  it('drops LGBTQ results whether or not the reader opted in to adult content', () => {
+    const mixed = page([false, false, false]);
+    mixed.results[1] = { ...mixed.results[1]!, lgbtq: true };
+
+    for (const adult of [false, true]) {
+      const filtered = withoutHidden(mixed, adult);
+      expect(filtered.results.map(({ externalId }) => externalId)).toEqual(['0', '2']);
+      expect(filtered.totalResults).toBeNull();
+    }
   });
 });

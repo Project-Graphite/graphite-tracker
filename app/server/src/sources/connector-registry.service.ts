@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { withoutAdult } from './adult-content';
+import { withoutHidden } from './adult-content';
+import { isLgbtq } from './lgbtq-content';
 import { AniListService } from './anilist/anilist.service';
 import { ConnectorCacheService } from './connector-cache.service';
 import { IgdbService } from './igdb/igdb.service';
@@ -74,7 +75,7 @@ export class ConnectorRegistryService {
       () =>
         connector
           .search(category, term, page, filters)
-          .then((result) => withoutAdult(result, filters.adult)),
+          .then((result) => withoutHidden(result, filters.adult)),
       { refreshInBackground: true },
     );
     return { ...result.value, stale: result.stale };
@@ -96,7 +97,7 @@ export class ConnectorRegistryService {
       () =>
         connector
           .browse(category, section, page, filters)
-          .then((result) => withoutAdult(result, filters.adult)),
+          .then((result) => withoutHidden(result, filters.adult)),
     );
     return { ...result.value, stale: result.stale };
   }
@@ -115,7 +116,7 @@ export class ConnectorRegistryService {
       604_800,
       () => connector.details(category, externalId),
     );
-    if (result.value.adult && !adult) {
+    if (isLgbtq(result.value) || (result.value.adult && !adult)) {
       throw new NotFoundException('This title is not available');
     }
     return { ...result.value, stale: result.stale };

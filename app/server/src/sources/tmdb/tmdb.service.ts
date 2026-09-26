@@ -8,8 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { looksAdult } from '../adult-content';
 import { ConnectorHttpService } from '../connector-http.service';
 import { creditGroups } from '../credits';
+import { looksLgbtq } from '../lgbtq-content';
 import { today } from '../release-signals';
 import {
+  TmdbKeywords,
   TmdbMovieResult,
   TmdbReleaseDates,
   TmdbSearchResponse,
@@ -124,6 +126,24 @@ export class TmdbService {
     page: number,
     filters: CatalogFilters,
   ): Promise<CatalogPage> {
+    return this.withKeywords(await this.searchCategory(category, query, page, filters));
+  }
+
+  async browse(
+    category: CatalogCategory,
+    section: CatalogSection,
+    page: number,
+    filters: CatalogFilters,
+  ): Promise<CatalogPage> {
+    return this.withKeywords(await this.browseCategory(category, section, page, filters));
+  }
+
+  private async searchCategory(
+    category: CatalogCategory,
+    query: string,
+    page: number,
+    filters: CatalogFilters,
+  ): Promise<CatalogPage> {
     if (category === 'movie') {
       return this.searchMovies(query, page, filters);
     }
@@ -146,7 +166,7 @@ export class TmdbService {
     throw new NotFoundException('TMDB does not support this category');
   }
 
-  async browse(
+  private async browseCategory(
     category: CatalogCategory,
     section: CatalogSection,
     page: number,
@@ -386,6 +406,7 @@ export class TmdbService {
       adult:
         movie.adult === true ||
         looksAdult([movie.title, movie.original_title], movie.overview, []),
+      lgbtq: looksLgbtq(this.keywordNames(movie.keywords)),
       deepLinks: [
         {
           label: 'View on TMDB',
@@ -434,6 +455,7 @@ export class TmdbService {
       ratingCount: show.vote_count ?? 0,
       adult:
         show.adult === true || looksAdult([show.name, show.original_name], show.overview, []),
+      lgbtq: looksLgbtq(this.keywordNames(show.keywords)),
       seasonCount: show.number_of_seasons ?? null,
       episodeCount: show.number_of_episodes ?? null,
       deepLinks: [
@@ -454,14 +476,37 @@ export class TmdbService {
 
   private movieWithCredits(id: string) {
     return this.request<TmdbMovieResult>(`/movie/${encodeURIComponent(id)}`, {
-      append_to_response: 'credits,videos',
+      append_to_response: 'credits,videos,keywords',
     });
   }
 
   private showWithCredits(id: string) {
     return this.request<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`, {
-      append_to_response: 'aggregate_credits,videos',
+      append_to_response: 'aggregate_credits,videos,keywords',
     });
+  }
+
+  private async withKeywords(page: CatalogPage): Promise<CatalogPage> {
+    return {
+      ...page,
+      results: await Promise.all(
+        page.results.map(async (item) => {
+          const [mediaType, id] =
+            item.category === 'anime'
+              ? item.externalId.split(':')
+              : [item.category, item.externalId];
+          const keywords = await this.request<TmdbKeywords>(
+            `/${mediaType}/${encodeURIComponent(id ?? '')}/keywords`,
+            {},
+          );
+          return { ...item, lgbtq: looksLgbtq(this.keywordNames(keywords)) };
+        }),
+      ),
+    };
+  }
+
+  private keywordNames(keywords: TmdbKeywords | undefined) {
+    return [...(keywords?.keywords ?? []), ...(keywords?.results ?? [])].map(({ name }) => name);
   }
 
   private trailers(videos: TmdbVideos | undefined) {
