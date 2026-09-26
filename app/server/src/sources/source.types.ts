@@ -30,6 +30,11 @@ export interface CatalogCastMember {
   imageUrl: string | null;
 }
 
+export interface CatalogTrailer {
+  name: string;
+  url: string;
+}
+
 export interface CatalogCandidate {
   source: string;
   externalId: string;
@@ -64,6 +69,7 @@ export interface CatalogCandidate {
   deepLinks?: Array<{ label: string; url: string }>;
   credits?: CatalogCredit[];
   cast?: CatalogCastMember[];
+  trailers?: CatalogTrailer[];
 }
 
 export interface CatalogPage {

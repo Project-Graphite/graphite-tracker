@@ -77,6 +77,7 @@ export interface CatalogCandidate {
   deepLinks?: Array<{ label: string; url: string }>;
   credits?: CatalogCredit[];
   cast?: CatalogCastMember[];
+  trailers?: Array<{ name: string; url: string }>;
 }
 
 export interface Attribution {

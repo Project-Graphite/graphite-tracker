@@ -56,6 +56,7 @@ interface IgdbGame {
   themes?: number[];
   url?: string;
   involved_companies?: Array<{ company?: IgdbNamed; developer?: boolean; publisher?: boolean }>;
+  videos?: Array<{ name?: string; video_id: string }>;
 }
 
 const eroticTheme = 42;
@@ -63,6 +64,8 @@ const detailFields = [
   'involved_companies.company.name',
   'involved_companies.developer',
   'involved_companies.publisher',
+  'videos.name',
+  'videos.video_id',
 ];
 
 interface TwitchToken {
@@ -160,6 +163,16 @@ export class IgdbService {
         ['Developed by', companies('developer')],
         ['Published by', companies('publisher')],
       ]),
+      trailers: [...(game.videos ?? [])]
+        .sort(
+          (left, right) =>
+            Number(!/trailer/i.test(left.name ?? '')) - Number(!/trailer/i.test(right.name ?? '')),
+        )
+        .slice(0, 3)
+        .map((video) => ({
+          name: video.name || 'Trailer',
+          url: `https://www.youtube.com/watch?v=${encodeURIComponent(video.video_id)}`,
+        })),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };

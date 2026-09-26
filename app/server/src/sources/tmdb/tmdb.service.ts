@@ -15,6 +15,7 @@ import {
   TmdbSearchResponse,
   TmdbTvResult,
   TmdbTvSearchResponse,
+  TmdbVideos,
 } from './tmdb.types';
 import {
   CatalogCandidate,
@@ -459,17 +460,32 @@ export class TmdbService {
 
   private movieWithCredits(id: string) {
     return this.request<TmdbMovieResult>(`/movie/${encodeURIComponent(id)}`, {
-      append_to_response: 'credits',
+      append_to_response: 'credits,videos',
     });
   }
 
   private showWithCredits(id: string) {
     return this.request<TmdbTvResult>(`/tv/${encodeURIComponent(id)}`, {
-      append_to_response: 'aggregate_credits',
+      append_to_response: 'aggregate_credits,videos',
     });
   }
 
-  private movieCredits(movie: TmdbMovieResult): Pick<CatalogCandidate, 'credits' | 'cast'> {
+  private trailers(videos: TmdbVideos | undefined) {
+    const rank = (video: TmdbVideos['results'][number]) =>
+      (video.type === 'Trailer' ? 0 : 2) + (video.official === false ? 1 : 0);
+    return (videos?.results ?? [])
+      .filter((video) => video.site === 'YouTube' && ['Trailer', 'Teaser'].includes(video.type))
+      .sort((left, right) => rank(left) - rank(right))
+      .slice(0, 3)
+      .map((video) => ({
+        name: video.name,
+        url: `https://www.youtube.com/watch?v=${encodeURIComponent(video.key)}`,
+      }));
+  }
+
+  private movieCredits(
+    movie: TmdbMovieResult,
+  ): Pick<CatalogCandidate, 'credits' | 'cast' | 'trailers'> {
     const crew = movie.credits?.crew ?? [];
     const names = (matches: (person: (typeof crew)[number]) => boolean) =>
       crew.filter(matches).map((person) => person.name);
@@ -483,10 +499,13 @@ export class TmdbService {
       cast: this.castMembers(
         (movie.credits?.cast ?? []).map((person) => ({ ...person, character: person.character })),
       ),
+      trailers: this.trailers(movie.videos),
     };
   }
 
-  private showCredits(show: TmdbTvResult): Pick<CatalogCandidate, 'credits' | 'cast'> {
+  private showCredits(
+    show: TmdbTvResult,
+  ): Pick<CatalogCandidate, 'credits' | 'cast' | 'trailers'> {
     const crew = show.aggregate_credits?.crew ?? [];
     return {
       credits: creditGroups([
@@ -506,6 +525,7 @@ export class TmdbService {
           character: person.roles?.[0]?.character,
         })),
       ),
+      trailers: this.trailers(show.videos),
     };
   }
 

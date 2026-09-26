@@ -257,7 +257,7 @@ describe('Source connectors', () => {
       ],
       attributionUrl: 'https://rawg.io/',
     });
-    expect(request).toHaveBeenCalledTimes(3);
+    expect(request).toHaveBeenCalledTimes(4);
     request.mock.calls.forEach(([url]) => {
       expect((url as URL).searchParams.get('key')).toBe('rawg-key');
     });

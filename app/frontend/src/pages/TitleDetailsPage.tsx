@@ -220,6 +220,24 @@ export function TitleDetailsPage() {
               ))}
             </div>
           )}
+          {item.trailers && item.trailers.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              {item.trailers.map((trailer, index) => (
+                <a
+                  className={`${index === 0 ? 'primary-button' : 'secondary-button'} inline-flex gap-2`}
+                  href={trailer.url}
+                  key={trailer.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <svg aria-hidden="true" fill="currentColor" height="14" viewBox="0 0 24 24" width="14">
+                    <path d="M7 4.5v15l12.5-7.5z" />
+                  </svg>
+                  {index === 0 ? 'Watch trailer' : trailer.name}
+                </a>
+              ))}
+            </div>
+          )}
         </header>
         <div className="md:col-start-1 md:row-start-2">
           <LibraryPanel item={item} lookup={lookup} />

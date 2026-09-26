@@ -106,7 +106,7 @@ describe('Catalogue credits', () => {
 
     const result = await tmdb().movieDetails('550');
 
-    expect((request.mock.calls[0] as [URL])[0].searchParams.get('append_to_response')).toBe('credits');
+    expect((request.mock.calls[0] as [URL])[0].searchParams.get('append_to_response')).toBe('credits,videos');
     expect(result.credits).toEqual([
       { role: 'Directed by', names: ['David Fincher'] },
       { role: 'Written by', names: ['Jim Uhls', 'Chuck Palahniuk'] },

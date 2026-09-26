@@ -17,6 +17,10 @@ export interface TmdbAggregateCredits {
   crew: Array<TmdbPerson & { jobs?: Array<{ job: string }> }>;
 }
 
+export interface TmdbVideos {
+  results: Array<{ key: string; name: string; site: string; type: string; official?: boolean }>;
+}
+
 export interface TmdbMovieResult {
   id: number;
   adult?: boolean;
@@ -36,6 +40,7 @@ export interface TmdbMovieResult {
   vote_count?: number;
   production_companies?: TmdbNamed[];
   credits?: TmdbCredits;
+  videos?: TmdbVideos;
 }
 
 export interface TmdbTvResult {
@@ -68,6 +73,7 @@ export interface TmdbTvResult {
   networks?: TmdbNamed[];
   production_companies?: TmdbNamed[];
   aggregate_credits?: TmdbAggregateCredits;
+  videos?: TmdbVideos;
 }
 
 export interface TmdbTvSearchResponse {

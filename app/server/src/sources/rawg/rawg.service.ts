@@ -60,6 +60,10 @@ const adultTags = new Set([
   'pornographic',
 ]);
 
+interface RawgMovies {
+  results: Array<{ name: string; data: { max?: string; '480'?: string } }>;
+}
+
 interface RawgPage {
   count: number;
   next: string | null;
@@ -121,7 +125,7 @@ export class RawgService {
       `/games/${encodeURIComponent(identifier)}`,
       {},
     );
-    const [additions, series] = await Promise.all([
+    const [additions, series, movies] = await Promise.all([
       this.request<RawgPage>(
         `/games/${encodeURIComponent(String(game.id))}/additions`,
         { page_size: '20' },
@@ -129,6 +133,10 @@ export class RawgService {
       this.request<RawgPage>(
         `/games/${encodeURIComponent(String(game.id))}/game-series`,
         { page_size: '20' },
+      ).catch(() => null),
+      this.request<RawgMovies>(
+        `/games/${encodeURIComponent(String(game.id))}/movies`,
+        {},
       ).catch(() => null),
     ]);
     return {
@@ -148,6 +156,10 @@ export class RawgService {
         ['Developed by', game.developers?.map((company) => company.name) ?? []],
         ['Published by', game.publishers?.map((company) => company.name) ?? []],
       ]),
+      trailers: (movies?.results ?? []).flatMap((movie) => {
+        const url = movie.data.max ?? movie.data['480'];
+        return url ? [{ name: movie.name, url }] : [];
+      }).slice(0, 3),
       attribution: this.descriptor.attribution,
       attributionUrl: this.descriptor.attributionUrl,
     };
