@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { errorMessage } from '../api';
+import {
+  AppShell,
+  errorMessage,
+  OutageGate,
+  Skeleton,
+  SnackbarProvider,
+  type ShellNavItem,
+  type ShellTab,
+} from '@project-graphite/ui';
+import { onOutage } from '../api';
 import { useAuth } from '../auth';
 import { FooterSourceProvider, useCurrentFooterSource } from '../footerSource';
 import { InboxProvider } from '../inbox';
-import { SnackbarProvider } from '../snackbar';
 import { AccountMenu } from './AccountMenu';
 import { Attribution } from './Attribution';
-import { Icon, type IconName } from './Icon';
 import { NotificationBell } from './NotificationBell';
-import { OutageGate } from './Outage';
-import { Skeleton } from './Skeleton';
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link whitespace-nowrap no-underline ${isActive ? 'text-ink' : 'text-muted hover:text-ink'}`;
+
+function within(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
 
 function SiteFooter() {
   const source = useCurrentFooterSource();
@@ -56,58 +65,30 @@ function ScrollToTop() {
   return null;
 }
 
-function MobileTabBar() {
-  const auth = useAuth();
-  const { pathname } = useLocation();
-  const profile = auth.user ? `/users/${auth.user.handle}` : null;
-  const tabs: Array<{ to: string; label: string; icon: IconName; active: boolean }> = [
-    { to: '/', label: 'Home', icon: 'home', active: pathname === '/' || pathname === '/search' },
-    {
-      to: '/discover/movie/recent',
-      label: 'Discover',
-      icon: 'compass',
-      active: pathname.startsWith('/discover') || pathname.startsWith('/titles'),
-    },
-    { to: '/games', label: 'Games', icon: 'gamepad', active: pathname.startsWith('/games') },
-    {
-      to: '/library',
-      label: 'Library',
-      icon: 'library',
-      active: pathname.startsWith('/library') || pathname.startsWith('/import'),
-    },
-    profile
-      ? { to: profile, label: 'Profile', icon: 'user', active: pathname.startsWith(profile) }
-      : { to: '/login', label: 'Sign in', icon: 'user', active: pathname === '/login' },
-  ];
-
+function GraphiteMark() {
   return (
-    <nav aria-label="Main" className="tab-bar md:hidden">
-      {tabs.map((tab, index) =>
-        index === tabs.length - 1 && !auth.ready ? (
-          <span aria-hidden="true" className="tab-bar-item" key="account">
-            <Skeleton className="h-[22px] w-[22px] rounded-full" />
-            <Skeleton className="h-2.5 w-10" />
-          </span>
-        ) : (
-          <Link
-            aria-current={tab.active ? 'page' : undefined}
-            className="tab-bar-item"
-            key={tab.label}
-            to={tab.to}
-          >
-            <Icon name={tab.icon} size={22} />
-            <span>{tab.label}</span>
-          </Link>
-        ),
-      )}
-    </nav>
+    <svg
+      aria-hidden="true"
+      className="h-[1.15em] w-[0.9em] shrink-0"
+      viewBox="-3 -3 36 46"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5.62 25 L0 40 M24.38 25 L30 40" />
+      <path d="M15 0 L8.25 18 H21.75 Z" fill="currentColor" />
+    </svg>
   );
 }
 
 export function Shell() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [error, setError] = useState('');
+  const profile = auth.user ? `/users/${auth.user.handle}` : null;
 
   async function signOut() {
     setError('');
@@ -119,86 +100,81 @@ export function Shell() {
     }
   }
 
+  const nav: ShellNavItem[] = [
+    { href: '/discover/movie/recent', label: 'discover', active: within(pathname, '/discover/movie/recent') },
+    { href: '/games', label: 'games', active: within(pathname, '/games') },
+    ...(auth.user ? [{ href: '/library', label: 'library', active: within(pathname, '/library') }] : []),
+  ];
+
+  const tabs: ShellTab[] = [
+    { href: '/', label: 'Home', icon: 'home', active: pathname === '/' || pathname === '/search' },
+    {
+      href: '/discover/movie/recent',
+      label: 'Discover',
+      icon: 'compass',
+      active: pathname.startsWith('/discover') || pathname.startsWith('/titles'),
+    },
+    { href: '/games', label: 'Games', icon: 'gamepad', active: pathname.startsWith('/games') },
+    {
+      href: '/library',
+      label: 'Library',
+      icon: 'library',
+      active: pathname.startsWith('/library') || pathname.startsWith('/import'),
+    },
+    profile
+      ? { href: profile, label: 'Profile', icon: 'user', active: pathname.startsWith(profile), loading: !auth.ready }
+      : { href: '/login', label: 'Sign in', icon: 'user', active: pathname === '/login', loading: !auth.ready },
+  ];
+
   return (
     <SnackbarProvider>
       <InboxProvider>
         <FooterSourceProvider>
-          <div className="flex min-h-screen flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
-            <ScrollToTop />
-            <a className="skip-link" href="#content">
-              skip to content
-            </a>
-            <header className="sticky top-0 z-20 border-b border-line-soft bg-paper/90 backdrop-blur-md">
-              <div className="shell flex h-16 items-center gap-6">
-                <Link
-                  className="flex shrink-0 items-center gap-2.5 text-lg font-semibold tracking-tight text-ink no-underline"
-                  to="/"
-                >
-                  <svg
-                    aria-hidden="true"
-                    className="h-[1.15em] w-[0.9em] shrink-0"
-                    viewBox="-3 -3 36 46"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={6}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5.62 25 L0 40 M24.38 25 L30 40" />
-                    <path d="M15 0 L8.25 18 H21.75 Z" fill="currentColor" />
-                  </svg>
-                  Graphite Tracker
-                </Link>
-                <nav aria-label="Primary" className="mono-sm hidden items-center gap-6 md:flex">
-                  <NavLink className={navClass} to="/discover/movie/recent">
-                    discover
+          <ScrollToTop />
+          <AppShell
+            actions={
+              !auth.ready ? (
+                <span aria-hidden="true" className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                </span>
+              ) : auth.user ? (
+                <>
+                  <NotificationBell />
+                  <AccountMenu onSignOut={() => void signOut()} />
+                </>
+              ) : (
+                <>
+                  <NavLink className={(state) => `${navClass(state)} mono-sm px-2`} to="/login">
+                    sign in
                   </NavLink>
-                  <NavLink className={navClass} to="/games">
-                    games
-                  </NavLink>
-                  {auth.user && (
-                    <NavLink className={navClass} to="/library">
-                      library
-                    </NavLink>
-                  )}
-                </nav>
-                <div className="ml-auto flex items-center gap-2">
-                  {!auth.ready ? (
-                    <span aria-hidden="true" className="flex items-center gap-3">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <Skeleton className="h-9 w-9 rounded-full" />
-                    </span>
-                  ) : auth.user ? (
-                    <>
-                      <NotificationBell />
-                      <AccountMenu onSignOut={() => void signOut()} />
-                    </>
-                  ) : (
-                    <>
-                      <NavLink className={(state) => `${navClass(state)} mono-sm px-2`} to="/login">
-                        sign in
-                      </NavLink>
-                      <Link className="primary-button hidden px-3 py-2 text-sm sm:inline-flex" to="/register">
-                        Create account
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-              {error && (
+                  <Link className="primary-button hidden px-3 py-2 text-sm sm:inline-flex" to="/register">
+                    Create account
+                  </Link>
+                </>
+              )
+            }
+            alert={
+              error && (
                 <p className="shell error-message mb-3" role="alert">
                   {error}
                 </p>
-              )}
-            </header>
-            <main className="shell flex-1 py-8 sm:py-14" id="content">
-              <OutageGate>
-                <Outlet />
-              </OutageGate>
-            </main>
-            <SiteFooter />
-            <MobileTabBar />
-          </div>
+              )
+            }
+            brand={{ href: '/', mark: <GraphiteMark />, name: 'Graphite Tracker' }}
+            footer={<SiteFooter />}
+            nav={nav}
+            tabs={tabs}
+          >
+            <OutageGate
+              healthUrl="/api/v1/health"
+              offlineHint="Reconnect to the internet to keep tracking."
+              productName="Graphite Tracker"
+              subscribe={onOutage}
+            >
+              <Outlet />
+            </OutageGate>
+          </AppShell>
         </FooterSourceProvider>
       </InboxProvider>
     </SnackbarProvider>

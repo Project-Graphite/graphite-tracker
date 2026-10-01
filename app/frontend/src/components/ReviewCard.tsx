@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { errorMessage } from '../api';
+import { Dialog, errorMessage } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { itemHref, reportReasons, type ItemSummary, type PublicReview } from '../reviews';
-import { Dialog } from './Dialog';
 
 function ReportDialog({ onClose, review }: { onClose: () => void; review: PublicReview }) {
   const auth = useAuth();

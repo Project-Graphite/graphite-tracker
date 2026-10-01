@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation, useParams, type Location } from 'react-router';
-import { useAuth } from './auth';
-import { catalogSections, discoverCategories } from './catalog';
-import { Shell } from './components/Shell';
+import { Link, Navigate, Route, Routes, useLocation, useParams, type Location } from 'react-router';
 import {
   FormPanelSkeleton,
   FormSkeleton,
   ListSkeleton,
   PageSkeleton,
-  PosterGridSkeleton,
   TabsSkeleton,
-} from './components/Skeleton';
+  UiProvider,
+  type UiLinkProps,
+} from '@project-graphite/ui';
+import { useAuth } from './auth';
+import { catalogSections, discoverCategories } from './catalog';
+import { Shell } from './components/Shell';
+import { PosterGridSkeleton } from './components/Skeleton';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { DiscoverPage } from './pages/DiscoverPage';
@@ -105,53 +107,59 @@ function SignedOutLogin() {
   return auth.user ? <Navigate replace to={from ?? '/'} /> : <LoginPage />;
 }
 
+function RouterLink({ href, ...props }: UiLinkProps) {
+  return <Link to={href} {...props} />;
+}
+
 export function App() {
   return (
-    <Routes>
-      <Route element={<Shell />}>
-        <Route index element={<HomePage />} />
-        <Route path="discover/:category/:section" element={<DiscoverRoute />} />
-        <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
-        <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
-        <Route path="games" element={<TrackGamesPage />} />
-        <Route path="search" element={<SearchPage />} />
-        <Route
-          path="library"
-          element={
-            <Protected
-              skeleton={
-                <PageSkeleton label="Loading your session">
-                  <PosterGridSkeleton label="Loading your library" />
-                </PageSkeleton>
-              }
-            >
-              <LibraryPage />
-            </Protected>
-          }
-        />
-        <Route path="notifications" element={<Protected><NotificationsPage /></Protected>} />
-        <Route path="import" element={<Protected><ImportPage /></Protected>} />
-        <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
-        <Route path="settings/*" element={<Protected skeleton={tabbedPage}><SettingsRedirect /></Protected>} />
-        <Route path="admin" element={<Protected admin skeleton={tabbedPage}><AdminPage /></Protected>} />
-        <Route path="users/:handle" element={<ProfilePage />} />
-        <Route path="users/:handle/settings" element={<Protected skeleton={tabbedPage}><SettingsLayout /></Protected>}>
-          <Route index element={<ProfileSettingsPage />} />
-          <Route path="account" element={<AccountSettingsPage />} />
-          <Route path="notifications" element={<NotificationSettingsPage />} />
-          <Route path="sources" element={<SourcesPage />} />
+    <UiProvider link={RouterLink}>
+      <Routes>
+        <Route element={<Shell />}>
+          <Route index element={<HomePage />} />
+          <Route path="discover/:category/:section" element={<DiscoverRoute />} />
+          <Route path="discover" element={<Navigate replace to="/discover/movie/recent" />} />
+          <Route path="titles/:category/:externalId" element={<TitleDetailsPage />} />
+          <Route path="games" element={<TrackGamesPage />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route
+            path="library"
+            element={
+              <Protected
+                skeleton={
+                  <PageSkeleton label="Loading your session">
+                    <PosterGridSkeleton label="Loading your library" />
+                  </PageSkeleton>
+                }
+              >
+                <LibraryPage />
+              </Protected>
+            }
+          />
+          <Route path="notifications" element={<Protected><NotificationsPage /></Protected>} />
+          <Route path="import" element={<Protected><ImportPage /></Protected>} />
+          <Route path="import/:id" element={<Protected><ImportBatchPage /></Protected>} />
+          <Route path="settings/*" element={<Protected skeleton={tabbedPage}><SettingsRedirect /></Protected>} />
+          <Route path="admin" element={<Protected admin skeleton={tabbedPage}><AdminPage /></Protected>} />
+          <Route path="users/:handle" element={<ProfilePage />} />
+          <Route path="users/:handle/settings" element={<Protected skeleton={tabbedPage}><SettingsLayout /></Protected>}>
+            <Route index element={<ProfileSettingsPage />} />
+            <Route path="account" element={<AccountSettingsPage />} />
+            <Route path="notifications" element={<NotificationSettingsPage />} />
+            <Route path="sources" element={<SourcesPage />} />
+          </Route>
+          <Route path="privacy" element={<PrivacyPage />} />
+          <Route path="terms" element={<TermsPage />} />
+          <Route path="credits" element={<CreditsPage />} />
+          <Route path="register" element={<RegisterPage />} />
+          <Route path="verify" element={<VerifyPage />} />
+          <Route path="login" element={<SignedOutLogin />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="reset-password" element={<ResetPasswordPage />} />
+          <Route path="unsubscribe" element={<UnsubscribePage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
-        <Route path="privacy" element={<PrivacyPage />} />
-        <Route path="terms" element={<TermsPage />} />
-        <Route path="credits" element={<CreditsPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="verify" element={<VerifyPage />} />
-        <Route path="login" element={<SignedOutLogin />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="reset-password" element={<ResetPasswordPage />} />
-        <Route path="unsubscribe" element={<UnsubscribePage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </UiProvider>
   );
 }

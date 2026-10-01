@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
+import { timeAgo, useSnackbar } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
-import { timeAgo, useInbox, type InboxNotification } from '../inbox';
+import { useInbox, type InboxNotification } from '../inbox';
 import { itemHref } from '../reviews';
-import { useSnackbar } from '../snackbar';
 import { Poster } from './Poster';
 
 function NotificationRow({
@@ -34,7 +34,7 @@ function NotificationRow({
   );
   return href ? (
     <Link
-      className="notification-row"
+      className="popover-row"
       onClick={() => {
         onOpen?.();
         void inbox
@@ -46,7 +46,7 @@ function NotificationRow({
       {content}
     </Link>
   ) : (
-    <div className="notification-row">{content}</div>
+    <div className="popover-row">{content}</div>
   );
 }
 

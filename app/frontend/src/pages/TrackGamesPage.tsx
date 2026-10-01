@@ -1,15 +1,14 @@
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { EmptyState, Pagination, Skeleton } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogResponse } from '../catalog';
 import { useCatalogSearch } from '../catalogSearch';
 import { CatalogGrid } from '../components/CatalogCard';
-import { EmptyState } from '../components/EmptyState';
 import { LibraryCard } from '../components/LibraryCard';
-import { Pagination } from '../components/Pagination';
 import { posterGridClass } from '../components/Poster';
-import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { PosterGridSkeleton } from '../components/Skeleton';
 import { useFooterSource } from '../footerSource';
 import type { LibraryEntry } from '../library';
 import { useResource, type Resource } from '../useResource';
@@ -158,6 +157,7 @@ export function TrackGamesPage() {
             <CatalogGrid items={results.data.results} onAdded={tracked.reload} />
           )}
           <Pagination
+            maxPages={500}
             page={results.data.page}
             pageHref={(next) => `/games?q=${encodeURIComponent(query)}&page=${next}`}
             totalPages={results.data.totalPages}

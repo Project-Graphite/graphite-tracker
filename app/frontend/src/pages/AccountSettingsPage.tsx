@@ -1,10 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { errorMessage } from '../api';
+import { ConfirmDialog, errorMessage, FormSkeleton, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { TextField } from '../components/Field';
-import { FormSkeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
 import { emailAddress, password as newPassword, required, useFormErrors } from '../validation';
 import type { Me } from './SettingsPage';

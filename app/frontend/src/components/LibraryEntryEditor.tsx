@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { errorMessage } from '../api';
+import { ConfirmDialog, errorMessage, useSnackbar } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { categoryLabels } from '../catalog';
 import {
@@ -10,9 +10,7 @@ import {
   type LibraryState,
 } from '../library';
 import type { NotificationPreferences } from '../notifications';
-import { useSnackbar } from '../snackbar';
 import { useResource } from '../useResource';
-import { ConfirmDialog } from './ConfirmDialog';
 
 type EntryUpdate = Record<string, unknown>;
 

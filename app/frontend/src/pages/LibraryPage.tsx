@@ -1,12 +1,11 @@
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { EmptyState, ListSkeleton, Pagination, Skeleton } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { catalogCategories, categoryLabels, countLabel } from '../catalog';
-import { EmptyState } from '../components/EmptyState';
 import { LibraryCard } from '../components/LibraryCard';
-import { Pagination } from '../components/Pagination';
 import { posterGridClass } from '../components/Poster';
-import { ListSkeleton, PosterGridSkeleton, Skeleton } from '../components/Skeleton';
+import { PosterGridSkeleton } from '../components/Skeleton';
 import { libraryStateLabels, libraryStates, type LibraryEntry } from '../library';
 import { useResource } from '../useResource';
 
@@ -155,7 +154,7 @@ export function LibraryPage() {
                 ))}
               </div>
             )}
-            <Pagination page={library.data.page} pageHref={pageHref} totalPages={library.data.totalPages} />
+            <Pagination maxPages={500} page={library.data.page} pageHref={pageHref} totalPages={library.data.totalPages} />
           </section>
         )
       )}

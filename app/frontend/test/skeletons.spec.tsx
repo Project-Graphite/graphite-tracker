@@ -2,9 +2,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SmoothImage } from '@project-graphite/ui';
 import { App } from '../src/App';
 import { AuthProvider } from '../src/auth';
-import { SmoothImage } from '../src/components/SmoothImage';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

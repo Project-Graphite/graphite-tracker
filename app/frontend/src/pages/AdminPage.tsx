@@ -1,13 +1,17 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { errorMessage, type Page } from '../api';
+import {
+  EmptyState,
+  errorMessage,
+  LinesSkeleton,
+  ListSkeleton,
+  Pagination,
+  Toggle,
+} from '@project-graphite/ui';
+import type { Page } from '../api';
 import { useAuth, type UserRole } from '../auth';
 import { catalogCategories, categoryLabels, type CatalogCategory } from '../catalog';
-import { EmptyState } from '../components/EmptyState';
-import { Pagination } from '../components/Pagination';
 import { PasswordDialog } from '../components/PasswordDialog';
-import { LinesSkeleton, ListSkeleton } from '../components/Skeleton';
-import { Toggle } from '../components/Toggle';
 import { itemHref, reportReasons, type ItemSummary } from '../reviews';
 import { useSiteSettings, type SiteSettings } from '../site';
 import type { SourceSettings } from '../sources';
@@ -238,7 +242,7 @@ function Listing<T>({
   ) : (
     <div className="fade-in">
       <ul className="m-0 p-0">{children(resource.data.results)}</ul>
-      <Pagination page={resource.data.page} pageHref={pageHref} totalPages={resource.data.totalPages} />
+      <Pagination maxPages={500} page={resource.data.page} pageHref={pageHref} totalPages={resource.data.totalPages} />
     </div>
   );
 }

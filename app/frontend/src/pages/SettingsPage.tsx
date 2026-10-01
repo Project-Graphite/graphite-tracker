@@ -1,11 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, NavLink, Outlet, useParams } from 'react-router';
-import { errorMessage } from '../api';
+import {
+  Dialog,
+  errorMessage,
+  FormSkeleton,
+  LinesSkeleton,
+  TextAreaField,
+  TextField,
+  Toggle,
+} from '@project-graphite/ui';
 import { useAuth } from '../auth';
-import { Dialog } from '../components/Dialog';
-import { TextAreaField, TextField } from '../components/Field';
-import { FormSkeleton, LinesSkeleton } from '../components/Skeleton';
-import { Toggle } from '../components/Toggle';
 import { useSiteSettings } from '../site';
 import { OwnerTabs } from './ProfilePage';
 import { useResource } from '../useResource';

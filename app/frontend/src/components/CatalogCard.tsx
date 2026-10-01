@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { actionSkeletonClass, Dialog, errorMessage, Skeleton, useSnackbar } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
-import { errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { catalogRef, titleHref, type CatalogCandidate } from '../catalog';
 import {
@@ -10,11 +10,8 @@ import {
   type LibraryEntry,
   type LibraryState,
 } from '../library';
-import { useSnackbar } from '../snackbar';
 import { useLibraryStates } from '../useLibraryStates';
-import { Dialog } from './Dialog';
 import { Poster, posterGridClass } from './Poster';
-import { actionSkeletonClass, Skeleton } from './Skeleton';
 
 function AddToListDialog({
   item,

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { errorMessage } from '../api';
+import { errorMessage, Placeholder, Skeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
-import { Placeholder, Skeleton } from '../components/Skeleton';
 import type { SourceSettings } from '../sources';
 import { useResource } from '../useResource';
 

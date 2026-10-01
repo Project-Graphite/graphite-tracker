@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { apiRequest, errorMessage } from './api';
+import { errorMessage } from '@project-graphite/ui';
+import { apiRequest } from './api';
 import { titleHref, type CatalogCategory } from './catalog';
 
 export function sourceLink(value: string) {

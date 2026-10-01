@@ -1,3 +1,5 @@
+import { isAbortError } from '@project-graphite/ui';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -34,14 +36,6 @@ function reportOutage() {
 }
 
 const gatewayStatuses = [500, 502, 503, 504];
-
-export function isAbortError(reason: unknown) {
-  return reason instanceof DOMException && reason.name === 'AbortError';
-}
-
-export function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
-}
 
 export async function apiRequest<T>(
   path: string,

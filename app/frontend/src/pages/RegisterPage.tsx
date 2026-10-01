@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { errorMessage } from '../api';
+import { errorMessage, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
-import { TextField } from '../components/Field';
 import { ResendVerification } from '../components/ResendVerification';
 import { atLeast, atMost, emailAddress, password, required, useFormErrors } from '../validation';
 

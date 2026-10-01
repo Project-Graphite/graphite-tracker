@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, errorMessage, isAbortError } from './api';
+import { errorMessage, isAbortError } from '@project-graphite/ui';
+import { ApiError } from './api';
 import { useAuth } from './auth';
 
 export type Resource<T> = ReturnType<typeof useResource<T>>;

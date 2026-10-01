@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { Dialog } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import { categoryLabels } from '../catalog';
 import {
@@ -8,7 +9,6 @@ import {
   stateLabel,
   type LibraryEntry,
 } from '../library';
-import { Dialog } from './Dialog';
 import { LibraryEntryEditor } from './LibraryEntryEditor';
 import { Poster } from './Poster';
 

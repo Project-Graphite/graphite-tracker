@@ -1,5 +1,5 @@
+import { SmoothImage } from '@project-graphite/ui';
 import type { CatalogCategory, CatalogDetails } from '../catalog';
-import { SmoothImage } from './SmoothImage';
 
 const headings: Record<CatalogCategory, string> = {
   movie: 'Cast & crew',
