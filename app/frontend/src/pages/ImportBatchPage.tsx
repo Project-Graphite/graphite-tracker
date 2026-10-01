@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { errorMessage, type Page } from '../api';
+import {
+  ConfirmDialog,
+  EmptyState,
+  errorMessage,
+  ListSkeleton,
+  PageSkeleton,
+  Pagination,
+} from '@project-graphite/ui';
+import type { Page } from '../api';
 import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import { categoryLabels } from '../catalog';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { EmptyState } from '../components/EmptyState';
-import { Pagination } from '../components/Pagination';
 import { Poster } from '../components/Poster';
-import { ListSkeleton, PageSkeleton } from '../components/Skeleton';
 import {
   importApps,
   importStateLabels,
@@ -337,6 +341,7 @@ export function ImportBatchPage() {
                   ))}
                 </ul>
                 <Pagination
+                  maxPages={500}
                   page={candidates.data.page}
                   pageHref={(next) => `/import/${id}?match=${match}&page=${next}`}
                   totalPages={candidates.data.totalPages}

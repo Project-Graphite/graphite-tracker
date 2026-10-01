@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { errorMessage } from '../api';
+import { errorMessage, FormSkeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
-import { FormSkeleton } from '../components/Skeleton';
 import type { NotificationPreferences } from '../notifications';
 import { useResource } from '../useResource';
 

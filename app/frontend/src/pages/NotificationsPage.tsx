@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { errorMessage, type Page } from '../api';
-import { EmptyState } from '../components/EmptyState';
+import { EmptyState, errorMessage, ListSkeleton, Pagination } from '@project-graphite/ui';
+import type { Page } from '../api';
 import { NotificationList } from '../components/NotificationList';
-import { Pagination } from '../components/Pagination';
-import { ListSkeleton } from '../components/Skeleton';
 import { useInbox, type InboxNotification } from '../inbox';
 import { useResource } from '../useResource';
 
@@ -65,6 +63,7 @@ export function NotificationsPage() {
       )}
       {notifications.data && (
         <Pagination
+          maxPages={500}
           page={notifications.data.page}
           pageHref={(next) => `/notifications?page=${next}`}
           totalPages={notifications.data.totalPages}

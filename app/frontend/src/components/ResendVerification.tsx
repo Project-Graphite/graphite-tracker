@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { apiRequest, errorMessage } from '../api';
+import { errorMessage } from '@project-graphite/ui';
+import { apiRequest } from '../api';
 
 export function ResendVerification({ email }: { email: string }) {
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');

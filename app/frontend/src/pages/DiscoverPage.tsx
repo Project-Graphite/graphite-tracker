@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
+import { EmptyState, Icon, Pagination, Skeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -12,10 +13,7 @@ import {
 } from '../catalog';
 import { useCatalogSearch } from '../catalogSearch';
 import { CatalogGrid } from '../components/CatalogCard';
-import { EmptyState } from '../components/EmptyState';
-import { Pagination } from '../components/Pagination';
-import { PosterGridSkeleton, Skeleton } from '../components/Skeleton';
-import { Icon } from '../components/Icon';
+import { PosterGridSkeleton } from '../components/Skeleton';
 import { YearPicker } from '../components/YearPicker';
 import { useFooterSource } from '../footerSource';
 import { useSiteSettings } from '../site';
@@ -382,7 +380,7 @@ export function DiscoverPage({
             ) : (
               <CatalogGrid items={results.data.results} />
             )}
-            <Pagination page={results.data.page} pageHref={pageHref} totalPages={results.data.totalPages} />
+            <Pagination maxPages={500} page={results.data.page} pageHref={pageHref} totalPages={results.data.totalPages} />
           </section>
         )
       )}

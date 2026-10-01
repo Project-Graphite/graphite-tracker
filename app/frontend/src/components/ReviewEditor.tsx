@@ -1,10 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { errorMessage } from '../api';
+import { ConfirmDialog, errorMessage, Toggle } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { reviewBodyLimit, type OwnReview } from '../reviews';
-import { ConfirmDialog } from './ConfirmDialog';
 import { ReviewCard } from './ReviewCard';
-import { Toggle } from './Toggle';
 
 export function ReviewEditor({
   itemId,

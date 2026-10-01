@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { apiRequest, errorMessage } from '../api';
-import { TextField } from '../components/Field';
+import { errorMessage, TextField } from '@project-graphite/ui';
+import { apiRequest } from '../api';
 import { emailAddress, password, required, useFormErrors } from '../validation';
 
 export function ForgotPasswordPage() {

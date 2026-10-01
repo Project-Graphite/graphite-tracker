@@ -1,7 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { errorMessage } from '../api';
-import { Dialog } from './Dialog';
-import { TextField } from './Field';
+import { Dialog, errorMessage, TextField } from '@project-graphite/ui';
 
 export function PasswordDialog({
   children,

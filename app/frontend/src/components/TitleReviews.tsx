@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { LinesSkeleton, ListSkeleton, Skeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogDetails } from '../catalog';
 import type { LibraryEntry } from '../library';
@@ -7,7 +8,6 @@ import type { OwnReview, TitleReviews as TitleReviewsPage } from '../reviews';
 import { useResource } from '../useResource';
 import { ReviewCard } from './ReviewCard';
 import { ReviewEditor } from './ReviewEditor';
-import { LinesSkeleton, ListSkeleton, Skeleton } from './Skeleton';
 
 const notInLibrary =
   'Add this title to your library and finish or drop it to rate and review it.';

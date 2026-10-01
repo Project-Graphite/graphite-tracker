@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
+import { EmptyState, Skeleton } from '@project-graphite/ui';
 import {
   catalogCategories,
   categoryLabels,
@@ -9,8 +10,6 @@ import {
 } from '../catalog';
 import { useCatalogSearch } from '../catalogSearch';
 import { CatalogRow } from '../components/CatalogRow';
-import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/Skeleton';
 import { useResource } from '../useResource';
 import { searchQuery, useFormErrors } from '../validation';
 

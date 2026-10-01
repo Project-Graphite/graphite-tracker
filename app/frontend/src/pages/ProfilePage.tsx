@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink, useParams, useSearchParams } from 'react-router';
+import { EmptyState, ListSkeleton, Pagination } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels, countLabel } from '../catalog';
-import { EmptyState } from '../components/EmptyState';
-import { Pagination } from '../components/Pagination';
 import { Poster, posterGridClass } from '../components/Poster';
 import { ReviewCard } from '../components/ReviewCard';
-import { ListSkeleton, PosterGridSkeleton, ProfileSkeleton } from '../components/Skeleton';
+import { PosterGridSkeleton, ProfileSkeleton } from '../components/Skeleton';
 import {
   libraryStateLabels,
   libraryStates,
@@ -123,6 +122,7 @@ function SectionPage<T>({
         children(list.data.results)
       )}
       <Pagination
+        maxPages={500}
         page={list.data.page}
         pageHref={(next) => `/users/${handle}?tab=${section}&page=${next}${filter}`}
         totalPages={list.data.totalPages}

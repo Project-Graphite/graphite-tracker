@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { apiRequest, errorMessage } from '../api';
+import { errorMessage } from '@project-graphite/ui';
+import { apiRequest } from '../api';
 import { categoryLabels, type CatalogCategory } from '../catalog';
 
 type Unsubscribed =

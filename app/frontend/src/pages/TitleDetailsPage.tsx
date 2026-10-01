@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
+import { EmptyState, Placeholder, Skeleton, SmoothImage } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import {
@@ -12,11 +13,9 @@ import {
 } from '../catalog';
 import { AddToListButton } from '../components/CatalogCard';
 import { Credits } from '../components/Credits';
-import { EmptyState } from '../components/EmptyState';
 import { LibraryEntryEditor } from '../components/LibraryEntryEditor';
 import { Poster } from '../components/Poster';
-import { SmoothImage } from '../components/SmoothImage';
-import { Placeholder, Skeleton, TitleSkeleton } from '../components/Skeleton';
+import { TitleSkeleton } from '../components/Skeleton';
 import { TitleReviews } from '../components/TitleReviews';
 import { useFooterSource } from '../footerSource';
 import { useSiteSettings } from '../site';
