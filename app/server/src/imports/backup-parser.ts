@@ -178,6 +178,11 @@ export function parseBackup(file: Buffer): ParsedBackup {
       title,
     })),
   ].filter(({ title }) => title.favorite);
+  if (titles.length === 0) {
+    throw new BackupError(
+      'The backup has no library entries. Create it again with library entries included.',
+    );
+  }
   if (titles.length > maxEntries) {
     throw new BackupError('The backup has more than 10,000 library entries');
   }

@@ -150,6 +150,15 @@ describe('parseBackup', () => {
     expect(() => parseBackup(file)).toThrow(BackupError);
   });
 
+  it('rejects a backup without library entries', () => {
+    const file = backupFile({
+      backupPreferences: [{ key: 'animeext_updates_count' }, { key: 'source_languages' }],
+      backupManga: [{ title: 'History Only', favorite: false }],
+    });
+
+    expect(() => parseBackup(file)).toThrow('no library entries');
+  });
+
   it('rejects a backup over the compressed size limit', () => {
     const file = Buffer.alloc(50 * 1024 * 1024 + 1);
     file[0] = 0x1f;
