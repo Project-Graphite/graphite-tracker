@@ -4,7 +4,8 @@ services:
   server:
     build:
       context: ./app
-      target: server
+      target: development
+    command: [sh, -c, 'npm run prisma:migrate:deploy && exec npm run dev']
     environment:
       DATABASE_URL: postgresql://graphite:graphite@postgres:5432/graphite_tracker
       REDIS_URL: redis://redis:6379
@@ -16,13 +17,42 @@ services:
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       RAWG_API_KEY: ${RAWG_API_KEY:-}
       DISABLED_SOURCES: ${DISABLED_SOURCES:-}
+      APP_URL: http://localhost:4004
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: '1025'
+      DEFAULT_FROM_EMAIL: Graphite Tracker <tracker@localhost>
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     ports:
       - '4002:3000'
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./app
+      target: development
+    command: npm run dev --workspace frontend -- --host 0.0.0.0
+    environment:
+      VITE_API_ORIGIN: http://server:3000
+    ports:
+      - '4004:5173'
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    depends_on:
+      - server
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - '4025:8025'
 
   postgres:
     image: postgres:18-alpine

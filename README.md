@@ -190,8 +190,7 @@ Setup, environment variables, email, the system manager grant and rollback are i
 | `app/frontend/` | React browser application |
 | `app/server/` | NestJS API, Prisma schema and migrations |
 | `app/Dockerfile` | Development and production image targets |
-| `compose.yaml` | Shared local service definitions |
-| `compose.override.yaml` | Local hot-reload services, ports and Mailpit |
+| `compose.yaml` | Local development: hot-reload services, ports and Mailpit |
 | `compose.production.yaml` | Coolify production topology |
 
 ## Data sources
