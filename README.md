@@ -141,8 +141,7 @@ docker compose exec server npm run system-manager:grant --workspace server -- ne
 | `<handle> is the system manager; add --transfer to hand the role over` | Another account holds the role |
 
 In production, run the same command with `docker exec` on the server container; the
-[deployment runbook](https://github.com/Project-Graphite/docs/blob/main/operations/deploying-graphite-tracker.md)
-has the exact steps.
+[operations notes](https://github.com/Project-Graphite/docs/blob/main/operations/graphite-tracker.md) have the exact steps.
 
 ### Appoint administrators
 
@@ -172,16 +171,16 @@ npm run build
 
 GitHub Actions run lint, tests, application builds and secret scanning. A push to `main` also
 publishes `ghcr.io/project-graphite/graphite-tracker/app` tagged `sha-<short commit>` and `latest`,
-then triggers the Coolify deployment.
+then records that tag in `platform`, which deploys it.
 
 ## Deployment
 
-Production runs at https://graphite-tracker.project-graphite.com through Coolify on the shared
-Project Graphite VPS, and sends email through Gmail SMTP. Every start applies pending migrations,
-so review Prisma migrations before merging to `main`.
+Production runs at https://graphite-tracker.project-graphite.com from
+[`deploy/graphite-tracker/values.yaml`](https://github.com/project-graphite/platform/blob/main/deploy/graphite-tracker/values.yaml) in `platform`, and sends
+email through Gmail SMTP. Every start applies pending migrations, so review Prisma migrations before
+merging to `main`.
 
-Setup, environment variables, email, the system manager grant and rollback are in the
-[deployment runbook](https://github.com/Project-Graphite/docs/blob/main/operations/deploying-graphite-tracker.md).
+Its values, the system manager grant and rollback are in the [operations notes](https://github.com/Project-Graphite/docs/blob/main/operations/graphite-tracker.md).
 
 ## Repository layout
 
@@ -191,7 +190,6 @@ Setup, environment variables, email, the system manager grant and rollback are i
 | `app/server/` | NestJS API, Prisma schema and migrations |
 | `app/Dockerfile` | Development and production image targets |
 | `compose.yaml` | Local development: hot-reload services, ports and Mailpit |
-| `compose.production.yaml` | Coolify production topology |
 
 ## Data sources
 
