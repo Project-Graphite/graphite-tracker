@@ -71,13 +71,14 @@ Redis remain separate services.
 Requirements:
 
 - Docker Desktop or Docker Engine with Compose
-- A TMDB API Read Access Token
+- Optional: a TMDB API Read Access Token for movies, television and anime; without it those
+  requests fail with `TMDB is not configured`
 - Optional, for games: IGDB client credentials (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`), or a RAWG
   API key (`RAWG_API_KEY`) with `GAME_SOURCE=rawg`
 - Optional: `DISABLED_SOURCES`, a comma-separated list of source keys (`tmdb`, `mangadex`, `igdb`,
   `rawg`) to switch off
 
-Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN`:
+Copy the example environment file and set `TMDB_READ_ACCESS_TOKEN` if you have one:
 
 ```sh
 cp .env.example .env
@@ -97,7 +98,7 @@ Open:
 - Readiness: http://localhost:4002/api/v1/ready
 - Mail: http://localhost:4025
 
-The development override delivers every email to Mailpit, where verification, password-reset and
+Local `compose.yaml` delivers every email to Mailpit, where verification, password-reset and
 digest messages can be opened. Replace the default local authentication secret before using the
 application outside a local machine.
 
@@ -140,8 +141,14 @@ docker compose exec server npm run system-manager:grant --workspace server -- ne
 | `<handle> is already the system manager` | Nothing to do |
 | `<handle> is the system manager; add --transfer to hand the role over` | Another account holds the role |
 
-In production, run the same command with `docker exec` on the server container; the
-[operations notes](https://github.com/Project-Graphite/docs/blob/main/operations/graphite-tracker.md) have the exact steps.
+In production the service is `app`. Open its Terminal in the
+[Graphite Console](https://console.project-graphite.com), or `docker exec` into it on the VPS, and run:
+
+```sh
+npm run system-manager:grant --workspace server -- you@example.com
+```
+
+Add `--transfer` to hand the role over, as above.
 
 ### Appoint administrators
 
@@ -177,8 +184,21 @@ then records that tag in `platform`, which deploys it.
 
 Production runs at https://graphite-tracker.project-graphite.com from
 [`deploy/graphite-tracker/values.yaml`](https://github.com/project-graphite/platform/blob/main/deploy/graphite-tracker/values.yaml) in `platform`, and sends
-email through Gmail SMTP. Every start applies pending migrations, so review Prisma migrations before
-merging to `main`.
+email through Gmail SMTP, which needs `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`; both are in
+`graphite-tracker.env` in the `secrets` repository. Every start applies pending migrations, so review
+Prisma migrations before merging to `main`.
+
+| Variable | In production |
+| :--- | :--- |
+| `POSTGRES_PASSWORD`, `AUTH_ACCESS_TOKEN_SECRET`, `EMAIL_HOST`, `DEFAULT_FROM_EMAIL` | Required secrets |
+| `EMAIL_PORT` | Optional, default `587` |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Optional; SMTP sign-in when set |
+| `TMDB_READ_ACCESS_TOKEN` | Optional; TMDB requests fail without it |
+| `GAME_SOURCE` | Optional, `igdb` (default) or `rawg` |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`, `RAWG_API_KEY` | Optional game source credentials |
+| `DISABLED_SOURCES` | Optional, comma-separated source keys to switch off |
+
+`DATABASE_URL`, `REDIS_URL`, `APP_URL` and `AUTH_TRUSTED_ORIGINS` are set in the values file.
 
 Its values, the system manager grant and rollback are in the [operations notes](https://github.com/Project-Graphite/docs/blob/main/operations/graphite-tracker.md).
 
