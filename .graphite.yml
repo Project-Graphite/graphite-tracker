@@ -27,7 +27,7 @@ projects:
           summary: >
             Designed and built the NestJS API, Prisma data model, React frontend, source
             integrations, backup import, release notifications and moderation, and owns the CI
-            and Coolify deployment.
+            and platform deployment.
     deploy:
       kind: compose
       host: graphite-tracker.project-graphite.com
