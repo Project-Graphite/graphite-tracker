@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import Badge from '@mui/material/Badge';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { errorMessage, Icon, ListSkeleton, Popover } from '@project-graphite/ui';
+import { Button, errorMessage, Icon, ListSkeleton, Popover } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { useInbox, type InboxNotification } from '../inbox';
 import { useResource } from '../useResource';
@@ -26,19 +28,19 @@ function NotificationPanel({ close }: { close: () => void }) {
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <h2 className="m-0 text-base font-medium">Notifications</h2>
         {inbox.unread > 0 && (
-          <button className="text-button mono-sm" onClick={() => void markAllRead()} type="button">
+          <Button className="mono-sm" onClick={() => void markAllRead()} size="small" variant="text">
             mark all read
-          </button>
+          </Button>
         )}
       </div>
-      <div className="popover-list-body">
+      <div className="max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
         {(error || inbox.checkFailed) && (
-          <p className="error-message m-3">
+          <Alert className="m-3" severity="error">
             {error || 'Could not check for new notifications. Trying again in a minute.'}
-          </p>
+          </Alert>
         )}
         {recent.error ? (
-          <p className="error-message m-3">{recent.error}</p>
+          <Alert className="m-3" severity="error">{recent.error}</Alert>
         ) : !recent.data ? (
           <div className="px-4">
             <ListSkeleton label="Loading notifications" rows={3} />
@@ -69,10 +71,9 @@ export function NotificationBell() {
     <Popover
       label="Notifications"
       trigger={
-        <>
+        <Badge badgeContent={inbox.unread} color="primary" max={9}>
           <Icon name="bell" />
-          {inbox.unread > 0 && <span className="count-badge">{inbox.unread > 9 ? '9+' : inbox.unread}</span>}
-        </>
+        </Badge>
       }
       triggerLabel={inbox.unread ? `Notifications, ${inbox.unread} unread` : 'Notifications'}
     >

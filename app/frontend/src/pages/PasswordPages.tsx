@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { errorMessage, TextField } from '@project-graphite/ui';
+import { Button, errorMessage, TextField } from '@project-graphite/ui';
 import { apiRequest } from '../api';
 import { emailAddress, password, required, useFormErrors } from '../validation';
 
@@ -42,14 +44,14 @@ export function ForgotPasswordPage() {
       ) : (
         <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
           <TextField autoComplete="email" inputMode="email" label="Email" type="email" {...form.field('email')} />
-          {error && <p className="error-message">{error}</p>}
-          <button className="primary-button" disabled={busy} type="submit">
+          {error && <Alert severity="error">{error}</Alert>}
+          <Button disabled={busy} type="submit" variant="primary">
             {busy ? 'Sending…' : 'Send reset link'}
-          </button>
+          </Button>
         </form>
       )}
       <p className="mt-6 text-sm text-muted">
-        <Link className="rule-link" to="/login">Back to sign in</Link>
+        <MuiLink component={Link} to="/login" underline="always">Back to sign in</MuiLink>
       </p>
     </section>
   );
@@ -89,7 +91,7 @@ export function ResetPasswordPage() {
         <p className="eyebrow">Password changed</p>
         <h1 className="page-title">Sign in with your new password.</h1>
         <p className="mt-5 text-muted">Every device that was signed in has been signed out.</p>
-        <Link className="primary-button mt-7 inline-flex" to="/login">Sign in</Link>
+        <Button className="mt-7" href="/login" variant="primary">Sign in</Button>
       </section>
     );
   }
@@ -107,13 +109,13 @@ export function ResetPasswordPage() {
           {...form.field('password')}
         />
         {error && (
-          <p className="error-message">
-            {error} <Link className="rule-link" to="/forgot-password">Request a new link</Link>
-          </p>
+          <Alert severity="error">
+            {error} <MuiLink component={Link} to="/forgot-password" underline="always">Request a new link</MuiLink>
+          </Alert>
         )}
-        <button className="primary-button" disabled={busy} type="submit">
+        <Button disabled={busy} type="submit" variant="primary">
           {busy ? 'Saving…' : 'Save password'}
-        </button>
+        </Button>
       </form>
     </section>
   );

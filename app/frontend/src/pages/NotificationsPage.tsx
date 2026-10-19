@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { EmptyState, errorMessage, ListSkeleton, Pagination } from '@project-graphite/ui';
+import { Button, EmptyState, errorMessage, ListSkeleton, Pagination } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { NotificationList } from '../components/NotificationList';
 import { useInbox, type InboxNotification } from '../inbox';
@@ -31,16 +33,16 @@ export function NotificationsPage() {
           <h1 className="page-title">Notifications</h1>
         </div>
         {inbox.unread > 0 && (
-          <button className="secondary-button px-3 py-2 text-sm" onClick={() => void markAllRead()} type="button">
+          <Button onClick={() => void markAllRead()} size="small">
             Mark all as read
-          </button>
+          </Button>
         )}
       </div>
       <p className="mt-4 text-muted">
         New episodes, chapters and releases for the titles you follow. Turn release notifications on
         or off in each title’s library entry.
       </p>
-      {(error || notifications.error) && <p className="error-message mt-6">{error || notifications.error}</p>}
+      {(error || notifications.error) && <Alert className="mt-6" severity="error">{error || notifications.error}</Alert>}
       {!notifications.data ? (
         !notifications.error && (
           <div className="mt-6">
@@ -51,7 +53,7 @@ export function NotificationsPage() {
         <div className="mt-8">
           <EmptyState title="No notifications yet">
             <p className="mt-2 mb-0 text-muted">
-              Open a title in your <Link className="rule-link" to="/library">library</Link> and turn on
+              Open a title in your <MuiLink component={Link} to="/library" underline="always">library</MuiLink> and turn on
               release notifications to hear about what comes out next.
             </p>
           </EmptyState>

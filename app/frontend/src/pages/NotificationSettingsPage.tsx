@@ -1,6 +1,9 @@
+import Alert from '@mui/material/Alert';
+import FormLabel from '@mui/material/FormLabel';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { errorMessage, FormSkeleton } from '@project-graphite/ui';
+import { Checkbox, errorMessage, FormSkeleton, Radio } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
 import type { NotificationPreferences } from '../notifications';
@@ -28,40 +31,39 @@ export function NotificationSettingsPage() {
     }
   }
 
-  if (preferences.error) return <p className="error-message">{preferences.error}</p>;
+  if (preferences.error) return <Alert severity="error">{preferences.error}</Alert>;
   if (!preferences.data) return <FormSkeleton fields={1} />;
   const { cadence, categories, enabled, suspended } = preferences.data;
 
   return (
     <div className="fade-in grid max-w-3xl gap-12">
-      {error && <p className="error-message m-0">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       {suspended && (
-        <p className="notice m-0">
+        <Alert severity="info">
           Emails stopped after the mail server rejected several digests to your address. Check the
-          address in <Link className="rule-link" to="/settings/account">account settings</Link>, then
+          address in <MuiLink component={Link} to="/settings/account" underline="always">account settings</MuiLink>, then
           turn emails back on.
-        </p>
+        </Alert>
       )}
       <section>
         <h2 className="m-0 text-xl font-medium">Release emails</h2>
         <p className="mt-2 text-sm text-muted">
           Titles you turn release notifications on for in your library always appear in your{' '}
-          <Link className="rule-link" to="/notifications">notifications</Link>, with a pop-up while you
+          <MuiLink component={Link} to="/notifications" underline="always">notifications</MuiLink>, with a pop-up while you
           are browsing. Emails are extra and optional.
         </p>
         <p className="mt-2 text-sm text-muted">
           One email collects new episodes, chapters and releases for the titles you turn
           notifications on for in your library, while they are planned or in progress. Digests arrive
-          after 08:00 in the <Link className="rule-link" to="/settings/account">time zone</Link> you
+          after 08:00 in the <MuiLink component={Link} to="/settings/account" underline="always">time zone</MuiLink> you
           chose.
         </p>
         <label className="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
-          <input
+          <Checkbox
             checked={enabled && !suspended}
             className="mt-1"
             disabled={busy}
             onChange={(event) => void save({ enabled: event.target.checked })}
-            type="checkbox"
           />
           <span>
             <span className="block font-medium">Email me about new releases</span>
@@ -69,36 +71,39 @@ export function NotificationSettingsPage() {
           </span>
         </label>
         <fieldset className="m-0 mt-5 grid gap-2 border-0 p-0" disabled={busy || !enabled || suspended}>
-          <legend className="field-label mb-2">How often</legend>
+          <FormLabel className="mb-2" component="legend">How often</FormLabel>
           {(
             [
               ['daily', 'Daily digest'],
               ['weekly', 'Weekly digest, on Mondays'],
             ] as const
           ).map(([value, label]) => (
-            <label className={`flex items-center gap-2 text-sm text-muted ${enabled && !suspended ? '' : 'opacity-55'}`} key={value}>
-              <input checked={cadence === value} name="cadence" onChange={() => void save({ cadence: value })} type="radio" />
-              {label}
-            </label>
+            <Radio
+              checked={cadence === value}
+              className={`gap-2 text-sm text-muted ${enabled && !suspended ? '' : 'opacity-55'}`}
+              key={value}
+              label={label}
+              name="cadence"
+              onChange={() => void save({ cadence: value })}
+            />
           ))}
         </fieldset>
         <fieldset className="m-0 mt-5 grid gap-2 border-0 p-0 sm:grid-cols-3" disabled={busy || !enabled || suspended}>
-          <legend className="field-label mb-2">Categories</legend>
+          <FormLabel className="mb-2" component="legend">Categories</FormLabel>
           {catalogCategories.map((category) => (
-            <label className={`flex items-center gap-2 text-sm text-muted ${enabled && !suspended ? '' : 'opacity-55'}`} key={category}>
-              <input
-                checked={categories.includes(category)}
-                onChange={(event) =>
-                  void save({
-                    categories: event.target.checked
-                      ? [...categories, category]
-                      : categories.filter((item) => item !== category),
-                  })
-                }
-                type="checkbox"
-              />
-              {categoryLabels[category]}
-            </label>
+            <Checkbox
+              checked={categories.includes(category)}
+              className={`gap-2 text-sm text-muted ${enabled && !suspended ? '' : 'opacity-55'}`}
+              key={category}
+              label={categoryLabels[category]}
+              onChange={(event) =>
+                void save({
+                  categories: event.target.checked
+                    ? [...categories, category]
+                    : categories.filter((item) => item !== category),
+                })
+              }
+            />
           ))}
         </fieldset>
       </section>

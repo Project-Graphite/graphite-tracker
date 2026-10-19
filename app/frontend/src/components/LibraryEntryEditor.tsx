@@ -1,13 +1,15 @@
-import { useId, useState } from 'react';
+import Alert from '@mui/material/Alert';
+import FormLabel from '@mui/material/FormLabel';
+import MuiLink from '@mui/material/Link';
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { ConfirmDialog, errorMessage, useSnackbar } from '@project-graphite/ui';
+import { Button, Checkbox, ConfirmDialog, errorMessage, Select, TextField, useSnackbar } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { categoryLabels } from '../catalog';
 import {
   libraryStates,
   stateLabel,
   type LibraryEntry,
-  type LibraryState,
 } from '../library';
 import type { NotificationPreferences } from '../notifications';
 import { useResource } from '../useResource';
@@ -38,36 +40,27 @@ function NumberField({
   onCommit: (update: EntryUpdate) => void;
   value: number | null;
 }) {
-  const id = useId();
   const [error, setError] = useState('');
   return (
-    <label className="field-label">
-      {label}
-      <input
-        aria-describedby={error ? `${id}-error` : undefined}
-        aria-invalid={error ? true : undefined}
-        defaultValue={value ?? ''}
-        inputMode={decimals ? 'decimal' : 'numeric'}
-        key={`${name}:${value}`}
-        onBlur={(event) => {
-          const text = event.target.value.trim().replace(',', '.');
-          const problem = text === '' ? '' : progressProblem(text, label, max, decimals);
-          setError(problem);
-          if (problem) return;
-          const next = text === '' ? null : Number(text);
-          if (next !== value) onCommit({ [name]: next });
-        }}
-        onInput={() => setError('')}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') event.currentTarget.blur();
-        }}
-      />
-      {error && (
-        <span className="field-error" id={`${id}-error`}>
-          {error}
-        </span>
-      )}
-    </label>
+    <TextField
+      defaultValue={value ?? ''}
+      error={error}
+      inputMode={decimals ? 'decimal' : 'numeric'}
+      key={`${name}:${value}`}
+      label={label}
+      onBlur={(event) => {
+        const text = event.target.value.trim().replace(',', '.');
+        const problem = text === '' ? '' : progressProblem(text, label, max, decimals);
+        setError(problem);
+        if (problem) return;
+        const next = text === '' ? null : Number(text);
+        if (next !== value) onCommit({ [name]: next });
+      }}
+      onInput={() => setError('')}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
   );
 }
 
@@ -105,24 +98,22 @@ function ProgressFields({
       )}
       {units.includes('hours') && (
         <fieldset className="m-0 border-0 p-0 @sm:col-span-2">
-          <legend className="field-label">Platforms you play on</legend>
+          <FormLabel component="legend">Platforms you play on</FormLabel>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
             {platforms.map((platform) => (
-              <label className="flex items-center gap-2 text-sm text-muted" key={platform}>
-                <input
-                  checked={entry.progress.platforms.includes(platform)}
-                  disabled={busy}
-                  onChange={(event) =>
-                    onUpdate({
-                      platforms: event.target.checked
-                        ? [...entry.progress.platforms, platform]
-                        : entry.progress.platforms.filter((item) => item !== platform),
-                    })
-                  }
-                  type="checkbox"
-                />
-                {platform}
-              </label>
+              <Checkbox
+                checked={entry.progress.platforms.includes(platform)}
+                disabled={busy}
+                key={platform}
+                label={platform}
+                onChange={(event) =>
+                  onUpdate({
+                    platforms: event.target.checked
+                      ? [...entry.progress.platforms, platform]
+                      : entry.progress.platforms.filter((item) => item !== platform),
+                  })
+                }
+              />
             ))}
             {platforms.length === 0 && (
               <span className="text-sm text-faint">No platform data available.</span>
@@ -202,36 +193,28 @@ export function LibraryEntryEditor({
   return (
     <div className="@container grid gap-5">
       <div className="grid gap-4 @sm:grid-cols-2">
-        <label className="field-label">
-          List
-          <select
-            disabled={busy}
-            onChange={(event) => update({ state: event.target.value as LibraryState })}
-            value={entry.state}
-          >
-            {libraryStates.map((state) => (
-              <option key={state} value={state}>
-                {stateLabel(entry.item.category, state)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          disabled={busy}
+          label="List"
+          onChange={(state) => update({ state })}
+          options={libraryStates.map((state) => ({ value: state, label: stateLabel(entry.item.category, state) }))}
+          value={entry.state}
+        />
         {entry.item.sources.length > 1 && (
-          <label className="field-label">
-            Preferred source
-            <select
-              disabled={busy}
-              onChange={(event) => update({ preferredSource: event.target.value || null })}
-              value={entry.preferredSource ?? ''}
-            >
-              <option value="">Automatic</option>
-              {entry.item.sources.map((source) => (
-                <option disabled={!source.active} key={source.key} value={source.key}>
-                  {source.active ? source.name : `${source.name} (unavailable)`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            disabled={busy}
+            label="Preferred source"
+            onChange={(value) => update({ preferredSource: value || null })}
+            options={[
+              { value: '', label: 'Automatic' },
+              ...entry.item.sources.map((source) => ({
+                disabled: !source.active,
+                value: source.key,
+                label: source.active ? source.name : `${source.name} (unavailable)`,
+              })),
+            ]}
+            value={entry.preferredSource ?? ''}
+          />
         )}
         <ProgressFields busy={busy} entry={entry} onUpdate={update} />
       </div>
@@ -242,27 +225,21 @@ export function LibraryEntryEditor({
         </p>
       )}
       <div>
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input
-            checked={entry.isPrivate}
-            disabled={busy}
-            onChange={(event) => update({ isPrivate: event.target.checked })}
-            type="checkbox"
-          />
-          Hide from my profile
-        </label>
+        <Checkbox
+          checked={entry.isPrivate}
+          disabled={busy}
+          label="Hide from my profile"
+          onChange={(event) => update({ isPrivate: event.target.checked })}
+        />
       </div>
       {(entry.item.releasing || entry.notificationsEnabled) && (
         <div>
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input
-              checked={entry.notificationsEnabled}
-              disabled={busy || finished || needsPlatform}
-              onChange={(event) => update({ notificationsEnabled: event.target.checked })}
-              type="checkbox"
-            />
-            Release notifications
-          </label>
+          <Checkbox
+            checked={entry.notificationsEnabled}
+            disabled={busy || finished || needsPlatform}
+            label="Release notifications"
+            onChange={(event) => update({ notificationsEnabled: event.target.checked })}
+          />
           {!entry.item.releasing ? (
             <p className="mono-sm mt-1 mb-0 text-faint">
               This title has finished coming out, so there is nothing new to announce.
@@ -283,38 +260,39 @@ export function LibraryEntryEditor({
           {entry.notificationsEnabled && emailsOff && (
             <p className="mono-sm mt-1 mb-0 text-faint">
               Emails for {categoryLabels[entry.item.category].toLowerCase()} are off in{' '}
-              <Link className="rule-link" to="/settings/notifications">notification settings</Link>.
+              <MuiLink component={Link} to="/settings/notifications" underline="always">notification settings</MuiLink>.
             </p>
           )}
         </div>
       )}
       {entry.importedSources.length > 0 && (
         <div>
-          <p className="field-label m-0">Imported sources</p>
+          <FormLabel component="p">Imported sources</FormLabel>
           <ul className="m-0 mt-2 grid gap-2 p-0">
             {entry.importedSources.map((source) => (
               <li className="flex list-none items-baseline justify-between gap-3 text-sm" key={source.id}>
                 <span className="min-w-0 text-muted">
                   {source.name} <span className="mono-sm text-faint">· not supported, never checked</span>
                 </span>
-                <button
-                  className="text-button mono-sm"
+                <Button
+                  className="mono-sm"
                   disabled={busy}
                   onClick={() => removeImportedSource(source.id)}
-                  type="button"
+                  size="small"
+                  variant="text"
                 >
                   remove
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         </div>
       )}
-      {error && <p className="error-message m-0">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       <div className="border-t border-line pt-4">
-        <button className="text-button text-sm" disabled={busy} onClick={() => setRemoving(true)} type="button">
+        <Button disabled={busy} onClick={() => setRemoving(true)} size="small" variant="text">
           Remove from library
-        </button>
+        </Button>
       </div>
       {removing && (
         <ConfirmDialog

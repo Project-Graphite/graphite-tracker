@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { errorMessage } from '@project-graphite/ui';
+import { Button, errorMessage } from '@project-graphite/ui';
 import { apiRequest } from '../api';
 import { categoryLabels, type CatalogCategory } from '../catalog';
 
@@ -49,15 +51,15 @@ export function UnsubscribePage() {
       ) : (
         <>
           <p className="mt-5 text-muted">Confirm to stop the emails this link belongs to.</p>
-          {error && <p className="error-message">{error}</p>}
-          <button className="primary-button mt-6" disabled={busy} onClick={() => void unsubscribe()} type="button">
+          {error && <Alert severity="error">{error}</Alert>}
+          <Button className="mt-6" disabled={busy} onClick={() => void unsubscribe()} variant="primary">
             {busy ? 'Unsubscribing…' : 'Unsubscribe'}
-          </button>
+          </Button>
         </>
       )}
       <p className="mt-6 text-sm text-muted">
         Signed in? Manage every email in{' '}
-        <Link className="rule-link" to="/settings/notifications">notification settings</Link>.
+        <MuiLink component={Link} to="/settings/notifications" underline="always">notification settings</MuiLink>.
       </p>
     </section>
   );

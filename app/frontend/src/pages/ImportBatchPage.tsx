@@ -1,12 +1,19 @@
+import Alert from '@mui/material/Alert';
+import FormLabel from '@mui/material/FormLabel';
+import MuiLink from '@mui/material/Link';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
+  Button,
   ConfirmDialog,
   EmptyState,
   errorMessage,
   ListSkeleton,
   PageSkeleton,
   Pagination,
+  Radio,
 } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { useAdultBlur } from '../adultContent';
@@ -86,12 +93,11 @@ function CandidateRow({
             <legend className="sr-only">Matching title for {candidate.title}</legend>
             {candidate.options.map((option, index) => (
               <label className="flex items-center gap-3 text-sm" key={`${option.source}:${option.externalId}`}>
-                <input
+                <Radio
                   checked={candidate.choice === index}
                   disabled={!reviewable}
                   name={`choice-${candidate.id}`}
                   onChange={() => onDecide('accept', index)}
-                  type="radio"
                 />
                 <span className="min-w-0">
                   <span className="text-ink">{option.title}</span>{' '}
@@ -116,22 +122,22 @@ function CandidateRow({
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {reviewable && (
             <>
-              <button
+              <Button
                 aria-pressed={candidate.decision === 'accept'}
-                className={`secondary-button px-3 py-1.5 text-sm ${candidate.decision === 'accept' ? 'border-ink' : ''}`}
+                className={candidate.decision === 'accept' ? 'border-ink' : undefined}
                 onClick={() => onDecide('accept')}
-                type="button"
+                size="small"
               >
                 Import
-              </button>
-              <button
+              </Button>
+              <Button
                 aria-pressed={candidate.decision === 'skip'}
-                className={`secondary-button px-3 py-1.5 text-sm ${candidate.decision === 'skip' ? 'border-ink' : ''}`}
+                className={candidate.decision === 'skip' ? 'border-ink' : undefined}
                 onClick={() => onDecide('skip')}
-                type="button"
+                size="small"
               >
                 Skip
-              </button>
+              </Button>
             </>
           )}
           {candidate.outcome && <span className="mono-sm text-faint">{outcomes[candidate.outcome]}</span>}
@@ -190,7 +196,7 @@ export function ImportBatchPage() {
   }
 
 
-  if (batch.error) return <p className="error-message">{batch.error}</p>;
+  if (batch.error) return <Alert severity="error">{batch.error}</Alert>;
   if (!batch.data) {
     return (
       <PageSkeleton label="Loading import">
@@ -204,21 +210,21 @@ export function ImportBatchPage() {
 
   return (
     <div className="page-enter">
-      <Link className="rule-link mono-sm" to="/import">
+      <MuiLink className="mono-sm" component={Link} to="/import" underline="always">
         All imports
-      </Link>
+      </MuiLink>
       <p className="eyebrow mt-8">
         {detail.sourceApp ? `${importApps[detail.sourceApp]} backup` : 'Backup'} ·{' '}
         {importStateLabels[detail.state].toLowerCase()}
       </p>
       <h1 className="page-title">Review import</h1>
       {detail.previouslyAppliedAt && (
-        <p className="notice mt-6 max-w-3xl">
+        <Alert className="mt-6 max-w-3xl" severity="info">
           You applied this same backup on {new Date(detail.previouslyAppliedAt).toLocaleString()}.
           Titles already in your library are left as they are unless you keep the greater progress.
-        </p>
+        </Alert>
       )}
-      {(error || detail.error) && <p className="error-message mt-6 max-w-3xl">{error || detail.error}</p>}
+      {(error || detail.error) && <Alert className="mt-6 max-w-3xl" severity="error">{error || detail.error}</Alert>}
       {detail.state === 'parsing' && <p className="mt-8 text-muted">Reading the backup…</p>}
       {detail.state === 'matching' && (
         <p className="mt-8 text-muted">
@@ -237,33 +243,36 @@ export function ImportBatchPage() {
               <span className="mono-sm text-faint">{label.toLowerCase()}</span>
             </p>
           ))}
-          <Link className="primary-button inline-flex" to="/library">
+          <Button href="/library" variant="primary">
             Open library
-          </Link>
+          </Button>
         </section>
       )}
       {detail.state === 'ready' && (
         <section className="mt-8 grid max-w-3xl gap-5 rounded-xl border border-line bg-surface p-5">
           <fieldset className="m-0 grid gap-2 border-0 p-0">
-            <legend className="field-label mb-2">When a title is already in your library</legend>
+            <FormLabel className="mb-2" component="legend">When a title is already in your library</FormLabel>
             {(
               [
                 ['add_missing', 'Leave it unchanged and only add missing titles'],
                 ['keep_greater_progress', 'Raise its progress when the backup is further along'],
               ] as const
             ).map(([value, label]) => (
-              <label className="flex items-center gap-2 text-sm text-muted" key={value}>
-                <input checked={policy === value} name="policy" onChange={() => setPolicy(value)} type="radio" />
-                {label}
-              </label>
+              <Radio
+                checked={policy === value}
+                className="text-sm text-muted"
+                key={value}
+                label={label}
+                name="policy"
+                onChange={() => setPolicy(value)}
+              />
             ))}
             <p className="mono-sm m-0 mt-1 text-faint">
               Completed and dropped titles, ratings, reviews and notification settings are never changed.
             </p>
           </fieldset>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="primary-button"
+            <Button
               disabled={busy || detail.undecided > 0}
               onClick={() =>
                 void send(
@@ -272,26 +281,25 @@ export function ImportBatchPage() {
                   'Could not apply the import',
                 )
               }
-              type="button"
+              variant="primary"
             >
               Apply import
-            </button>
+            </Button>
             {detail.undecided > 0 && (
               <>
                 <span className="text-sm text-muted">
                   {detail.undecided.toLocaleString()} suggested{' '}
                   {detail.undecided === 1 ? 'match needs' : 'matches need'} a decision.
                 </span>
-                <button
-                  className="secondary-button px-3 py-2 text-sm"
+                <Button
                   disabled={busy}
                   onClick={() =>
                     void send(`/imports/${id}/accept-suggestions`, { method: 'POST' }, 'Could not accept suggestions')
                   }
-                  type="button"
+                  size="small"
                 >
                   Import all top suggestions
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -299,24 +307,25 @@ export function ImportBatchPage() {
       )}
       {(detail.state === 'ready' || detail.state === 'applied') && (
         <>
-          <nav aria-label="Import entries" className="scroll-x mt-10 flex gap-2 border-b border-line">
+          <ToggleButtonGroup
+            aria-label="Import entries"
+            className="scroll-x mt-10"
+            exclusive
+            onChange={(_, next: ImportMatch | 'conflict' | null) => next && setSearchParams({ match: next })}
+            size="small"
+            value={match}
+          >
             {tabs.filter((tab) => tab.match !== 'conflict' || detail.state === 'ready').map((tab) => (
-              <button
-                aria-current={match === tab.match ? 'page' : undefined}
-                className="tab-link border-x-0 border-t-0 bg-transparent"
-                key={tab.match}
-                onClick={() => setSearchParams({ match: tab.match })}
-                type="button"
-              >
+              <ToggleButton key={tab.match} value={tab.match}>
                 {tab.label}{' '}
                 <span className="mono-sm text-faint">
                   {tab.match === 'conflict' ? detail.conflicts : (detail.matches[tab.match] ?? 0)}
                 </span>
-              </button>
+              </ToggleButton>
             ))}
-          </nav>
+          </ToggleButtonGroup>
           {candidates.loading && <ListSkeleton label="Loading entries" />}
-          {candidates.error && <p className="error-message mt-6">{candidates.error}</p>}
+          {candidates.error && <Alert className="mt-6" severity="error">{candidates.error}</Alert>}
           {candidates.data &&
             (candidates.data.results.length === 0 ? (
               <div className="mt-6">
@@ -351,9 +360,9 @@ export function ImportBatchPage() {
         </>
       )}
       {!working && (
-        <button className="text-button mt-10 text-sm" onClick={() => setDeleting(true)} type="button">
+        <Button className="mt-10" onClick={() => setDeleting(true)} size="small" variant="text">
           Delete this import review
-        </button>
+        </Button>
       )}
       {deleting && (
         <ConfirmDialog

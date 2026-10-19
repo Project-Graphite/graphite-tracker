@@ -1,6 +1,9 @@
+import Alert from '@mui/material/Alert';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { EmptyState, ListSkeleton, Pagination, Skeleton } from '@project-graphite/ui';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Button, EmptyState, ListSkeleton, Pagination, Select, Skeleton, TextField } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { catalogCategories, categoryLabels, countLabel } from '../catalog';
 import { LibraryCard } from '../components/LibraryCard';
@@ -64,59 +67,58 @@ export function LibraryPage() {
           <h1 className="page-title">Library</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link className="secondary-button px-3 py-2 text-sm" to="/import">
+          <Button href="/import" size="small">
             Import backup
-          </Link>
-          <div aria-label="Layout" className="flex gap-2" role="group">
+          </Button>
+          <ToggleButtonGroup aria-label="Layout" exclusive size="small" value={layout}>
           {(['grid', 'list'] as const).map((option) => (
-            <button
-              aria-pressed={layout === option}
-              className={`secondary-button px-3 py-2 text-sm capitalize ${layout === option ? 'border-ink' : ''}`}
+            <ToggleButton
+              className="capitalize"
               key={option}
               onClick={() => go({ view: option === 'grid' ? '' : option, page: searchParams.get('page') ?? '' })}
-              type="button"
+              value={option}
             >
               {option}
-            </button>
+            </ToggleButton>
           ))}
-          </div>
+          </ToggleButtonGroup>
         </div>
       </div>
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <form className="col-span-2 lg:col-span-1" onSubmit={search} role="search">
-          <label className="field-label">
-            Search
-            <input defaultValue={searchParams.get('query') ?? ''} key={searchParams.get('query')} name="query" placeholder="Title" type="search" />
-          </label>
+          <TextField defaultValue={searchParams.get('query') ?? ''} key={searchParams.get('query')} label="Search" name="query" placeholder="Title" type="search" />
         </form>
-        <label className="field-label">
-          Category
-          <select onChange={(event) => go({ category: event.target.value })} value={searchParams.get('category') ?? ''}>
-            <option value="">All categories</option>
-            {catalogCategories.map((category) => (
-              <option key={category} value={category}>{categoryLabels[category]}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field-label">
-          List
-          <select onChange={(event) => go({ state: event.target.value })} value={searchParams.get('state') ?? ''}>
-            <option value="">All lists</option>
-            {libraryStates.map((state) => (
-              <option key={state} value={state}>{libraryStateLabels[state]}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field-label col-span-2 lg:col-span-1">
-          Sort
-          <select onChange={(event) => go({ sort: event.target.value })} value={searchParams.get('sort') ?? ''}>
-            <option value="">Recently updated</option>
-            <option value="title">Title</option>
-            <option value="release">Release date</option>
-          </select>
-        </label>
+        <Select
+          label="Category"
+          onChange={(value) => go({ category: value })}
+          options={[
+            { value: '', label: 'All categories' },
+            ...catalogCategories.map((category) => ({ value: category, label: categoryLabels[category] })),
+          ]}
+          value={searchParams.get('category') ?? ''}
+        />
+        <Select
+          label="List"
+          onChange={(value) => go({ state: value })}
+          options={[
+            { value: '', label: 'All lists' },
+            ...libraryStates.map((state) => ({ value: state, label: libraryStateLabels[state] })),
+          ]}
+          value={searchParams.get('state') ?? ''}
+        />
+        <Select
+          className="col-span-2 lg:col-span-1"
+          label="Sort"
+          onChange={(value) => go({ sort: value })}
+          options={[
+            { value: '', label: 'Recently updated' },
+            { value: 'title', label: 'Title' },
+            { value: 'release', label: 'Release date' },
+          ]}
+          value={searchParams.get('sort') ?? ''}
+        />
       </div>
-      {library.error && <p className="error-message mt-6">{library.error}</p>}
+      {library.error && <Alert className="mt-6" severity="error">{library.error}</Alert>}
       {library.loading ? (
         <div className="mt-9">
           <Skeleton className="mb-5 h-3.5 w-20" />
@@ -136,9 +138,9 @@ export function LibraryPage() {
                   {filtered ? 'Try another search or list.' : 'Discover a title and add it to a list.'}
                 </p>
                 {!filtered && (
-                  <Link className="primary-button mt-3 inline-flex" to="/discover/movie/recent">
+                  <Button className="mt-3" href="/discover/movie/recent" variant="primary">
                     Discover titles
-                  </Link>
+                  </Button>
                 )}
               </EmptyState>
             ) : (

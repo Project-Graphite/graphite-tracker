@@ -1,3 +1,4 @@
+import MuiLink from '@mui/material/Link';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -17,9 +18,9 @@ function LegalPage({ children, title }: { children: ReactNode; title: string }) 
 
 function External({ children, href }: { children: ReactNode; href: string }) {
   return (
-    <a className="rule-link" href={href} rel="noreferrer" target="_blank">
+    <MuiLink href={href} rel="noreferrer" target="_blank" underline="always">
       {children}
-    </a>
+    </MuiLink>
   );
 }
 
@@ -38,7 +39,7 @@ export function PrivacyPage() {
         <p>
           Your email address receives verification links and password resets. Those links expire,
           and the server keeps only a hash of each. Release emails are sent only after you turn them
-          on in <Link className="rule-link" to="/settings/notifications">notification settings</Link>,
+          on in <MuiLink component={Link} to="/settings/notifications" underline="always">notification settings</MuiLink>,
           at most once a day, and each has a link that stops them without signing in. Records of sent
           release notifications are deleted after 90 days.
         </p>
@@ -51,7 +52,7 @@ export function PrivacyPage() {
         <h2>What is public</h2>
         <p>
           Nothing, until you choose. Profiles start private and show only your display name. You
-          decide in <Link className="rule-link" to="/settings">settings</Link> whether your profile
+          decide in <MuiLink component={Link} to="/settings" underline="always">settings</MuiLink> whether your profile
           and each of its sections are public, and every change applies to earlier activity too.
           A title you hide from your profile stays out of every profile section and count.
           A review you mark as public appears on its title with your display name and a link to
@@ -81,7 +82,7 @@ export function PrivacyPage() {
         <p>
           You can edit or remove any library entry, rating or review at any time, except that a review
           hidden by a moderator can be edited but not removed. In{' '}
-          <Link className="rule-link" to="/settings/account">account settings</Link> you can download
+          <MuiLink component={Link} to="/settings/account" underline="always">account settings</MuiLink> you can download
           everything stored about you as a file, and delete your account, which removes your library,
           ratings, reviews, reports and activity for good.
         </p>
@@ -120,7 +121,7 @@ export function TermsPage() {
         <h2>Catalogue data</h2>
         <p>
           Titles, descriptions, artwork and ratings belong to their sources and are shown under their
-          terms, listed in the <Link className="rule-link" to="/credits">credits</Link>. Graphite
+          terms, listed in the <MuiLink component={Link} to="/credits" underline="always">credits</MuiLink>. Graphite
           Tracker does not host, stream or link to copies of films, shows, comics or games.
         </p>
       </section>

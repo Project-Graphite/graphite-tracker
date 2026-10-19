@@ -1,5 +1,7 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
-import { errorMessage, Placeholder, Skeleton } from '@project-graphite/ui';
+import { Checkbox, errorMessage, Placeholder, Select, Skeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { catalogCategories, categoryLabels } from '../catalog';
 import type { SourceSettings } from '../sources';
@@ -28,7 +30,7 @@ export function SourcesPage() {
 
   if (!settings.data) {
     return settings.error ? (
-      <p className="error-message">{settings.error}</p>
+      <Alert severity="error">{settings.error}</Alert>
     ) : (
       <Placeholder label="Loading sources">
         <Skeleton className="h-3.5 w-full max-w-2xl" />
@@ -49,7 +51,7 @@ export function SourcesPage() {
         Choose which approved connectors you use and which one to prefer. Changing a source never
         removes library progress.
       </p>
-      {error && <p className="error-message mt-5">{error}</p>}
+      {error && <Alert className="mt-5" severity="error">{error}</Alert>}
       <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {data.sources.map((source) => (
           <article className="rounded-xl border border-line bg-surface p-5" key={source.key}>
@@ -60,13 +62,12 @@ export function SourcesPage() {
                   {source.available ? (source.enabled ? 'enabled' : 'disabled') : 'not configured on this server'}
                 </span>
               </span>
-              <input
+              <Checkbox
                 checked={source.enabled}
                 disabled={!source.available}
                 onChange={(event) =>
                   void change(`/sources/${source.key}`, 'PATCH', { enabled: event.target.checked })
                 }
-                type="checkbox"
               />
             </label>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -78,9 +79,9 @@ export function SourcesPage() {
             </div>
             <p className="mt-4 mb-0 text-sm text-muted">
               {source.attributionUrl ? (
-                <a className="rule-link" href={source.attributionUrl} rel="noreferrer" target="_blank">
+                <MuiLink href={source.attributionUrl} rel="noreferrer" target="_blank" underline="always">
                   {source.attribution}
-                </a>
+                </MuiLink>
               ) : (
                 source.attribution
               )}
@@ -94,35 +95,31 @@ export function SourcesPage() {
           A title's own preference wins, then its category, then the global default.
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="field-label sm:col-span-2">
-            Global default
-            <select
-              onChange={(event) => choose('/sources/preferences/global', event.target.value)}
-              value={data.global ?? ''}
-            >
-              <option value="">System default</option>
-              {data.sources
+          <Select
+            className="sm:col-span-2"
+            label="Global default"
+            onChange={(value) => choose('/sources/preferences/global', value)}
+            options={[
+              { value: '', label: 'System default' },
+              ...data.sources
                 .filter((source) => source.enabled)
-                .map((source) => (
-                  <option key={source.key} value={source.key}>{source.displayName}</option>
-                ))}
-            </select>
-          </label>
+                .map((source) => ({ value: source.key, label: source.displayName })),
+            ]}
+            value={data.global ?? ''}
+          />
           {catalogCategories.map((category) => (
-            <label className="field-label" key={category}>
-              {categoryLabels[category]}
-              <select
-                onChange={(event) => choose(`/sources/preferences/category/${category}`, event.target.value)}
-                value={data.categories[category] ?? ''}
-              >
-                <option value="">Use global default</option>
-                {data.sources
+            <Select
+              key={category}
+              label={categoryLabels[category]}
+              onChange={(value) => choose(`/sources/preferences/category/${category}`, value)}
+              options={[
+                { value: '', label: 'Use global default' },
+                ...data.sources
                   .filter((source) => source.enabled && source.categories.includes(category))
-                  .map((source) => (
-                    <option key={source.key} value={source.key}>{source.displayName}</option>
-                  ))}
-              </select>
-            </label>
+                  .map((source) => ({ value: source.key, label: source.displayName })),
+              ]}
+              value={data.categories[category] ?? ''}
+            />
           ))}
         </div>
       </section>

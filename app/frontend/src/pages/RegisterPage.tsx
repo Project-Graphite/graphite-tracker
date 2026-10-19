@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { errorMessage, TextField } from '@project-graphite/ui';
+import { Button, errorMessage, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { ResendVerification } from '../components/ResendVerification';
 import { atLeast, atMost, emailAddress, password, required, useFormErrors } from '../validation';
@@ -87,13 +89,13 @@ export function RegisterPage() {
           type="password"
           {...form.field('password')}
         />
-        {error && <p className="error-message">{error}</p>}
-        <button className="primary-button" disabled={busy} type="submit">
+        {error && <Alert severity="error">{error}</Alert>}
+        <Button disabled={busy} type="submit" variant="primary">
           {busy ? 'Creating…' : 'Create account'}
-        </button>
+        </Button>
       </form>
       <p className="mt-6 text-sm text-muted">
-        Already registered? <Link className="rule-link" to="/login">Sign in</Link>
+        Already registered? <MuiLink component={Link} to="/login" underline="always">Sign in</MuiLink>
       </p>
     </section>
   );

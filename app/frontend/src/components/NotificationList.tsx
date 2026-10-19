@@ -1,3 +1,6 @@
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
 import { Link } from 'react-router';
 import { timeAgo, useSnackbar } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
@@ -33,8 +36,9 @@ function NotificationRow({
     </>
   );
   return href ? (
-    <Link
-      className="popover-row"
+    <ListItemButton
+      className="gap-3.5 px-4 py-3"
+      component={Link}
       onClick={() => {
         onOpen?.();
         void inbox
@@ -44,9 +48,9 @@ function NotificationRow({
       to={href}
     >
       {content}
-    </Link>
+    </ListItemButton>
   ) : (
-    <div className="popover-row">{content}</div>
+    <div className="flex w-full items-center gap-3.5 px-4 py-3">{content}</div>
   );
 }
 
@@ -58,12 +62,12 @@ export function NotificationList({
   onOpen?: () => void;
 }) {
   return (
-    <ul className="m-0 p-0">
+    <List disablePadding>
       {notifications.map((notification) => (
-        <li className="list-none" key={notification.id}>
+        <ListItem className="last:border-b-0" disablePadding divider key={notification.id}>
           <NotificationRow notification={notification} onOpen={onOpen} />
-        </li>
+        </ListItem>
       ))}
-    </ul>
+    </List>
   );
 }

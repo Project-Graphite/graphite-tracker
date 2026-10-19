@@ -1,6 +1,17 @@
+import Alert from '@mui/material/Alert';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { actionSkeletonClass, Dialog, errorMessage, Skeleton, useSnackbar } from '@project-graphite/ui';
+import {
+  actionSkeletonClass,
+  Button,
+  Checkbox,
+  Dialog,
+  errorMessage,
+  Select,
+  Skeleton,
+  useSnackbar,
+  type ButtonVariant,
+} from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import { catalogRef, titleHref, type CatalogCandidate } from '../catalog';
@@ -57,35 +68,25 @@ function AddToListDialog({
   return (
     <Dialog eyebrow="Add to list" onClose={onClose} title={item.title}>
       <form className="mt-6 grid gap-5" onSubmit={(event) => void add(event)}>
-        <label className="field-label">
-          List
-          <select
-            onChange={(event) => setState(event.target.value as LibraryState)}
-            value={state}
-          >
-            {libraryStates.map((value) => (
-              <option key={value} value={value}>
-                {stateLabel(item.category, value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input
-            checked={isPrivate}
-            onChange={(event) => setIsPrivate(event.target.checked)}
-            type="checkbox"
-          />
-          Hide from my profile
-        </label>
-        {error && <p className="error-message">{error}</p>}
+        <Select
+          label="List"
+          onChange={(value) => setState(value)}
+          options={libraryStates.map((value) => ({ value, label: stateLabel(item.category, value) }))}
+          value={state}
+        />
+        <Checkbox
+          checked={isPrivate}
+          label="Hide from my profile"
+          onChange={(event) => setIsPrivate(event.target.checked)}
+        />
+        {error && <Alert severity="error">{error}</Alert>}
         <div className="flex justify-end gap-3">
-          <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+          <Button disabled={busy} onClick={onClose}>
             Cancel
-          </button>
-          <button className="primary-button" disabled={busy} type="submit">
+          </Button>
+          <Button disabled={busy} type="submit" variant="primary">
             {busy ? 'Adding…' : 'Add to list'}
-          </button>
+          </Button>
         </div>
       </form>
     </Dialog>
@@ -93,17 +94,19 @@ function AddToListDialog({
 }
 
 export function AddToListButton({
-  className = 'secondary-button w-full px-3 py-2 text-sm',
   entry,
   item,
   libraryReady,
   onAdded,
+  size = 'small',
+  variant = 'secondary',
 }: {
-  className?: string;
   entry: LibraryEntry | null;
   item: CatalogCandidate;
   libraryReady: boolean;
   onAdded: (entry: LibraryEntry) => void;
+  size?: 'small' | 'medium';
+  variant?: ButtonVariant;
 }) {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -123,13 +126,14 @@ export function AddToListButton({
 
   return (
     <>
-      <button
-        className={className}
+      <Button
+        className="w-full"
         onClick={() => (auth.user ? setOpen(true) : navigate('/login'))}
-        type="button"
+        size={size}
+        variant={variant}
       >
         Add to list
-      </button>
+      </Button>
       {open && <AddToListDialog item={item} onAdded={onAdded} onClose={() => setOpen(false)} />}
     </>
   );
@@ -187,7 +191,7 @@ export function CatalogGrid({
   const library = useLibraryStates(items);
   return (
     <>
-      {library.error && <p className="error-message mb-5">{library.error}</p>}
+      {library.error && <Alert className="mb-5" severity="error">{library.error}</Alert>}
       <div className={posterGridClass}>
         {items.map((item) => (
           <CatalogCard

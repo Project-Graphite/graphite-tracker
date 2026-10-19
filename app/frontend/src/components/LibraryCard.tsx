@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Dialog } from '@project-graphite/ui';
+import { Button, Dialog } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import { categoryLabels } from '../catalog';
 import {
@@ -44,13 +44,9 @@ export function LibraryCard({
     entry.item.title
   );
   const editButton = (
-    <button
-      className={`secondary-button px-3 py-2 text-sm ${layout === 'grid' ? 'w-full' : ''}`}
-      onClick={() => setEditing(true)}
-      type="button"
-    >
+    <Button className={layout === 'grid' ? 'w-full' : undefined} onClick={() => setEditing(true)} size="small">
       Edit
-    </button>
+    </Button>
   );
 
   return (

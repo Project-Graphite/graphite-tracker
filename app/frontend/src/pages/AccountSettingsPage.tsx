@@ -1,6 +1,7 @@
+import Alert from '@mui/material/Alert';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { ConfirmDialog, errorMessage, FormSkeleton, TextField } from '@project-graphite/ui';
+import { Button, ConfirmDialog, errorMessage, FormSkeleton, Select, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { useResource } from '../useResource';
 import { emailAddress, password as newPassword, required, useFormErrors } from '../validation';
@@ -36,9 +37,7 @@ function useAction() {
     }
   }
 
-  const status = (error || done) && (
-    <p className={error ? 'error-message m-0' : 'mono-sm m-0 text-faint'}>{error || done}</p>
-  );
+  const status = error ? <Alert severity="error">{error}</Alert> : done && <p className="mono-sm m-0 text-faint">{done}</p>;
   return { busy, run, status };
 }
 
@@ -65,7 +64,7 @@ export function AccountSettingsPage() {
     }, 'Could not save the time zone');
   }
 
-  if (me.error) return <p className="error-message">{me.error}</p>;
+  if (me.error) return <Alert severity="error">{me.error}</Alert>;
   if (!me.data) return <FormSkeleton fields={2} />;
   const current = me.data;
   const zones = [...new Set([current.timeZone, ...Intl.supportedValuesOf('timeZone')])];
@@ -114,9 +113,9 @@ export function AccountSettingsPage() {
             {...emailForm.field('password')}
           />
           <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-            <button className="primary-button" disabled={email.busy} type="submit">
+            <Button disabled={email.busy} type="submit" variant="primary">
               Change email
-            </button>
+            </Button>
             {email.status}
           </div>
         </form>
@@ -159,46 +158,34 @@ export function AccountSettingsPage() {
             {...passwordForm.field('newPassword')}
           />
           <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-            <button className="primary-button" disabled={password.busy} type="submit">
+            <Button disabled={password.busy} type="submit" variant="primary">
               Change password
-            </button>
+            </Button>
             {password.status}
           </div>
         </form>
       </Section>
       <Section description="Email digests arrive in the morning of this time zone." title="Time zone">
         <div className="mt-5 flex flex-wrap items-end gap-4">
-          <label className="field-label min-w-64">
-            Time zone
-            <select
-              disabled={timeZone.busy}
-              onChange={(event) => void saveTimeZone(event.target.value)}
-              value={current.timeZone}
-            >
-              {zones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone.replaceAll('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            className="min-w-64"
+            disabled={timeZone.busy}
+            label="Time zone"
+            onChange={(value) => void saveTimeZone(value)}
+            options={zones.map((zone) => ({ value: zone, label: zone.replaceAll('_', ' ') }))}
+            value={current.timeZone}
+          />
           {deviceTimeZone && deviceTimeZone !== current.timeZone && (
-            <button
-              className="secondary-button"
-              disabled={timeZone.busy}
-              onClick={() => void saveTimeZone(deviceTimeZone)}
-              type="button"
-            >
+            <Button disabled={timeZone.busy} onClick={() => void saveTimeZone(deviceTimeZone)}>
               Use {deviceTimeZone.replaceAll('_', ' ')}
-            </button>
+            </Button>
           )}
           {timeZone.status}
         </div>
       </Section>
       <Section description="Your account, library, progress, ratings, reviews, reports and activity as a JSON file." title="Your data">
         <div className="mt-5 flex flex-wrap items-center gap-4">
-          <button
-            className="secondary-button"
+          <Button
             disabled={data.busy}
             onClick={() =>
               void data.run(async () => {
@@ -213,10 +200,9 @@ export function AccountSettingsPage() {
                 return 'Downloaded.';
               }, 'Could not export your data')
             }
-            type="button"
           >
             Download my data
-          </button>
+          </Button>
           {data.status}
         </div>
       </Section>
@@ -241,9 +227,9 @@ export function AccountSettingsPage() {
             type="password"
             {...removalForm.field('password')}
           />
-          <button className="secondary-button mt-6" type="submit">
+          <Button className="mt-6" type="submit">
             Delete account
-          </button>
+          </Button>
         </form>
         {removingWith !== undefined && (
           <ConfirmDialog

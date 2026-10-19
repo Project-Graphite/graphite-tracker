@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import type { ReactNode } from 'react';
-import { Link, NavLink, useParams, useSearchParams } from 'react-router';
-import { EmptyState, ListSkeleton, Pagination } from '@project-graphite/ui';
+import { Link, useMatch, useParams, useSearchParams } from 'react-router';
+import { EmptyState, ListSkeleton, Pagination, Tabs } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
@@ -61,15 +63,18 @@ interface Rating {
 }
 
 export function OwnerTabs({ handle }: { handle: string }) {
+  const profileHref = `/users/${handle}`;
+  const settingsHref = `/users/${handle}/settings`;
   return (
-    <nav aria-label="Your profile" className="mt-7 flex gap-2 border-b border-line">
-      <NavLink className="tab-link -mb-px" end to={`/users/${handle}`}>
-        Profile
-      </NavLink>
-      <NavLink className="tab-link -mb-px" to={`/users/${handle}/settings`}>
-        Settings
-      </NavLink>
-    </nav>
+    <div className="mt-7">
+      <Tabs
+        items={[
+          { active: Boolean(useMatch(profileHref)), href: profileHref, label: 'Profile' },
+          { active: Boolean(useMatch({ end: false, path: settingsHref })), href: settingsHref, label: 'Settings' },
+        ]}
+        label="Your profile"
+      />
+    </div>
   );
 }
 
@@ -112,7 +117,7 @@ function SectionPage<T>({
     Boolean(auth.user),
   );
 
-  if (list.error) return <p className="error-message mt-6">{list.error}</p>;
+  if (list.error) return <Alert className="mt-6" severity="error">{list.error}</Alert>;
   if (!list.data) return <div className="mt-6">{skeleton}</div>;
   return (
     <div className="fade-in">
@@ -307,7 +312,7 @@ export function ProfilePage() {
         <p className="mt-2 mb-0 text-muted">No account uses @{handle}.</p>
       </EmptyState>
     ) : (
-      <p className="error-message">{profile.error}</p>
+      <Alert severity="error">{profile.error}</Alert>
     );
   }
   if (!profile.data) return <ProfileSkeleton />;
@@ -325,20 +330,20 @@ export function ProfilePage() {
       {auth.user?.handle === data.handle && (
         <>
           <OwnerTabs handle={data.handle} />
-          <p className="notice mt-5 max-w-3xl">
+          <Alert className="mt-5 max-w-3xl" severity="info">
             This is how other people see your profile.{' '}
-            <Link className="rule-link" to={`/users/${data.handle}/settings`}>
+            <MuiLink component={Link} to={`/users/${data.handle}/settings`} underline="always">
               Change what is shown
-            </Link>
-          </p>
+            </MuiLink>
+          </Alert>
         </>
       )}
       {data.privateSections && (
-        <p className="notice mt-5 max-w-3xl">
+        <Alert className="mt-5 max-w-3xl" severity="info">
           {data.isPublic
             ? 'You see every section because you are an administrator. Sections marked private are hidden from everyone else.'
             : 'This profile is private. You see it because you are an administrator; everyone else sees only the display name.'}
-        </p>
+        </Alert>
       )}
       {!data.isPublic && !data.privateSections ? (
         <p className="mt-6 text-muted">This profile is private.</p>
@@ -353,21 +358,18 @@ export function ProfilePage() {
           )}
           {View ? (
             <>
-              <nav aria-label="Profile sections" className="scroll-x mt-10 mb-6 flex gap-2 border-b border-line">
-                {visible.map((section) => (
-                  <Link
-                    aria-current={section === tab ? 'page' : undefined}
-                    className="tab-link"
-                    key={section}
-                    to={`/users/${data.handle}?tab=${section}`}
-                  >
-                    {sectionLabels[section]}
-                    {data.privateSections?.includes(section) && (
-                      <span className="mono-sm font-normal text-faint"> · private</span>
-                    )}
-                  </Link>
-                ))}
-              </nav>
+              <div className="mt-10 mb-6">
+                <Tabs
+                  items={visible.map((section) => ({
+                    active: section === tab,
+                    href: `/users/${data.handle}?tab=${section}`,
+                    label: data.privateSections?.includes(section)
+                      ? `${sectionLabels[section]} · private`
+                      : sectionLabels[section],
+                  }))}
+                  label="Profile sections"
+                />
+              </div>
               <View handle={data.handle} />
             </>
           ) : (

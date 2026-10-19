@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { errorMessage, TextField } from '@project-graphite/ui';
+import { Button, errorMessage, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { ResendVerification } from '../components/ResendVerification';
 import { emailAddress, required, useFormErrors } from '../validation';
@@ -44,17 +46,17 @@ export function LoginPage() {
       <form className="mt-8 grid gap-5" noValidate onSubmit={submit}>
         <TextField autoComplete="email" inputMode="email" label="Email" type="email" {...form.field('email')} />
         <TextField autoComplete="current-password" label="Password" type="password" {...form.field('password')} />
-        {error && <p className="error-message">{error}</p>}
-        <button className="primary-button" disabled={busy} type="submit">
+        {error && <Alert severity="error">{error}</Alert>}
+        <Button disabled={busy} type="submit" variant="primary">
           {busy ? 'Signing in…' : 'Sign in'}
-        </button>
+        </Button>
       </form>
       {error === unverified && <ResendVerification email={email} key={email} />}
       <p className="mt-6 text-sm text-muted">
-        <Link className="rule-link" to="/forgot-password">Forgot your password?</Link>
+        <MuiLink component={Link} to="/forgot-password" underline="always">Forgot your password?</MuiLink>
       </p>
       <p className="mt-2 text-sm text-muted">
-        New here? <Link className="rule-link" to="/register">Create an account</Link>
+        New here? <MuiLink component={Link} to="/register" underline="always">Create an account</MuiLink>
       </p>
     </section>
   );

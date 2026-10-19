@@ -1,6 +1,11 @@
+import Alert from '@mui/material/Alert';
+import FormControl from '@mui/material/FormControl';
+import FormHelperText from '@mui/material/FormHelperText';
+import FormLabel from '@mui/material/FormLabel';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { errorMessage, ListSkeleton } from '@project-graphite/ui';
+import { Button, errorMessage, ListSkeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { importApps, importStateLabels, type ImportDetail, type ImportSummary } from '../imports';
 import { useResource } from '../useResource';
@@ -41,9 +46,9 @@ export function ImportPage() {
 
   return (
     <div className="page-enter">
-      <Link className="rule-link mono-sm" to="/library">
+      <MuiLink className="mono-sm" component={Link} to="/library" underline="always">
         Back to library
-      </Link>
+      </MuiLink>
       <p className="eyebrow mt-8">Library import</p>
       <h1 className="page-title">Import from Mihon or AniYomi</h1>
       <div className="mt-5 grid max-w-3xl gap-3 text-muted">
@@ -63,41 +68,40 @@ export function ImportPage() {
         noValidate
         onSubmit={(event) => void upload(event)}
       >
-        <div className="field-label">
-          <span id="backup-label">Backup file</span>
-          <label className="file-picker" aria-invalid={fileError ? true : undefined}>
-            <input
-              accept=".tachibk,.gz,application/gzip"
-              aria-describedby={fileError ? 'backup-error' : undefined}
-              aria-labelledby="backup-label"
-              className="sr-only"
-              name="file"
-              onChange={(event) => {
-                setFile(event.target.files?.[0]);
-                setFileError('');
-              }}
-              type="file"
-            />
-            <span className="secondary-button shrink-0 px-3 py-2 text-sm">Choose file</span>
+        <FormControl error={Boolean(fileError)}>
+          <FormLabel id="backup-label">Backup file</FormLabel>
+          <div className="mt-2 flex min-w-0 items-center gap-3">
+            <Button className="w-fit shrink-0" component="label" icon="upload" size="small">
+              Choose file
+              <input
+                accept=".tachibk,.gz,application/gzip"
+                aria-describedby={fileError ? 'backup-error' : undefined}
+                aria-invalid={fileError ? true : undefined}
+                aria-labelledby="backup-label"
+                className="sr-only"
+                name="file"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0]);
+                  setFileError('');
+                }}
+                type="file"
+              />
+            </Button>
             <span className={`min-w-0 truncate text-sm ${file ? 'text-ink' : 'text-faint'}`}>
               {file?.name ?? 'No file chosen'}
             </span>
-          </label>
-          {fileError && (
-            <span className="field-error" id="backup-error">
-              {fileError}
-            </span>
-          )}
-        </div>
-        <button className="primary-button sm:mt-6" disabled={busy} type="submit">
+          </div>
+          {fileError && <FormHelperText id="backup-error">{fileError}</FormHelperText>}
+        </FormControl>
+        <Button className="sm:mt-6" disabled={busy} type="submit" variant="primary">
           {busy ? 'Uploading…' : 'Upload'}
-        </button>
-        {error && <p className="error-message m-0 sm:col-span-2">{error}</p>}
+        </Button>
+        {error && <Alert className="sm:col-span-2" severity="error">{error}</Alert>}
       </form>
       <section className="mt-14 max-w-3xl">
         <h2 className="m-0 border-b border-line pb-4 text-xl font-medium">Recent imports</h2>
         {history.error ? (
-          <p className="error-message mt-5">{history.error}</p>
+          <Alert className="mt-5" severity="error">{history.error}</Alert>
         ) : !history.data ? (
           <ListSkeleton label="Loading imports" rows={3} />
         ) : history.data.length === 0 ? (
@@ -106,10 +110,10 @@ export function ImportPage() {
           <ul className="fade-in m-0 p-0">
             {history.data.map((batch) => (
               <li className="flex list-none flex-wrap items-baseline justify-between gap-3 border-b border-line-soft py-3" key={batch.id}>
-                <Link className="rule-link" to={`/import/${batch.id}`}>
+                <MuiLink component={Link} to={`/import/${batch.id}`} underline="always">
                   {batch.sourceApp ? `${importApps[batch.sourceApp]} backup` : 'Backup'} ·{' '}
                   {new Date(batch.createdAt).toLocaleString()}
-                </Link>
+                </MuiLink>
                 <span className="mono-sm text-faint">{importStateLabels[batch.state]}</span>
               </li>
             ))}

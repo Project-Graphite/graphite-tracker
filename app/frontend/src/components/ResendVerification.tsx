@@ -1,5 +1,6 @@
+import Alert from '@mui/material/Alert';
 import { useState } from 'react';
-import { errorMessage } from '@project-graphite/ui';
+import { Button, errorMessage } from '@project-graphite/ui';
 import { apiRequest } from '../api';
 
 export function ResendVerification({ email }: { email: string }) {
@@ -28,17 +29,17 @@ export function ResendVerification({ email }: { email: string }) {
       ) : (
         <p className="m-0">
           Nothing arrived?{' '}
-          <button
-            className="text-button"
+          <Button
             disabled={state === 'sending'}
             onClick={() => void resend()}
-            type="button"
+            size="small"
+            variant="text"
           >
             Send the link again
-          </button>
+          </Button>
         </p>
       )}
-      {error && <p className="error-message mt-2 mb-0">{error}</p>}
+      {error && <Alert className="mt-2" severity="error">{error}</Alert>}
     </div>
   );
 }
