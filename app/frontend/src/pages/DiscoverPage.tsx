@@ -1,8 +1,9 @@
 import Alert from '@mui/material/Alert';
+import Badge from '@mui/material/Badge';
 import MuiTextField from '@mui/material/TextField';
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Button, EmptyState, Icon, Pagination, Select, Skeleton, Tabs } from '@project-graphite/ui';
+import { Button, EmptyState, Pagination, Select, Skeleton, Tabs } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -266,17 +267,17 @@ export function DiscoverPage({
             label="Discovery section"
           />
         </div>
-        <Button
-          aria-controls="discover-filters"
-          aria-expanded={filtersOpen}
-          className="ml-auto shrink-0 gap-2 sm:hidden"
-          onClick={() => setFiltersOpen((current) => !current)}
-          size="small"
-        >
-          <Icon name="filter" size={16} />
-          {filtersOpen ? 'Hide filters' : 'Filters'}
-          {activeFilters > 0 && <span className="count-badge static border-0">{activeFilters}</span>}
-        </Button>
+        <Badge badgeContent={activeFilters} className="ml-auto shrink-0 sm:hidden" color="primary">
+          <Button
+            aria-controls="discover-filters"
+            aria-expanded={filtersOpen}
+            icon="filter"
+            onClick={() => setFiltersOpen((current) => !current)}
+            size="small"
+          >
+            {filtersOpen ? 'Hide filters' : 'Filters'}
+          </Button>
+        </Badge>
       </div>
       <form
         className={`mt-5 grid-cols-2 gap-3 sm:mt-6 sm:grid lg:grid-cols-6 ${filtersOpen ? 'grid' : 'hidden'}`}

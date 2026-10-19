@@ -1,4 +1,5 @@
 import Alert from '@mui/material/Alert';
+import Badge from '@mui/material/Badge';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button, errorMessage, Icon, ListSkeleton, Popover } from '@project-graphite/ui';
@@ -70,10 +71,9 @@ export function NotificationBell() {
     <Popover
       label="Notifications"
       trigger={
-        <>
+        <Badge badgeContent={inbox.unread} color="primary" max={9}>
           <Icon name="bell" />
-          {inbox.unread > 0 && <span className="count-badge">{inbox.unread > 9 ? '9+' : inbox.unread}</span>}
-        </>
+        </Badge>
       }
       triggerLabel={inbox.unread ? `Notifications, ${inbox.unread} unread` : 'Notifications'}
     >
