@@ -1,6 +1,9 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
+import MuiTextField from '@mui/material/TextField';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { EmptyState, Pagination, Skeleton } from '@project-graphite/ui';
+import { Button, EmptyState, Pagination, Skeleton } from '@project-graphite/ui';
 import type { Page } from '../api';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogResponse } from '../catalog';
@@ -23,13 +26,13 @@ function TrackedGames({ tracked }: { tracked: Resource<Page<LibraryEntry>> }) {
           <h2 className="mt-2 mb-0 text-2xl font-medium">Tracked games</h2>
         </div>
         {tracked.data && tracked.data.totalPages > 1 && (
-          <Link className="rule-link mono-sm" to="/library?category=game">
+          <MuiLink className="mono-sm" component={Link} to="/library?category=game" underline="always">
             View all {tracked.data.totalResults.toLocaleString()}
-          </Link>
+          </MuiLink>
         )}
       </div>
       {tracked.error ? (
-        <p className="error-message mt-5">{tracked.error}</p>
+        <Alert className="mt-5" severity="error">{tracked.error}</Alert>
       ) : !tracked.data ? (
         <div className="mt-6">
           <PosterGridSkeleton count={5} label="Loading tracked games" />
@@ -106,26 +109,31 @@ export function TrackGamesPage() {
         Find a game, choose its list, and record hours, completion and the platforms you play on.
       </p>
       <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} noValidate onSubmit={submit} role="search">
-        <input
-          aria-describedby={form.errors.query ? 'search-error' : undefined}
-          aria-invalid={form.errors.query ? true : undefined}
-          aria-label="Game title"
+        <MuiTextField
           defaultValue={query}
           name="query"
-          onInput={form.field('query').onInput}
           placeholder="Search games, or paste an IGDB or RAWG link"
+          size="small"
+          slotProps={{
+            htmlInput: {
+              'aria-describedby': form.errors.query ? 'search-error' : undefined,
+              'aria-invalid': form.errors.query ? true : undefined,
+              'aria-label': 'Game title',
+              onInput: form.field('query').onInput,
+            },
+          }}
           type="search"
         />
-        <button className="primary-button" disabled={search.opening} type="submit">
+        <Button disabled={search.opening} type="submit" variant="primary">
           {search.opening ? 'Opening…' : 'Search'}
-        </button>
+        </Button>
         {(form.errors.query || search.error) && (
-          <p className="error-message m-0 sm:col-span-2" id="search-error">
+          <Alert className="sm:col-span-2" id="search-error" severity="error">
             {form.errors.query || search.error}
-          </p>
+          </Alert>
         )}
       </form>
-      {results.error && <p className="error-message mt-6">{results.error}</p>}
+      {results.error && <Alert className="mt-6" severity="error">{results.error}</Alert>}
       {results.loading && (
         <div className="mt-10">
           <div className="mb-6 border-b border-line pb-4">
@@ -137,9 +145,9 @@ export function TrackGamesPage() {
       {results.data && (
         <section className="fade-in mt-10">
           {results.data.stale && (
-            <p className="notice mb-5">
+            <Alert className="mb-5" severity="info">
               The game source is temporarily unavailable. Showing the most recent cached result.
-            </p>
+            </Alert>
           )}
           <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
             <h2 className="m-0 text-xl font-medium">

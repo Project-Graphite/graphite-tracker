@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiTextField from '@mui/material/TextField';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { EmptyState, Skeleton } from '@project-graphite/ui';
+import { Button, EmptyState, Skeleton } from '@project-graphite/ui';
 import {
   catalogCategories,
   categoryLabels,
@@ -75,23 +77,28 @@ export function SearchPage() {
       <p className="eyebrow">Unified catalogue</p>
       <h1 className="page-title">{query.length >= 2 ? `Results for “${query}”` : 'Search'}</h1>
       <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" key={query} noValidate onSubmit={submit} role="search">
-        <input
-          aria-describedby={form.errors.query ? 'search-error' : undefined}
-          aria-invalid={form.errors.query ? true : undefined}
-          aria-label="Title"
+        <MuiTextField
           defaultValue={query}
           name="query"
-          onInput={form.field('query').onInput}
           placeholder="Search every medium"
+          size="small"
+          slotProps={{
+            htmlInput: {
+              'aria-describedby': form.errors.query ? 'search-error' : undefined,
+              'aria-invalid': form.errors.query ? true : undefined,
+              'aria-label': 'Title',
+              onInput: form.field('query').onInput,
+            },
+          }}
           type="search"
         />
-        <button className="primary-button" disabled={search.opening} type="submit">
+        <Button disabled={search.opening} type="submit" variant="primary">
           {search.opening ? 'Opening…' : 'Search'}
-        </button>
+        </Button>
         {(form.errors.query || search.error) && (
-          <p className="error-message m-0 sm:col-span-2" id="search-error">
+          <Alert className="sm:col-span-2" id="search-error" severity="error">
             {form.errors.query || search.error}
-          </p>
+          </Alert>
         )}
       </form>
       {query.length >= 2 ? (

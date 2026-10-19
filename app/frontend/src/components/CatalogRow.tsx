@@ -1,5 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { IconButton } from '@project-graphite/ui';
 import { catalogRef, type CatalogCandidate } from '../catalog';
 import { useLibraryStates } from '../useLibraryStates';
 import { CatalogCard } from './CatalogCard';
@@ -18,22 +21,12 @@ function ScrollButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      aria-label={label}
+    <IconButton
       className={`${scrollButtonClass} ${direction < 0 ? '-left-3' : '-right-3'}`}
+      icon={direction < 0 ? 'chevron-left' : 'chevron-right'}
+      label={label}
       onClick={onClick}
-      type="button"
-    >
-      <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 24 24" width="20">
-        <path
-          d={direction < 0 ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'}
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    </button>
+    />
   );
 }
 
@@ -87,13 +80,13 @@ export function CatalogRow({
           <h2 className="mt-2 mb-0 text-2xl font-medium">{title}</h2>
         </div>
         {link && (
-          <Link className="rule-link mono-sm" to={link.href}>
+          <MuiLink className="mono-sm" component={Link} to={link.href} underline="always">
             {link.label}
-          </Link>
+          </MuiLink>
         )}
       </div>
       {error || library.error ? (
-        <p className="error-message mt-5">{error || library.error}</p>
+        <Alert className="mt-5" severity="error">{error || library.error}</Alert>
       ) : !items ? (
         <div className="mt-5">
           <PosterRowSkeleton label={`Loading ${title}`} />

@@ -1,5 +1,9 @@
+import Alert from '@mui/material/Alert';
+import FormLabel from '@mui/material/FormLabel';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useState, type FormEvent } from 'react';
-import { ConfirmDialog, errorMessage, Toggle } from '@project-graphite/ui';
+import { Button, Checkbox, ConfirmDialog, errorMessage, TextAreaField, TextField, Toggle } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { reviewBodyLimit, type OwnReview } from '../reviews';
 import { ReviewCard } from './ReviewCard';
@@ -54,61 +58,48 @@ export function ReviewEditor({
   return (
     <form className="grid gap-5" noValidate onSubmit={save}>
       <fieldset className="m-0 border-0 p-0">
-        <legend className="field-label mb-2">Rating</legend>
+        <FormLabel className="mb-2" component="legend">Rating</FormLabel>
         <div className="flex flex-wrap items-center gap-1.5">
-          {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
-            <label key={value}>
-              <input
-                checked={rating === value}
-                className="peer sr-only"
-                name="rating"
-                onChange={() => setRating(value)}
-                type="radio"
-              />
-              <span className="mono-sm flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-line text-muted transition-colors peer-checked:border-ink peer-checked:bg-ink peer-checked:text-paper peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink hover:border-muted">
+          <ToggleButtonGroup aria-label="Rating" className="flex-wrap" exclusive onChange={(_, value: number | null) => setRating(value)} size="small" value={rating}>
+            {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+              <ToggleButton className="mono-sm w-9" key={value} value={value}>
                 {value}
-              </span>
-            </label>
-          ))}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
           {rating !== null && (
-            <button className="text-button mono-sm ml-2" onClick={() => setRating(null)} type="button">
+            <Button className="mono-sm ml-2" onClick={() => setRating(null)} size="small" variant="text">
               clear
-            </button>
+            </Button>
           )}
         </div>
       </fieldset>
-      <label className="field-label">
-        Review title
-        <input maxLength={200} onChange={(event) => setTitle(event.target.value)} value={title} />
-      </label>
-      <label className="field-label">
-        Review
-        <textarea
-          maxLength={reviewBodyLimit}
-          onChange={(event) => setBody(event.target.value)}
-          rows={7}
-          value={body}
-        />
-        {body.length >= 8_000 && (
-          <span aria-live="polite" className="mono-sm text-faint">
-            {body.length.toLocaleString()} / {reviewBodyLimit.toLocaleString()} characters
-          </span>
-        )}
-      </label>
+      <TextField label="Review title" maxLength={200} onChange={(event) => setTitle(event.target.value)} value={title} />
+      <TextAreaField
+        hint={
+          body.length >= 8_000 && (
+            <span aria-live="polite" className="mono-sm text-faint">
+              {body.length.toLocaleString()} / {reviewBodyLimit.toLocaleString()} characters
+            </span>
+          )
+        }
+        label="Review"
+        maxLength={reviewBodyLimit}
+        onChange={(event) => setBody(event.target.value)}
+        rows={7}
+        value={body}
+      />
       <div className="grid items-center gap-4 sm:grid-cols-2">
         <Toggle
           checked={visibility === 'private'}
           label="Private"
           onChange={(checked) => setVisibility(checked ? 'private' : 'public')}
         />
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input
-            checked={containsSpoilers}
-            onChange={(event) => setContainsSpoilers(event.target.checked)}
-            type="checkbox"
-          />
-          Contains spoilers
-        </label>
+        <Checkbox
+          checked={containsSpoilers}
+          label="Contains spoilers"
+          onChange={(event) => setContainsSpoilers(event.target.checked)}
+        />
       </div>
       <p className="mono-sm m-0 text-faint">
         Ratings count toward the site average. Public reviews appear on this title for everyone.
@@ -130,26 +121,21 @@ export function ReviewEditor({
           />
         </div>
       )}
-      {error && <p className="error-message m-0">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       <div className="flex flex-wrap items-center gap-3">
-        <button className="primary-button" disabled={busy} type="submit">
+        <Button disabled={busy} type="submit" variant="primary">
           {busy ? 'Saving…' : 'Save'}
-        </button>
-        <button
-          aria-pressed={preview}
-          className="secondary-button"
-          onClick={() => setPreview((current) => !current)}
-          type="button"
-        >
+        </Button>
+        <Button aria-pressed={preview} onClick={() => setPreview((current) => !current)}>
           {preview ? 'Hide preview' : 'Preview'}
-        </button>
-        <button className="text-button text-sm" disabled={busy} onClick={onClose} type="button">
+        </Button>
+        <Button disabled={busy} onClick={onClose} size="small" variant="text">
           Cancel
-        </button>
+        </Button>
         {review && !review.hidden && (
-          <button className="text-button ml-auto text-sm" disabled={busy} onClick={() => setDeleting(true)} type="button">
+          <Button className="ml-auto" disabled={busy} onClick={() => setDeleting(true)} size="small" variant="text">
             Delete review
-          </button>
+          </Button>
         )}
       </div>
       {deleting && (

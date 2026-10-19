@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
-import { EmptyState, Placeholder, Skeleton, SmoothImage } from '@project-graphite/ui';
+import { Button, EmptyState, Placeholder, Skeleton, SmoothImage } from '@project-graphite/ui';
 import { useAdultBlur } from '../adultContent';
 import { useAuth } from '../auth';
 import {
@@ -42,10 +44,10 @@ function LibraryPanel({
           </Placeholder>
         ) : !auth.user ? (
           <p className="m-0 text-sm text-muted">
-            <Link className="rule-link" to="/login">Sign in</Link> to track this title.
+            <MuiLink component={Link} to="/login" underline="always">Sign in</MuiLink> to track this title.
           </p>
         ) : lookup.error ? (
-          <p className="error-message m-0">{lookup.error}</p>
+          <Alert severity="error">{lookup.error}</Alert>
         ) : entry ? (
           <LibraryEntryEditor
             entry={entry}
@@ -54,11 +56,12 @@ function LibraryPanel({
           />
         ) : (
           <AddToListButton
-            className="primary-button w-full"
             entry={null}
             item={item}
             libraryReady
             onAdded={(added) => lookup.mutate(() => [added])}
+            size="medium"
+            variant="primary"
           />
         )}
       </div>
@@ -133,9 +136,9 @@ export function TitleDetailsPage() {
   }
   const backHref = category === 'game' ? '/games' : `/discover/${category}/recent`;
   const back = (
-    <Link className="rule-link mono-sm" to={backHref}>
+    <MuiLink className="mono-sm" component={Link} to={backHref} underline="always">
       Back to {categoryLabels[category]}
-    </Link>
+    </MuiLink>
   );
   const item = details.data;
   const hidden = blur(item?.adult) && !revealed;
@@ -153,14 +156,14 @@ export function TitleDetailsPage() {
                 ) : (
                   <>
                     This title is not available from its source, or it is adult content hidden by your{' '}
-                    <Link className="rule-link" to="/settings">content settings</Link>.
+                    <MuiLink component={Link} to="/settings" underline="always">content settings</MuiLink>.
                   </>
                 )}
               </p>
             </EmptyState>
           </div>
         ) : (
-          <p className="error-message mt-6 max-w-2xl">{details.error}</p>
+          <Alert className="mt-6 max-w-2xl" severity="error">{details.error}</Alert>
         )}
       </div>
     );
@@ -171,7 +174,7 @@ export function TitleDetailsPage() {
     <article className="page-enter">
       {back}
       {item.stale && (
-        <p className="notice mt-5">This source is unavailable. Showing cached details.</p>
+        <Alert className="mt-5" severity="info">This source is unavailable. Showing cached details.</Alert>
       )}
       {item.backdropUrl && (
         <div
@@ -194,13 +197,14 @@ export function TitleDetailsPage() {
             {blur(item.adult) && (
               <>
                 {' · '}
-                <button
-                  className="text-button mono-sm"
+                <Button
+                  className="mono-sm"
                   onClick={() => setRevealed((current) => !current)}
-                  type="button"
+                  size="small"
+                  variant="text"
                 >
                   {revealed ? 'hide artwork' : 'show artwork'}
-                </button>
+                </Button>
               </>
             )}
           </p>
@@ -241,18 +245,19 @@ export function TitleDetailsPage() {
           {item.trailers && item.trailers.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-3">
               {item.trailers.map((trailer, index) => (
-                <a
-                  className={`${index === 0 ? 'primary-button' : 'secondary-button'} inline-flex gap-2`}
+                <Button
+                  className="gap-2"
                   href={trailer.url}
                   key={trailer.url}
-                  rel="noreferrer"
-                  target="_blank"
+                  LinkComponent="a"
+                  variant={index === 0 ? 'primary' : 'secondary'}
+                  {...{ rel: 'noreferrer', target: '_blank' }}
                 >
                   <svg aria-hidden="true" fill="currentColor" height="14" viewBox="0 0 24 24" width="14">
                     <path d="M7 4.5v15l12.5-7.5z" />
                   </svg>
                   {index === 0 ? 'Watch trailer' : trailer.name}
-                </a>
+                </Button>
               ))}
             </div>
           )}
@@ -297,12 +302,13 @@ export function TitleDetailsPage() {
                     {relationship.type === 'franchise' ? (
                       relationship.title
                     ) : (
-                      <Link
-                        className="rule-link"
+                      <MuiLink
+                        component={Link}
                         to={titleHref({ category: 'game', externalId: relationship.externalId, source: item.source })}
+                        underline="always"
                       >
                         {relationship.title}
-                      </Link>
+                      </MuiLink>
                     )}
                   </li>
                 ))}

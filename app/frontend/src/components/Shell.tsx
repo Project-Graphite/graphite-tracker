@@ -1,7 +1,10 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   AppShell,
+  Button,
   errorMessage,
   OutageGate,
   Skeleton,
@@ -32,9 +35,9 @@ function SiteFooter() {
         <div className="fade-in mb-6 flex flex-wrap items-baseline gap-x-5 gap-y-2 border-b border-line-soft pb-6">
           <Attribution source={source} />
           {source.links?.map((link) => (
-            <a className="rule-link" href={link.url} key={link.url} rel="noreferrer" target="_blank">
+            <MuiLink href={link.url} key={link.url} rel="noreferrer" target="_blank" underline="always">
               {link.label}
-            </a>
+            </MuiLink>
           ))}
         </div>
       )}
@@ -148,17 +151,17 @@ export function Shell() {
                   <NavLink className={(state) => `${navClass(state)} mono-sm px-2`} to="/login">
                     sign in
                   </NavLink>
-                  <Link className="primary-button hidden px-3 py-2 text-sm sm:inline-flex" to="/register">
+                  <Button className="hidden sm:inline-flex" href="/register" size="small" variant="primary">
                     Create account
-                  </Link>
+                  </Button>
                 </>
               )
             }
             alert={
               error && (
-                <p className="shell error-message mb-3" role="alert">
+                <Alert className="shell mb-3" severity="error">
                   {error}
-                </p>
+                </Alert>
               )
             }
             brand={{ href: '/', mark: <GraphiteMark />, name: 'Graphite Tracker' }}

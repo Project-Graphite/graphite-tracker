@@ -1,6 +1,9 @@
+import Alert from '@mui/material/Alert';
+import FormLabel from '@mui/material/FormLabel';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { Dialog, errorMessage } from '@project-graphite/ui';
+import { Button, Dialog, errorMessage, Radio } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { itemHref, reportReasons, type ItemSummary, type PublicReview } from '../reviews';
 
@@ -33,34 +36,32 @@ function ReportDialog({ onClose, review }: { onClose: () => void; review: Public
       {sent ? (
         <div className="mt-6 grid gap-5">
           <p className="m-0 text-muted">Thanks. A moderator will look at this review.</p>
-          <button className="primary-button justify-self-end" onClick={onClose} type="button">
+          <Button className="justify-self-end" onClick={onClose} variant="primary">
             Done
-          </button>
+          </Button>
         </div>
       ) : (
         <form className="mt-6 grid gap-5" onSubmit={(event) => void report(event)}>
           <fieldset className="m-0 grid gap-2 border-0 p-0">
-            <legend className="field-label mb-2">What is wrong with it?</legend>
+            <FormLabel className="mb-2" component="legend">What is wrong with it?</FormLabel>
             {Object.entries(reportReasons).map(([value, label]) => (
-              <label className="flex items-center gap-2 text-sm text-muted" key={value}>
-                <input
-                  checked={reason === value}
-                  name="reason"
-                  onChange={() => setReason(value as keyof typeof reportReasons)}
-                  type="radio"
-                />
-                {label}
-              </label>
+              <Radio
+                checked={reason === value}
+                key={value}
+                label={label}
+                name="reason"
+                onChange={() => setReason(value as keyof typeof reportReasons)}
+              />
             ))}
           </fieldset>
-          {error && <p className="error-message m-0">{error}</p>}
+          {error && <Alert severity="error">{error}</Alert>}
           <div className="flex justify-end gap-3">
-            <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+            <Button disabled={busy} onClick={onClose}>
               Cancel
-            </button>
-            <button className="primary-button" disabled={busy} type="submit">
+            </Button>
+            <Button disabled={busy} type="submit" variant="primary">
               {busy ? 'Sending…' : 'Send report'}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -80,9 +81,9 @@ export function ReviewCard({ item, review }: { item?: ItemSummary; review: Publi
     <article className="border-b border-line-soft py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="m-0 text-sm">
-          <Link className="rule-link" to={`/users/${review.author.handle}`}>
+          <MuiLink component={Link} to={`/users/${review.author.handle}`} underline="always">
             {review.author.displayName}
-          </Link>{' '}
+          </MuiLink>{' '}
           <span className="mono-sm text-faint">
             {[
               review.rating !== null && `${review.rating}/10`,
@@ -94,14 +95,14 @@ export function ReviewCard({ item, review }: { item?: ItemSummary; review: Publi
           </span>
         </p>
         {reportable && (
-          <button className="text-button mono-sm" onClick={() => setReporting(true)} type="button">
+          <Button className="mono-sm" onClick={() => setReporting(true)} size="small" variant="text">
             report
-          </button>
+          </Button>
         )}
       </div>
       {item && (
         <p className="mono-sm mt-1 mb-0 text-faint">
-          on {href ? <Link className="rule-link" to={href}>{item.title}</Link> : item.title}
+          on {href ? <MuiLink component={Link} to={href} underline="always">{item.title}</MuiLink> : item.title}
         </p>
       )}
       {revealed ? (
@@ -112,16 +113,17 @@ export function ReviewCard({ item, review }: { item?: ItemSummary; review: Publi
           )}
         </>
       ) : (
-        <div className="notice mt-3 flex flex-wrap items-center justify-between gap-3">
-          <span>This review contains spoilers.</span>
-          <button
-            className="secondary-button px-3 py-1.5 text-sm"
-            onClick={() => setRevealed(true)}
-            type="button"
-          >
-            Show review
-          </button>
-        </div>
+        <Alert
+          action={
+            <Button onClick={() => setRevealed(true)} size="small">
+              Show review
+            </Button>
+          }
+          className="mt-3"
+          severity="info"
+        >
+          This review contains spoilers.
+        </Alert>
       )}
       {reporting && <ReportDialog onClose={() => setReporting(false)} review={review} />}
     </article>

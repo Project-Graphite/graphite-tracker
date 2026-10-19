@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { LinesSkeleton, ListSkeleton, Skeleton } from '@project-graphite/ui';
+import { Button, LinesSkeleton, ListSkeleton, Skeleton } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { countLabel, type CatalogDetails } from '../catalog';
 import type { LibraryEntry } from '../library';
@@ -26,7 +28,7 @@ function YourReview({
   const [editing, setEditing] = useState(false);
   const eligible = entry?.state === 'completed' || entry?.state === 'dropped';
 
-  if (own.error) return <p className="error-message">{own.error}</p>;
+  if (own.error) return <Alert severity="error">{own.error}</Alert>;
   if (review === undefined) {
     return <LinesSkeleton className="max-w-sm" label="Loading your review" lines={1} />;
   }
@@ -65,13 +67,9 @@ function YourReview({
       ) : (
         <p className="m-0 text-sm text-muted">You have not rated this title yet.</p>
       )}
-      <button
-        className="secondary-button px-3 py-2 text-sm"
-        onClick={() => setEditing(true)}
-        type="button"
-      >
+      <Button onClick={() => setEditing(true)} size="small">
         {review ? 'Edit' : 'Rate or review'}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -112,7 +110,7 @@ export function TitleReviews({
           <LinesSkeleton className="max-w-sm" label="Loading your review" lines={1} />
         ) : !auth.user ? (
           <p className="m-0 text-sm text-muted">
-            <Link className="rule-link" to="/login">Sign in</Link> to rate and review.
+            <MuiLink component={Link} to="/login" underline="always">Sign in</MuiLink> to rate and review.
           </p>
         ) : itemId && entry !== undefined ? (
           <YourReview entry={entry} itemId={itemId} onSaved={reviews.reload} />
@@ -125,7 +123,7 @@ export function TitleReviews({
           <ListSkeleton label="Loading reviews" rows={2} />
         </div>
       )}
-      {reviews.error && <p className="error-message mt-5">{reviews.error}</p>}
+      {reviews.error && <Alert className="mt-5" severity="error">{reviews.error}</Alert>}
       {reviews.data && reviews.data.results.length === 0 && (
         <p className="mt-6 text-muted">No public reviews yet.</p>
       )}
@@ -136,20 +134,19 @@ export function TitleReviews({
           ))}
           {reviews.data.totalPages > 1 && (
             <div className="mt-5 flex items-center gap-4">
-              <button className="secondary-button px-3 py-2 text-sm" disabled={page <= 1} onClick={() => setPage(page - 1)} type="button">
+              <Button disabled={page <= 1} onClick={() => setPage(page - 1)} size="small">
                 Newer
-              </button>
+              </Button>
               <span className="mono-sm text-faint">
                 Page {page} of {reviews.data.totalPages}
               </span>
-              <button
-                className="secondary-button px-3 py-2 text-sm"
+              <Button
                 disabled={page >= reviews.data.totalPages}
                 onClick={() => setPage(page + 1)}
-                type="button"
+                size="small"
               >
                 Older
-              </button>
+              </Button>
             </div>
           )}
         </div>

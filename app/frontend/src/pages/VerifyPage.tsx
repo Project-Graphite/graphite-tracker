@@ -1,6 +1,7 @@
+import Alert from '@mui/material/Alert';
 import { useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router';
-import { errorMessage, TextField } from '@project-graphite/ui';
+import { useSearchParams } from 'react-router';
+import { Button, errorMessage, TextField } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import { required, useFormErrors } from '../validation';
 
@@ -40,9 +41,9 @@ export function VerifyPage() {
         <p className="eyebrow">Email verified</p>
         <h1 className="page-title">Your email address is confirmed.</h1>
         {auth.user ? (
-          <Link className="primary-button mt-7 inline-flex" to="/settings/account">Back to settings</Link>
+          <Button className="mt-7" href="/settings/account" variant="primary">Back to settings</Button>
         ) : (
-          <Link className="primary-button mt-7 inline-flex" to="/login">Sign in</Link>
+          <Button className="mt-7" href="/login" variant="primary">Sign in</Button>
         )}
       </section>
     );
@@ -59,10 +60,10 @@ export function VerifyPage() {
           spellCheck={false}
           {...form.field('token')}
         />
-        {error && <p className="error-message">{error}</p>}
-        <button className="primary-button" disabled={busy} type="submit">
+        {error && <Alert severity="error">{error}</Alert>}
+        <Button disabled={busy} type="submit" variant="primary">
           {busy ? 'Verifying…' : 'Verify email'}
-        </button>
+        </Button>
       </form>
     </section>
   );

@@ -1,6 +1,10 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, NavLink, Outlet, useParams } from 'react-router';
+import { Link, matchPath, Navigate, Outlet, useLocation, useParams } from 'react-router';
 import {
+  Button,
+  Checkbox,
   Dialog,
   errorMessage,
   FormSkeleton,
@@ -52,6 +56,7 @@ const settingsSections = [
 export function SettingsLayout() {
   const auth = useAuth();
   const { handle = '' } = useParams();
+  const { pathname } = useLocation();
   const user = auth.user;
   if (!user) return null;
   if (handle.toLowerCase() !== user.handle) {
@@ -64,18 +69,21 @@ export function SettingsLayout() {
       <h1 className="page-title">{user.displayName}</h1>
       <OwnerTabs handle={user.handle} />
       <nav aria-label="Settings" className="chip-row mt-6">
-        {settingsSections.map(([section, label]) => (
-          <NavLink
-            className={({ isActive }) =>
-              `secondary-button px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
-            }
-            end
-            key={section}
-            to={`/users/${user.handle}/settings${section ? `/${section}` : ''}`}
-          >
-            {label}
-          </NavLink>
-        ))}
+        {settingsSections.map(([section, label]) => {
+          const href = `/users/${user.handle}/settings${section ? `/${section}` : ''}`;
+          const active = Boolean(matchPath({ path: href, end: true }, pathname));
+          return (
+            <Button
+              aria-current={active ? 'page' : undefined}
+              className={`whitespace-nowrap ${active ? 'border-ink' : ''}`}
+              href={href}
+              key={section}
+              size="small"
+            >
+              {label}
+            </Button>
+          );
+        })}
       </nav>
       <div className="mt-8">
         <Outlet />
@@ -130,13 +138,13 @@ export function ProfileSettingsPage() {
     );
   }
 
-  if (me.error) return <p className="error-message">{me.error}</p>;
+  if (me.error) return <Alert severity="error">{me.error}</Alert>;
   if (!me.data) return <FormSkeleton fields={2} />;
   const { data } = me;
 
   return (
     <div className="fade-in grid max-w-3xl gap-12">
-      {error && <p className="error-message m-0">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       <section>
         <h2 className="m-0 text-xl font-medium">Profile</h2>
         <form
@@ -157,13 +165,13 @@ export function ProfileSettingsPage() {
             Handle @{data.handle} · {data.email} · the handle is permanent so profile links keep working
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <button className="primary-button" type="submit">
+            <Button type="submit" variant="primary">
               Save profile
-            </button>
+            </Button>
             {saved && <span className="mono-sm text-faint">Saved.</span>}
-            <Link className="rule-link mono-sm" to={`/users/${data.handle}`}>
+            <MuiLink className="mono-sm" component={Link} to={`/users/${data.handle}`} underline="always">
               See your profile as others do
-            </Link>
+            </MuiLink>
           </div>
         </form>
       </section>
@@ -177,11 +185,10 @@ export function ProfileSettingsPage() {
           deal with abuse.
         </p>
         <label className="mt-5 flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
-          <input
+          <Checkbox
             checked={data.privacy.isPublic}
             className="mt-1"
             onChange={(event) => void send('/me/privacy', { isPublic: event.target.checked })}
-            type="checkbox"
           />
           <span>
             <span className="block font-medium">Public profile</span>
@@ -191,18 +198,18 @@ export function ProfileSettingsPage() {
         <fieldset className="m-0 mt-4 grid gap-3 border-0 p-0" disabled={!data.privacy.isPublic}>
           <legend className="sr-only">Visible sections</legend>
           {sections.map(([key, label, description]) => (
-            <label className={`flex items-start gap-3 ${data.privacy.isPublic ? '' : 'opacity-55'}`} key={key}>
-              <input
-                checked={data.privacy[key]}
-                className="mt-1"
-                onChange={(event) => void send('/me/privacy', { [key]: event.target.checked })}
-                type="checkbox"
-              />
-              <span>
-                <span className="block text-sm text-ink">{label}</span>
-                <span className="text-sm text-muted">{description}</span>
-              </span>
-            </label>
+            <Checkbox
+              checked={data.privacy[key]}
+              className={`items-start gap-3 ${data.privacy.isPublic ? '' : 'opacity-55'}`}
+              key={key}
+              label={
+                <span>
+                  <span className="block text-sm text-ink">{label}</span>
+                  <span className="text-sm text-muted">{description}</span>
+                </span>
+              }
+              onChange={(event) => void send('/me/privacy', { [key]: event.target.checked })}
+            />
           ))}
         </fieldset>
       </section>
@@ -210,15 +217,15 @@ export function ProfileSettingsPage() {
         <h2 className="m-0 text-xl font-medium">Content</h2>
         {!site.data ? (
           site.error ? (
-            <p className="error-message mt-4">{site.error}</p>
+            <Alert className="mt-4" severity="error">{site.error}</Alert>
           ) : (
             <LinesSkeleton className="mt-4 max-w-xl" label="Loading content settings" lines={2} />
           )
         ) : !site.data.adultContentEnabled ? (
-          <p className="notice mt-4">
+          <Alert className="mt-4" severity="info">
             Adult content is turned off on Graphite Tracker, so adult titles stay out of search,
             discovery, imports and title pages for everyone. Titles already in your library are kept.
-          </p>
+          </Alert>
         ) : (
           <>
             <p className="mt-2 text-sm text-muted">
@@ -255,19 +262,18 @@ export function ProfileSettingsPage() {
                   </p>
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
-                  <button className="secondary-button" onClick={() => setConfirmingAdult(false)} type="button">
+                  <Button onClick={() => setConfirmingAdult(false)}>
                     Cancel
-                  </button>
-                  <button
-                    className="primary-button"
+                  </Button>
+                  <Button
                     onClick={() => {
                       setConfirmingAdult(false);
                       void send('/me', { showAdultContent: true });
                     }}
-                    type="button"
+                    variant="primary"
                   >
                     Show adult content
-                  </button>
+                  </Button>
                 </div>
               </Dialog>
             )}

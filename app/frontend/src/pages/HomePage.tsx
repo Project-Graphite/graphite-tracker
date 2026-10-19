@@ -1,4 +1,7 @@
+import Alert from '@mui/material/Alert';
+import MuiTextField from '@mui/material/TextField';
 import type { FormEvent } from 'react';
+import { Button } from '@project-graphite/ui';
 import {
   categoryLabels,
   discoverCategories,
@@ -44,22 +47,27 @@ export function HomePage() {
           Movies, TV, anime, manga, manhwa and games in one library, with your progress in each.
         </p>
         <form className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto]" noValidate onSubmit={submit} role="search">
-          <input
-            aria-describedby={form.errors.query ? 'search-error' : undefined}
-            aria-invalid={form.errors.query ? true : undefined}
-            aria-label="Title"
+          <MuiTextField
             name="query"
-            onInput={form.field('query').onInput}
             placeholder="Search every medium"
+            size="small"
+            slotProps={{
+              htmlInput: {
+                'aria-describedby': form.errors.query ? 'search-error' : undefined,
+                'aria-invalid': form.errors.query ? true : undefined,
+                'aria-label': 'Title',
+                onInput: form.field('query').onInput,
+              },
+            }}
             type="search"
           />
-          <button className="primary-button" disabled={search.opening} type="submit">
+          <Button disabled={search.opening} type="submit" variant="primary">
             {search.opening ? 'Opening…' : 'Search'}
-          </button>
+          </Button>
           {(form.errors.query || search.error) && (
-            <p className="error-message m-0 sm:col-span-2" id="search-error">
+            <Alert className="sm:col-span-2" id="search-error" severity="error">
               {form.errors.query || search.error}
-            </p>
+            </Alert>
           )}
         </form>
       </section>

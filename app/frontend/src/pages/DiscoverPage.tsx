@@ -1,6 +1,8 @@
+import Alert from '@mui/material/Alert';
+import MuiTextField from '@mui/material/TextField';
 import { useState, type FormEvent } from 'react';
-import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
-import { EmptyState, Icon, Pagination, Skeleton } from '@project-graphite/ui';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Button, EmptyState, Icon, Pagination, Select, Skeleton, Tabs } from '@project-graphite/ui';
 import { useAuth } from '../auth';
 import {
   categoryLabels,
@@ -205,67 +207,76 @@ export function DiscoverPage({
           role="search"
         >
           <div className="flex gap-2">
-            <input
-              aria-describedby={searchError || search.error ? 'discover-search-error' : undefined}
-              aria-invalid={Boolean(searchError || search.error)}
-              aria-label={`Search ${categoryLabels[category]}`}
+            <MuiTextField
               defaultValue={query}
+              fullWidth
               name="q"
               placeholder={`Search ${categoryLabels[category]} or paste a link`}
+              size="small"
+              slotProps={{
+                htmlInput: {
+                  'aria-describedby': searchError || search.error ? 'discover-search-error' : undefined,
+                  'aria-invalid': Boolean(searchError || search.error),
+                  'aria-label': `Search ${categoryLabels[category]}`,
+                },
+              }}
               type="search"
             />
-            <button className="primary-button shrink-0" disabled={search.opening} type="submit">
+            <Button className="shrink-0" disabled={search.opening} type="submit" variant="primary">
               {search.opening ? 'Opening…' : 'Search'}
-            </button>
+            </Button>
           </div>
           {(searchError || search.error) && (
-            <p className="error-message m-0" id="discover-search-error">
+            <Alert id="discover-search-error" severity="error">
               {searchError || search.error}
-            </p>
+            </Alert>
           )}
         </form>
       </div>
       <nav aria-label="Media categories" className="chip-row mt-7">
         {discoverCategories.map((item) => (
-          <NavLink
-            className={({ isActive }) =>
-              `secondary-button px-3 py-2 text-sm whitespace-nowrap ${isActive ? 'border-ink' : ''}`
-            }
-            key={item}
-            to={
+          <Button
+            aria-current={item === category ? 'page' : undefined}
+            className={`whitespace-nowrap ${item === category ? 'border-ink' : ''}`}
+            href={
               section === 'search' && query
                 ? `/discover/${item}/search?q=${encodeURIComponent(query)}`
                 : `/discover/${item}/${section}`
             }
+            key={item}
+            size="small"
           >
             {categoryLabels[item]}
-          </NavLink>
+          </Button>
         ))}
       </nav>
       <div className="mt-5 flex items-center gap-2 border-b border-line">
-        <nav aria-label="Discovery section" className="flex min-w-0 items-end gap-2 self-end">
-          {sections.map(({ id, label }) => (
-            <NavLink className="tab-link -mb-px" key={id} to={`/discover/${category}/${id}`}>
-              {label}
-            </NavLink>
-          ))}
-          {section === 'search' && query && (
-            <span aria-current="page" className="tab-link active -mb-px min-w-0 truncate">
-              “{query}”
-            </span>
-          )}
-        </nav>
-        <button
+        <div className="-mb-px min-w-0 self-end">
+          <Tabs
+            items={[
+              ...sections.map(({ id, label }) => ({
+                active: id === section,
+                href: `/discover/${category}/${id}`,
+                label,
+              })),
+              ...(section === 'search' && query
+                ? [{ active: true, href: `/discover/${category}/search?q=${encodeURIComponent(query)}`, label: `“${query}”` }]
+                : []),
+            ]}
+            label="Discovery section"
+          />
+        </div>
+        <Button
           aria-controls="discover-filters"
           aria-expanded={filtersOpen}
-          className="secondary-button ml-auto inline-flex shrink-0 gap-2 px-3 py-1.5 text-sm sm:hidden"
+          className="ml-auto shrink-0 gap-2 sm:hidden"
           onClick={() => setFiltersOpen((current) => !current)}
-          type="button"
+          size="small"
         >
           <Icon name="filter" size={16} />
           {filtersOpen ? 'Hide filters' : 'Filters'}
           {activeFilters > 0 && <span className="count-badge static border-0">{activeFilters}</span>}
-        </button>
+        </Button>
       </div>
       <form
         className={`mt-5 grid-cols-2 gap-3 sm:mt-6 sm:grid lg:grid-cols-6 ${filtersOpen ? 'grid' : 'hidden'}`}
@@ -274,69 +285,70 @@ export function DiscoverPage({
         onSubmit={apply}
       >
         {genres.loading ? (
-          <div className="field-label">
-            <span>Genre</span>
+          <div>
             <input name="genre" type="hidden" value={searchParams.get('genre') ?? ''} />
-            <Skeleton className="h-[3.1rem] rounded-lg" />
+            <Skeleton className="h-14 rounded-lg" />
           </div>
         ) : (genres.data?.length ?? 0) > 0 && (
-          <label className="field-label">
-            Genre
-            <select defaultValue={searchParams.get('genre') ?? ''} name="genre">
-              <option value="">Any genre</option>
-              {genres.data?.map((genre) => (
-                <option key={genre} value={genre}>{genre}</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            defaultValue={searchParams.get('genre') ?? ''}
+            label="Genre"
+            name="genre"
+            options={[
+              { value: '', label: 'Any genre' },
+              ...(genres.data ?? []).map((genre) => ({ value: genre, label: genre })),
+            ]}
+          />
         )}
         <YearPicker defaultValue={searchParams.get('year') ?? ''} label="Year" name="year" />
         {statuses.length > 0 && (
-          <label className="field-label">
-            Status
-            <select defaultValue={searchParams.get('status') ?? ''} name="status">
-              <option value="">Any status</option>
-              {statuses.map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            defaultValue={searchParams.get('status') ?? ''}
+            label="Status"
+            name="status"
+            options={[
+              { value: '', label: 'Any status' },
+              ...statuses.map(([value, label]) => ({ value, label })),
+            ]}
+          />
         )}
-        <label className="field-label">
-          Sort
-          <select defaultValue={searchParams.get('sort') ?? ''} name="sort">
-            <option value="">{section === 'search' ? 'Relevance' : 'Default'}</option>
-            {sortOptions(category, section, activeSource).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <Select
+          defaultValue={searchParams.get('sort') ?? ''}
+          label="Sort"
+          name="sort"
+          options={[
+            { value: '', label: section === 'search' ? 'Relevance' : 'Default' },
+            ...sortOptions(category, section, activeSource).map(([value, label]) => ({ value, label })),
+          ]}
+        />
         {sources.length > 1 && (
-          <label className="field-label">
-            Source
-            <select defaultValue={source} name="source">
-              <option value="">Default</option>
-              {sources.map((item) => (
-                <option key={item.key} value={item.key}>{item.displayName}</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            defaultValue={source}
+            label="Source"
+            name="source"
+            options={[
+              { value: '', label: 'Default' },
+              ...sources.map((item) => ({ value: item.key, label: item.displayName })),
+            ]}
+          />
         )}
         <div className="col-span-2 flex items-end gap-3 lg:col-span-1">
-          <button className="primary-button flex-1" type="submit">
+          <Button className="flex-1" type="submit" variant="primary">
             {section === 'search' ? 'Search' : 'Apply'}
-          </button>
+          </Button>
           {hasFilters && (
-            <Link
-              className="text-button mono-sm py-3"
-              to={`/discover/${category}/${section}${query ? `?q=${encodeURIComponent(query)}` : ''}`}
+            <Button
+              className="mono-sm py-3"
+              href={`/discover/${category}/${section}${query ? `?q=${encodeURIComponent(query)}` : ''}`}
+              size="small"
+              variant="text"
             >
               Clear
-            </Link>
+            </Button>
           )}
         </div>
       </form>
-      {error && <p className="error-message mt-6 max-w-3xl">{error}</p>}
+      {error && <Alert className="mt-6 max-w-3xl" severity="error">{error}</Alert>}
       {section === 'search' && query.length < 2 ? (
         <div className="mt-10">
           <EmptyState title={`Search ${categoryLabels[category]}`}>
@@ -356,9 +368,9 @@ export function DiscoverPage({
         results.data && (
           <section className="fade-in mt-10">
             {results.data.stale && (
-              <p className="notice mb-5">
+              <Alert className="mb-5" severity="info">
                 The source is temporarily unavailable. Showing the most recent cached result.
-              </p>
+              </Alert>
             )}
             <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-4">
               <h2 className="m-0 text-xl font-medium">

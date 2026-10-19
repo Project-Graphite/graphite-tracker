@@ -1,11 +1,17 @@
+import Alert from '@mui/material/Alert';
+import MuiLink from '@mui/material/Link';
+import MuiTextField from '@mui/material/TextField';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
+  Button,
   EmptyState,
   errorMessage,
   LinesSkeleton,
   ListSkeleton,
   Pagination,
+  Select,
+  Tabs,
   Toggle,
 } from '@project-graphite/ui';
 import type { Page } from '../api';
@@ -82,10 +88,10 @@ function ReviewBlock({ review }: { review: ModeratedReview }) {
   return (
     <div className="grid gap-2">
       <p className="mono-sm m-0 text-faint">
-        <Link className="rule-link" to={`/users/${review.author.handle}`}>
+        <MuiLink component={Link} to={`/users/${review.author.handle}`} underline="always">
           {review.author.displayName}
-        </Link>{' '}
-        on {href ? <Link className="rule-link" to={href}>{review.item.title}</Link> : review.item.title}
+        </MuiLink>{' '}
+        on {href ? <MuiLink component={Link} to={href} underline="always">{review.item.title}</MuiLink> : review.item.title}
         {review.rating !== null && ` · ${review.rating}/10`}
         {review.visibility === 'private' && ' · private'}
         {review.containsSpoilers && ' · marked as spoilers'}
@@ -143,7 +149,7 @@ function SitePanel() {
   const [confirming, setConfirming] = useState<boolean>();
   const [sourceError, setSourceError] = useState('');
 
-  if (site.error) return <p className="error-message">{site.error}</p>;
+  if (site.error) return <Alert severity="error">{site.error}</Alert>;
   if (!site.data) return <LinesSkeleton className="max-w-3xl" label="Loading site settings" lines={2} />;
   const { defaultSources } = site.data;
   const available = sources.data?.sources.filter((source) => source.available) ?? [];
@@ -196,26 +202,22 @@ function SitePanel() {
           Used wherever a reader hasn't chosen a source themselves, including the home page and
           imports.
         </p>
-        {sourceError && <p className="error-message mt-4">{sourceError}</p>}
-        {sources.error && <p className="error-message mt-4">{sources.error}</p>}
+        {sourceError && <Alert className="mt-4" severity="error">{sourceError}</Alert>}
+        {sources.error && <Alert className="mt-4" severity="error">{sources.error}</Alert>}
         {sources.data && (
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {catalogCategories.map((category) => {
               const options = available.filter((source) => source.categories.includes(category));
               return (
                 options.length > 0 && (
-                  <label className="field-label" key={category}>
-                    {categoryLabels[category]}
-                    <select
-                      disabled={options.length === 1}
-                      onChange={(event) => void chooseDefault(category, event.target.value)}
-                      value={defaultSources[category] ?? ''}
-                    >
-                      {options.map((source) => (
-                        <option key={source.key} value={source.key}>{source.displayName}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <Select
+                    disabled={options.length === 1}
+                    key={category}
+                    label={categoryLabels[category]}
+                    onChange={(value) => void chooseDefault(category, value)}
+                    options={options.map((source) => ({ value: source.key, label: source.displayName }))}
+                    value={defaultSources[category] ?? ''}
+                  />
                 )
               );
             })}
@@ -235,7 +237,7 @@ function Listing<T>({
   resource: Resource<Page<T>>;
   pageHref: (page: number) => string;
 }) {
-  if (resource.error) return <p className="error-message">{resource.error}</p>;
+  if (resource.error) return <Alert severity="error">{resource.error}</Alert>;
   if (!resource.data) return <ListSkeleton label="Loading" />;
   return resource.data.results.length === 0 ? (
     <EmptyState title="Nothing to show" />
@@ -316,19 +318,13 @@ export function AdminPage() {
     <div className="page-enter">
       <p className="eyebrow">Moderation</p>
       <h1 className="page-title">Admin</h1>
-      <nav aria-label="Admin sections" className="scroll-x mt-7 mb-6 flex gap-2 border-b border-line">
-        {visibleTabs.map((key) => (
-          <Link
-            aria-current={key === tab ? 'page' : undefined}
-            className="tab-link"
-            key={key}
-            to={`/admin?tab=${key}`}
-          >
-            {tabs[key]}
-          </Link>
-        ))}
-      </nav>
-      {error && <p className="error-message mb-5">{error}</p>}
+      <div className="mt-7 mb-6">
+        <Tabs
+          items={visibleTabs.map((key) => ({ active: key === tab, href: `/admin?tab=${key}`, label: tabs[key] }))}
+          label="Admin sections"
+        />
+      </div>
+      {error && <Alert className="mb-5" severity="error">{error}</Alert>}
       {tab === 'reports' && (
         <>
           <Filter options={['open', 'resolved']} tab={tab} value={status} />
@@ -345,20 +341,19 @@ export function AdminPage() {
                   <ReviewBlock review={report.review} />
                   {!report.resolution && (
                     <div className="flex gap-3">
-                      <button
-                        className="primary-button px-3 py-2 text-sm"
+                      <Button
                         onClick={() => void act(`/admin/reports/${report.id}`, { resolution: 'hidden' }, reports.reload)}
-                        type="button"
+                        size="small"
+                        variant="primary"
                       >
                         Hide review
-                      </button>
-                      <button
-                        className="secondary-button px-3 py-2 text-sm"
+                      </Button>
+                      <Button
                         onClick={() => void act(`/admin/reports/${report.id}`, { resolution: 'dismissed' }, reports.reload)}
-                        type="button"
+                        size="small"
                       >
                         Dismiss report
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </li>
@@ -376,13 +371,12 @@ export function AdminPage() {
                 <li className="grid list-none gap-3 border-b border-line-soft py-5" key={review.id}>
                   <ReviewBlock review={review} />
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      className="secondary-button px-3 py-2 text-sm"
+                    <Button
                       onClick={() => void act(`/admin/reviews/${review.id}`, { hidden: !review.hidden }, reviews.reload)}
-                      type="button"
+                      size="small"
                     >
                       {review.hidden ? 'Restore review' : 'Hide review'}
-                    </button>
+                    </Button>
                     {review.openReports > 0 && (
                       <span className="mono-sm text-faint">{review.openReports} open reports</span>
                     )}
@@ -396,19 +390,26 @@ export function AdminPage() {
       {tab === 'users' && (
         <>
           <form className="mb-6 grid max-w-xl gap-3 sm:grid-cols-[1fr_auto]" key={query} onSubmit={search} role="search">
-            <input aria-label="Find accounts" defaultValue={query} name="query" placeholder="Email, handle or name" type="search" />
-            <button className="secondary-button" type="submit">
+            <MuiTextField
+              defaultValue={query}
+              name="query"
+              placeholder="Email, handle or name"
+              size="small"
+              slotProps={{ htmlInput: { 'aria-label': 'Find accounts' } }}
+              type="search"
+            />
+            <Button type="submit">
               Find
-            </button>
+            </Button>
           </form>
           <Listing pageHref={pageHref} resource={users}>
             {(results) =>
               results.map((account) => (
                 <li className="flex list-none flex-wrap items-center justify-between gap-3 border-b border-line-soft py-4" key={account.id}>
                   <span className="min-w-0">
-                    <Link className="rule-link" to={`/users/${account.handle}`}>
+                    <MuiLink component={Link} to={`/users/${account.handle}`} underline="always">
                       {account.displayName}
-                    </Link>{' '}
+                    </MuiLink>{' '}
                     <span className="mono-sm text-faint">
                       @{account.handle} · {account.email} ·{' '}
                       {[
@@ -424,22 +425,20 @@ export function AdminPage() {
                     {auth.user?.role === 'system_manager' &&
                       account.role !== 'system_manager' &&
                       (account.role === 'admin' || (account.verifiedAt && account.isActive)) && (
-                        <button
-                          className="secondary-button px-3 py-2 text-sm"
+                        <Button
                           onClick={() => setChangingRole(account)}
-                          type="button"
+                          size="small"
                         >
                           {account.role === 'admin' ? 'Remove administrator' : 'Make administrator'}
-                        </button>
+                        </Button>
                       )}
                     {account.role === 'member' && (
-                      <button
-                        className="secondary-button px-3 py-2 text-sm"
+                      <Button
                         onClick={() => void act(`/admin/users/${account.id}`, { active: !account.isActive }, users.reload)}
-                        type="button"
+                        size="small"
                       >
                         {account.isActive ? 'Deactivate' : 'Reactivate'}
-                      </button>
+                      </Button>
                     )}
                   </span>
                 </li>
@@ -468,7 +467,7 @@ export function AdminPage() {
                 return (
                   <li className="grid list-none gap-1 border-b border-line-soft py-4" key={event.id}>
                     <p className="m-0 text-sm">
-                      {href ? <Link className="rule-link" to={href}>{event.item.title}</Link> : event.item.title} ·{' '}
+                      {href ? <MuiLink component={Link} to={href} underline="always">{event.item.title}</MuiLink> : event.item.title} ·{' '}
                       {event.release}
                     </p>
                     <p className="mono-sm m-0 text-faint">

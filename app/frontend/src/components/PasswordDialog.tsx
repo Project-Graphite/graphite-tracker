@@ -1,5 +1,6 @@
+import Alert from '@mui/material/Alert';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Dialog, errorMessage, TextField } from '@project-graphite/ui';
+import { Button, Dialog, errorMessage, TextField } from '@project-graphite/ui';
 
 export function PasswordDialog({
   children,
@@ -51,14 +52,14 @@ export function PasswordDialog({
           onInput={() => setMissing(false)}
           type="password"
         />
-        {error && <p className="error-message m-0">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <div className="flex justify-end gap-3">
-          <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+          <Button disabled={busy} onClick={onClose}>
             Cancel
-          </button>
-          <button className="primary-button" disabled={busy} type="submit">
+          </Button>
+          <Button disabled={busy} type="submit" variant="primary">
             {busy ? 'Saving…' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </Dialog>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Button } from '@project-graphite/ui';
 
 export function NotFoundPage() {
   return (
@@ -9,12 +9,12 @@ export function NotFoundPage() {
         There is nothing at this address. The link may be wrong, or the page may have moved.
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link className="primary-button inline-flex" to="/">
+        <Button href="/" variant="primary">
           Go home
-        </Link>
-        <Link className="secondary-button inline-flex" to="/discover/movie/recent">
+        </Button>
+        <Button href="/discover/movie/recent">
           Discover titles
-        </Link>
+        </Button>
       </div>
     </div>
   );
