@@ -168,9 +168,10 @@ export function AccountSettingsPage() {
       <Section description="Email digests arrive in the morning of this time zone." title="Time zone">
         <div className="mt-5 flex flex-wrap items-end gap-4">
           <Select
+            aria-label="Time zone"
             className="min-w-64"
             disabled={timeZone.busy}
-            label="Time zone"
+            fullWidth
             onChange={(value) => void saveTimeZone(value)}
             options={zones.map((zone) => ({ value: zone, label: zone.replaceAll('_', ' ') }))}
             value={current.timeZone}
