@@ -86,7 +86,7 @@ export function LibraryPage() {
       </div>
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <form className="col-span-2 lg:col-span-1" onSubmit={search} role="search">
-          <TextField aria-label="Search" defaultValue={searchParams.get('query') ?? ''} key={searchParams.get('query')} name="query" placeholder="Search" type="search" />
+          <TextField defaultValue={searchParams.get('query') ?? ''} key={searchParams.get('query')} label="Search" name="query" placeholder="Title" type="search" />
         </form>
         <Select
           label="Category"
